@@ -3,6 +3,7 @@ import { type FormEvent, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
+import { ancestorsLabel, PlantTaxon } from "../components/Taxon.tsx";
 import { TemperatureRegister } from "../components/TemperatureRegister.tsx";
 import { Button, ErrorText, Field, Input, PressedOrchid } from "../components/ui.tsx";
 import { api, illustrationUrl, type LocationCheck, type Photo, photoUrl, type Timeline } from "../lib/api.ts";
@@ -128,18 +129,28 @@ export function PlantDetail() {
             <span>Herbário Orchidiary</span>
             <span>{accession(plant.accessionNumber)}</span>
           </div>
-          <h1 className="taxon text-[1.6rem] leading-tight">{plant.taxonText ?? "Espécie não determinada"}</h1>
+          {plant.taxon && plant.taxon.lineage.length > 1 && (
+            <p className="typed text-[0.78rem]">{ancestorsLabel(plant.taxon.lineage)}</p>
+          )}
+          <h1 className="text-[1.6rem] leading-tight">
+            <PlantTaxon plant={plant} />
+          </h1>
           <p className="text-lg">{plant.nickname}</p>
           <div className="typed mt-1 text-[0.8rem] leading-relaxed">
             {current && (
               <p>
-                {current.label ? `${current.label}, ` : ""}
+                {current.placeName ? `${current.placeName}, ` : ""}
                 {environmentLabel(current.environment)}
               </p>
             )}
             {first && <p>Na coleção desde {typedDate(plant.acquiredAt ?? first.validFrom)}</p>}
             {locations.length > 1 && <p>Já passou por {locations.length} lugares</p>}
           </div>
+          {plant.taxon && (
+            <Link to={`/guia/${plant.taxon.id}`} className="inline-flex min-h-11 items-center text-carimbo">
+              Ver ficha de cultivo
+            </Link>
+          )}
         </div>
       </section>
 

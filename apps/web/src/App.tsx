@@ -2,7 +2,7 @@ import { Navigate, NavLink, Outlet, Route, Routes } from "react-router";
 import { useMe } from "./lib/auth.tsx";
 import { Collection } from "./routes/Collection.tsx";
 import { EditPlant } from "./routes/EditPlant.tsx";
-import { Guide, SpeciesSheet } from "./routes/Guide.tsx";
+import { Guide, TaxonPage } from "./routes/Guide.tsx";
 import { Login } from "./routes/Login.tsx";
 import { NewPlant } from "./routes/NewPlant.tsx";
 import { PlantDetail } from "./routes/PlantDetail.tsx";
@@ -21,7 +21,7 @@ export function App() {
         <Route path="plantas/:id" element={<PlantDetail />} />
         <Route path="plantas/:id/editar" element={<EditPlant />} />
         <Route path="guia" element={<Guide />} />
-        <Route path="guia/:id" element={<SpeciesSheet />} />
+        <Route path="guia/:id" element={<TaxonPage />} />
         <Route path="configuracoes" element={me.data.role === "master" ? <Settings /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

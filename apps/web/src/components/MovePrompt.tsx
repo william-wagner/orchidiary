@@ -3,7 +3,8 @@ import { useState } from "react";
 import { api, type LocationCheck } from "../lib/api.ts";
 import { formatDistance } from "../lib/geo.ts";
 import { EnvironmentPicker } from "./EnvironmentPicker.tsx";
-import { Button, ErrorText, Field, Input } from "./ui.tsx";
+import { PlacePicker, type PlaceRef } from "./PlacePicker.tsx";
+import { Button, ErrorText } from "./ui.tsx";
 
 /**
  * Aparece quando a foto foi tirada longe do local da ficha.
@@ -22,7 +23,7 @@ export function MovePrompt({
   onDone: (moved: boolean) => void;
 }) {
   const [environment, setEnvironment] = useState<Environment>(check.plantLocation.environment);
-  const [label, setLabel] = useState("");
+  const [place, setPlace] = useState<PlaceRef | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -32,7 +33,7 @@ export function MovePrompt({
       await api.post(`/plants/${plantId}/locations`, {
         lat: check.photoLocation.lat,
         lng: check.photoLocation.lng,
-        label: label || undefined,
+        placeId: place?.id ?? null,
         environment,
         validFrom: takenAt,
       });
@@ -52,7 +53,7 @@ export function MovePrompt({
         </h2>
         <p>
           Esta foto foi tirada a <span className="typed">{formatDistance(check.distanceMeters)}</span> do local
-          registrado na etiqueta{check.plantLocation.label ? ` (${check.plantLocation.label})` : ""}.
+          registrado na etiqueta{check.plantLocation.placeName ? ` (${check.plantLocation.placeName})` : ""}.
         </p>
 
         {check.canMoveFromPhoto ? (
@@ -60,9 +61,7 @@ export function MovePrompt({
             <p className="text-pontilhado">
               Se mudou, o novo local vale a partir desta foto. O histórico anterior continua ligado ao local antigo.
             </p>
-            <Field label="Nome do novo lugar" hint="Opcional">
-              <Input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={120} />
-            </Field>
+            <PlacePicker value={place} onChange={setPlace} label="Nome do novo lugar" />
             <EnvironmentPicker value={environment} onChange={setEnvironment} />
             <ErrorText error={error} />
             <div className="grid grid-cols-2 gap-2">

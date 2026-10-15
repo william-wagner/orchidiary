@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { TaxonPicker } from "../components/TaxonPicker.tsx";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
-import { api, type Photo, type Plant, photoUrl, type Species, type Timeline } from "../lib/api.ts";
+import { api, type Photo, type Plant, photoUrl, type TaxonSummary, type Timeline } from "../lib/api.ts";
 import { accession, typedDate } from "../lib/format.ts";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -27,7 +28,7 @@ function EditForm({ plant, photos }: { plant: Plant; photos: Photo[] }) {
   const navigate = useNavigate();
   const [cover, setCover] = useState<string | null>(plant.coverPhotoId);
   const qc = useQueryClient();
-  const species = useQuery({ queryKey: ["species"], queryFn: () => api.get<Species[]>("/species") });
+  const [taxon, setTaxon] = useState<TaxonSummary | null>(plant.taxon);
   const back = `/plantas/${plant.id}`;
   const initialDate = dateValue(plant.acquiredAt);
 
@@ -44,12 +45,11 @@ function EditForm({ plant, photos }: { plant: Plant; photos: Photo[] }) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const text = (k: string) => String(f.get(k) ?? "").trim() || null;
-    const speciesId = text("speciesId");
     const acquiredAt = String(f.get("acquiredAt") ?? "");
     save.mutate({
       nickname: f.get("nickname"),
-      speciesId,
-      taxonText: speciesId ? species.data?.find((s) => s.id === speciesId)?.displayName : text("taxonText"),
+      taxonId: taxon?.id ?? null,
+      taxonText: taxon ? null : text("taxonText"),
       origin: text("origin"),
       // só reenvia a data se ela foi mexida, para não deslocar o dia por fuso
       ...(acquiredAt !== initialDate && { acquiredAt: acquiredAt || null }),
@@ -73,19 +73,12 @@ function EditForm({ plant, photos }: { plant: Plant; photos: Photo[] }) {
         <Field label="Apelido">
           <Input name="nickname" required maxLength={80} defaultValue={plant.nickname} />
         </Field>
-        <Field label="Espécie (Guia de Cultivo)">
-          <Select name="speciesId" defaultValue={plant.speciesId ?? ""}>
-            <option value="">Não está no guia</option>
-            {species.data?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.displayName}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nome, se não estiver no guia" hint="Híbrido, cultivar ou o que estiver na etiqueta">
-          <Input name="taxonText" maxLength={160} defaultValue={plant.speciesId ? "" : (plant.taxonText ?? "")} />
-        </Field>
+        <TaxonPicker value={taxon} onChange={setTaxon} />
+        {!taxon && (
+          <Field label="Ou o nome livre" hint="Se não achou no catálogo: o que estiver escrito na etiqueta">
+            <Input name="taxonText" maxLength={160} defaultValue={plant.taxonText ?? ""} />
+          </Field>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Origem">
             <Select name="origin" defaultValue={plant.origin ?? ""}>

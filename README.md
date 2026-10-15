@@ -2,7 +2,7 @@
 
 Guia de cultivo e diário das suas orquídeas. Site mobile first (PWA), hospedado no seu próprio computador e acessado pelo celular ou pelo navegador do PC.
 
-- **Guia de Cultivo**: uma ficha por espécie/gênero com faixas ideais de temperatura, umidade, luz, rega, substrato e floração.
+- **Guia de Cultivo**: catálogo em árvore (família → gênero → espécie → variedade, mais híbridos e cultivares) com fichas de faixas ideais de temperatura, umidade, luz, rega, substrato e floração; o que um táxon não tiver é herdado do nível acima.
 - **Diário**: cada planta (indivíduo) tem fotos, eventos (rega, adubação, floração…), medições manuais de temperatura e umidade e o **clima diário** do lugar onde ela está, tudo numa linha do tempo.
 
 ## Como rodar
@@ -15,7 +15,7 @@ pnpm install
 pnpm db:up                    # sobe o Postgres no Docker
 pnpm db:generate              # gera a migração inicial a partir do schema
 pnpm db:migrate
-pnpm db:seed                  # cria o usuário master e as primeiras fichas do guia
+pnpm db:seed                  # cria o usuário master e o catálogo de táxons do guia
 pnpm dev                      # API na 8787 + app web na 5173
 ```
 

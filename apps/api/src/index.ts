@@ -11,16 +11,18 @@ import { flushLogs, logger } from "./logger.ts";
 import { type RequestEnv, requestLogger } from "./logging/requestLogger.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { photoRoutes } from "./routes/photos.ts";
+import { placeRoutes } from "./routes/places.ts";
 import { plantRoutes } from "./routes/plants.ts";
 import { settingsRoutes } from "./routes/settings.ts";
-import { speciesRoutes } from "./routes/species.ts";
+import { taxaRoutes } from "./routes/taxa.ts";
 
 const api = new Hono()
   .get("/health", (c) => c.json({ ok: true, time: new Date().toISOString() }))
   .route("/auth", authRoutes)
   .route("/plants", plantRoutes)
+  .route("/places", placeRoutes)
   .route("/photos", photoRoutes)
-  .route("/species", speciesRoutes)
+  .route("/taxa", taxaRoutes)
   .route("/settings", settingsRoutes);
 
 export type Api = typeof api;

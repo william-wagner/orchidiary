@@ -1,14 +1,28 @@
 import { z } from "zod";
-import { ENVIRONMENTS, EVENT_TYPES, ILLUSTRATION_QUALITIES, PHOTO_SOURCES, PLANT_ORIGINS, PLANT_STATUSES } from "./enums.ts";
+import {
+  ENVIRONMENTS,
+  EVENT_TYPES,
+  ILLUSTRATION_QUALITIES,
+  PHOTO_SOURCES,
+  PLANT_ORIGINS,
+  PLANT_STATUSES,
+  TAXON_RANKS,
+} from "./enums.ts";
 
 export const latLngSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
 });
 
+/** Nome de um lugar cadastrado pelo usuário (campo "Nome do lugar"). */
+export const placeInputSchema = z.object({
+  name: z.string().trim().min(1, "Escreva o nome do lugar.").max(120),
+});
+
 /** Novo local da planta (também usado no cadastro). */
 export const locationInputSchema = latLngSchema.extend({
-  label: z.string().trim().max(120).optional(),
+  /** Lugar nomeado (tabela `places`); opcional */
+  placeId: z.string().uuid().nullish(),
   environment: z.enum(ENVIRONMENTS),
   /** Quando a planta passou a estar neste local. Default: agora. */
   validFrom: z.coerce.date().optional(),
@@ -16,8 +30,8 @@ export const locationInputSchema = latLngSchema.extend({
 
 export const plantCreateSchema = z.object({
   nickname: z.string().trim().min(1).max(80),
-  speciesId: z.string().uuid().nullish(),
-  /** Nome livre quando não há ficha (ex.: híbrido sem registro) */
+  taxonId: z.string().uuid().nullish(),
+  /** Nome livre quando o táxon não está no catálogo (ex.: o que veio escrito na etiqueta) */
   taxonText: z.string().trim().max(160).nullish(),
   origin: z.enum(PLANT_ORIGINS).nullish(),
   acquiredAt: z.coerce.date().nullish(),
@@ -100,9 +114,32 @@ export const loginSchema = z.object({
 export type PlantCreate = z.infer<typeof plantCreateSchema>;
 export type PlantUpdate = z.infer<typeof plantUpdateSchema>;
 export type LocationInput = z.infer<typeof locationInputSchema>;
+export type PlaceInput = z.infer<typeof placeInputSchema>;
 export type ManualReadingInput = z.infer<typeof manualReadingSchema>;
 export type EventCreate = z.infer<typeof eventCreateSchema>;
 export type PhotoMeta = z.infer<typeof photoMetaSchema>;
 export type TelegramSettings = z.infer<typeof telegramSettingsSchema>;
 export type GoogleDriveSettings = z.infer<typeof googleDriveSettingsSchema>;
 export type OpenaiSettings = z.infer<typeof openaiSettingsSchema>;
+
+/** Táxon do Guia de Cultivo. Os campos de cultivo são opcionais: o que faltar vem do ancestral. */
+export const taxonInputSchema = z.object({
+  parentId: z.string().uuid().nullable(),
+  rank: z.enum(TAXON_RANKS),
+  name: z.string().trim().min(1).max(80),
+  commonNames: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+  tempDayMin: z.number().min(-10).max(50).nullish(),
+  tempDayMax: z.number().min(-10).max(50).nullish(),
+  tempNightMin: z.number().min(-10).max(50).nullish(),
+  tempNightMax: z.number().min(-10).max(50).nullish(),
+  humidityMin: z.number().min(0).max(100).nullish(),
+  humidityMax: z.number().min(0).max(100).nullish(),
+  light: z.string().max(2000).nullish(),
+  watering: z.string().max(2000).nullish(),
+  fertilizing: z.string().max(2000).nullish(),
+  substrate: z.string().max(2000).nullish(),
+  bloomMonths: z.array(z.number().int().min(1).max(12)).max(12).default([]),
+  restPeriod: z.string().max(2000).nullish(),
+  notes: z.string().max(4000).nullish(),
+});
+export type TaxonInput = z.infer<typeof taxonInputSchema>;

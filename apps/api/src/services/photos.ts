@@ -33,7 +33,7 @@ export interface LocationSuggestion {
   mismatch: boolean;
   distanceMeters: number;
   photoLocation: { lat: number; lng: number };
-  plantLocation: { id: string; lat: number; lng: number; label: string | null; environment: string };
+  plantLocation: { id: string; lat: number; lng: number; placeName: string | null; environment: string };
   /**
    * Se a planta pode ser movida a partir do momento da foto. Falso quando a foto
    * é anterior ao início do local atual — mover seria retroativo.
@@ -72,7 +72,7 @@ export async function savePhoto(params: { plantId: string; userId: string; file:
       mismatch: check.mismatch,
       distanceMeters: check.distanceMeters,
       photoLocation: { lat, lng },
-      plantLocation: { id: period.id, lat: period.lat, lng: period.lng, label: period.label, environment: period.environment },
+      plantLocation: { id: period.id, lat: period.lat, lng: period.lng, placeName: period.placeName, environment: period.environment },
       canMoveFromPhoto: !!current && period.id === current.id && takenAt.getTime() > current.validFrom.getTime(),
     };
   }

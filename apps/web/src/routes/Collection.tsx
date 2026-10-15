@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
+import { PlantTaxon } from "../components/Taxon.tsx";
 import { PageHeader, PressedOrchid } from "../components/ui.tsx";
 import { api, type CollectionPlant, illustrationUrl, photoUrl } from "../lib/api.ts";
 import { accession, environmentLabel } from "../lib/format.ts";
@@ -47,10 +48,10 @@ export function Collection() {
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <p className="typed text-[0.78rem]">{accession(p.accessionNumber)}</p>
-                <p className="taxon truncate text-xl leading-tight">{p.taxonText ?? "Espécie não determinada"}</p>
+                <PlantTaxon plant={p} className="block truncate text-xl leading-tight" />
                 <p className="truncate">{p.nickname}</p>
                 <p className="typed mt-auto truncate text-[0.78rem]">
-                  {p.currentLocation?.label ? `${p.currentLocation.label}, ` : ""}
+                  {p.currentLocation?.placeName ? `${p.currentLocation.placeName}, ` : ""}
                   {environmentLabel(p.currentLocation?.environment)}
                 </p>
               </div>

@@ -1,16 +1,20 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { type LocationInput, planMove } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
+import { placeNameOf } from "./places.ts";
 import { pruneWeatherOutsidePeriods } from "./weather/collect.ts";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+/** Períodos de local da planta, cada um com o nome do lugar (`placeName`) quando há. */
 export async function listLocations(plantId: string, tx: Tx | typeof db = db) {
-  return tx
-    .select()
+  const rows = await tx
+    .select({ location: schema.plantLocations, placeName: schema.places.name })
     .from(schema.plantLocations)
+    .leftJoin(schema.places, eq(schema.places.id, schema.plantLocations.placeId))
     .where(eq(schema.plantLocations.plantId, plantId))
     .orderBy(asc(schema.plantLocations.validFrom));
+  return rows.map((r) => ({ ...r.location, placeName: r.placeName }));
 }
 
 export async function getCurrentLocation(plantId: string) {
@@ -29,6 +33,7 @@ export async function getCurrentLocation(plantId: string) {
  */
 export async function movePlant(plantId: string, userId: string, input: LocationInput) {
   const created = await db.transaction(async (tx) => {
+    const toPlaceName = await placeNameOf(userId, input.placeId, tx);
     const periods = await listLocations(plantId, tx);
     const { close, validFrom } = planMove(periods, input.validFrom ?? new Date());
 
@@ -45,7 +50,7 @@ export async function movePlant(plantId: string, userId: string, input: Location
         plantId,
         lat: input.lat,
         lng: input.lng,
-        label: input.label ?? null,
+        placeId: input.placeId ?? null,
         environment: input.environment,
         validFrom,
       })
@@ -57,13 +62,14 @@ export async function movePlant(plantId: string, userId: string, input: Location
         userId,
         type: "moved",
         occurredAt: validFrom,
+        // o nome do lugar vai por extenso: o evento continua legível mesmo se o lugar for renomeado depois
         data: {
-          from: { lat: close.lat, lng: close.lng, label: close.label, environment: close.environment },
-          to: { lat: input.lat, lng: input.lng, label: input.label ?? null, environment: input.environment },
+          from: { lat: close.lat, lng: close.lng, label: close.placeName, environment: close.environment },
+          to: { lat: input.lat, lng: input.lng, label: toPlaceName, environment: input.environment },
         },
       });
     }
-    return { created: created!, closedId: close?.id };
+    return { created: { ...created!, placeName: toPlaceName }, closedId: close?.id };
   });
   // O dia da mudança passa a pertencer ao local novo: tira esse dia do período antigo.
   if (created.closedId) await pruneWeatherOutsidePeriods([created.closedId]);

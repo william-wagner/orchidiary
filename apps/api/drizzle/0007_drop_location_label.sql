@@ -1,0 +1,1 @@
+ALTER TABLE "plant_locations" DROP COLUMN "label";

@@ -5,3 +5,4 @@ export * from "./locations.ts";
 export * from "./climate.ts";
 export * from "./schemas.ts";
 export * from "./illustration.ts";
+export * from "./taxonomy.ts";

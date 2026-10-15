@@ -1,3 +1,5 @@
+import type { Care, CareField, TaxonRank } from "@orchidiary/shared";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -27,6 +29,7 @@ export const api = {
     request<T>(path, { method: "POST", body: data instanceof FormData ? data : JSON.stringify(data ?? {}) }),
   put: <T>(path: string, data: unknown) => request<T>(path, { method: "PUT", body: JSON.stringify(data) }),
   patch: <T>(path: string, data: unknown) => request<T>(path, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: <T = void>(path: string) => request<T>(path, { method: "DELETE" }),
 };
 
 // ─── Tipos de resposta (espelham as tabelas da API) ──────────────────────────
@@ -38,11 +41,22 @@ export interface User {
   role: "master" | "user";
 }
 
+/** Lugar nomeado do usuário ("Orquidário quarto"). */
+export interface Place {
+  id: string;
+  name: string;
+  /** Plantas que estão lá agora */
+  plantCount: number;
+  /** Períodos de local que o usam, contando o histórico; só some se for 0 */
+  usedCount: number;
+}
+
 export interface PlantLocation {
   id: string;
   lat: number;
   lng: number;
-  label: string | null;
+  placeId: string | null;
+  placeName: string | null;
   environment: "indoor" | "outdoor";
   validFrom: string;
   validTo: string | null;
@@ -52,8 +66,10 @@ export interface Plant {
   id: string;
   nickname: string;
   accessionNumber: number | null;
-  speciesId: string | null;
+  taxonId: string | null;
+  /** Nome livre, quando o táxon não está no catálogo */
   taxonText: string | null;
+  taxon: TaxonSummary | null;
   status: string;
   origin: string | null;
   acquiredAt: string | null;
@@ -72,25 +88,36 @@ export interface CollectionPlant extends Plant {
   inBloom: boolean;
 }
 
-export interface Species {
+export interface TaxonRef {
   id: string;
-  genus: string;
-  epithet: string | null;
-  displayName: string;
+  rank: TaxonRank;
+  name: string;
+  fullName: string;
+}
+
+/** Táxon com o caminho na árvore (raiz → ele mesmo). */
+export interface TaxonSummary extends TaxonRef {
   commonNames: string[];
-  tempDayMin: number | null;
-  tempDayMax: number | null;
-  tempNightMin: number | null;
-  tempNightMax: number | null;
-  humidityMin: number | null;
-  humidityMax: number | null;
-  light: string | null;
-  watering: string | null;
-  fertilizing: string | null;
-  substrate: string | null;
-  bloomMonths: number[];
-  restPeriod: string | null;
+  lineage: TaxonRef[];
+}
+
+/** Item da busca e da lista do Guia */
+export interface TaxonHit extends TaxonSummary {
+  /** Tem ficha de cultivo própria (não só herdada) */
+  hasCare: boolean;
+}
+
+/** Ficha completa: campos próprios, linhagem, táxons logo abaixo e a ficha efetiva (com herança). */
+export interface TaxonSheet extends TaxonRef, Care {
+  parentId: string | null;
+  commonNames: string[];
   notes: string | null;
+  hasCare: boolean;
+  lineage: TaxonRef[];
+  children: (TaxonRef & { hasCare: boolean })[];
+  care: Care;
+  /** De qual táxon da linhagem veio cada campo da ficha efetiva */
+  careSources: Partial<Record<CareField, string>>;
 }
 
 export interface Photo {
@@ -143,7 +170,7 @@ export interface LocationCheck {
   mismatch: boolean;
   distanceMeters: number;
   photoLocation: { lat: number; lng: number };
-  plantLocation: { id: string; lat: number; lng: number; label: string | null; environment: "indoor" | "outdoor" };
+  plantLocation: { id: string; lat: number; lng: number; placeName: string | null; environment: "indoor" | "outdoor" };
   canMoveFromPhoto: boolean;
 }
 

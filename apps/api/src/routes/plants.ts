@@ -15,10 +15,24 @@ import { db, schema } from "../db/client.ts";
 import { type AppEnv, requireUser } from "../auth/session.ts";
 import { zValidator } from "../lib/validate.ts";
 import { listLocations, movePlant } from "../services/locations.ts";
+import { placeNameOf } from "../services/places.ts";
 import { requestCoverIllustration } from "../services/illustration.ts";
 import { savePhoto } from "../services/photos.ts";
+import { summariesOf } from "../services/taxonomy.ts";
 
-const { plants, plantLocations, photos, events, manualReadings, weatherDaily } = schema;
+const { plants, plantLocations, places, photos, events, manualReadings, weatherDaily, taxa } = schema;
+
+/** Planta com o táxon resolvido (nome completo e caminho na árvore). */
+async function withTaxon<P extends typeof plants.$inferSelect>(plant: P) {
+  const taxon = plant.taxonId ? ((await summariesOf([plant.taxonId])).get(plant.taxonId) ?? null) : null;
+  return { ...plant, taxon };
+}
+
+async function assertTaxon(id: string | null | undefined) {
+  if (!id) return;
+  const [row] = await db.select({ id: taxa.id }).from(taxa).where(eq(taxa.id, id)).limit(1);
+  if (!row) throw new HTTPException(400, { message: "Esse táxon não está no catálogo." });
+}
 
 async function ownedPlant(id: string, userId: string) {
   if (!z.string().uuid().safeParse(id).success) throw new HTTPException(404, { message: "Planta não encontrada." });
@@ -44,9 +58,10 @@ export const plantRoutes = new Hono<AppEnv>()
     const userId = c.get("user").id;
     const [rows, lastPhotos, lastBloomEvents] = await Promise.all([
       db
-        .select({ plant: plants, location: plantLocations })
+        .select({ plant: plants, location: plantLocations, placeName: places.name })
         .from(plants)
         .leftJoin(plantLocations, and(eq(plantLocations.plantId, plants.id), isNull(plantLocations.validTo)))
+        .leftJoin(places, eq(places.id, plantLocations.placeId))
         .where(eq(plants.userId, userId))
         .orderBy(desc(plants.accessionNumber)),
       db
@@ -71,12 +86,14 @@ export const plantRoutes = new Hono<AppEnv>()
           .where(and(inArray(photos.id, coverIds), eq(photos.illustrationStatus, "ready")))
       : [];
     const illustratedAt = new Map(illustrated.map((p) => [p.id, p.updatedAt]));
+    const taxonBy = await summariesOf(rows.map((r) => r.plant.taxonId));
     return c.json(
       rows.map((r) => {
         const cover = coverOf(r.plant);
         return {
           ...r.plant,
-          currentLocation: r.location,
+          taxon: (r.plant.taxonId && taxonBy.get(r.plant.taxonId)) || null,
+          currentLocation: r.location && { ...r.location, placeName: r.placeName },
           lastPhotoId: cover,
           /** Quando a prancha botânica da capa ficou pronta (versiona a URL da imagem) */
           coverIllustratedAt: (cover && illustratedAt.get(cover)) || null,
@@ -89,6 +106,8 @@ export const plantRoutes = new Hono<AppEnv>()
   .post("/", zValidator("json", plantCreateSchema), async (c) => {
     const { location, ...data } = c.req.valid("json");
     const userId = c.get("user").id;
+    await assertTaxon(data.taxonId);
+    const placeName = await placeNameOf(userId, location.placeId);
     const created = await db.transaction(async (tx) => {
       // Próximo número de tombo (nunca reaproveitado; o índice único protege contra corrida)
       const [{ next } = { next: 1 }] = await tx
@@ -105,12 +124,12 @@ export const plantRoutes = new Hono<AppEnv>()
           plantId: plant!.id,
           lat: location.lat,
           lng: location.lng,
-          label: location.label ?? null,
+          placeId: location.placeId ?? null,
           environment: location.environment,
           validFrom: location.validFrom ?? data.acquiredAt ?? new Date(),
         })
         .returning();
-      return { ...plant!, currentLocation: loc };
+      return { ...plant!, currentLocation: { ...loc!, placeName } };
     });
     return c.json(created, 201);
   })
@@ -118,12 +137,13 @@ export const plantRoutes = new Hono<AppEnv>()
   .get("/:id", async (c) => {
     const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
     const locations = await listLocations(plant.id);
-    return c.json({ ...plant, locations, currentLocation: locations.find((l) => l.validTo === null) ?? null });
+    return c.json({ ...(await withTaxon(plant)), locations, currentLocation: locations.find((l) => l.validTo === null) ?? null });
   })
 
   .patch("/:id", zValidator("json", plantUpdateSchema), async (c) => {
     const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
     const input = c.req.valid("json");
+    await assertTaxon(input.taxonId);
     if (input.coverPhotoId) {
       const [photo] = await db
         .select({ id: photos.id })
@@ -233,5 +253,5 @@ export const plantRoutes = new Hono<AppEnv>()
         : Promise.resolve([]),
     ]);
 
-    return c.json({ plant, locations, photos: photoRows, events: eventRows, readings: readingRows, weather: weatherRows });
+    return c.json({ plant: await withTaxon(plant), locations, photos: photoRows, events: eventRows, readings: readingRows, weather: weatherRows });
   });

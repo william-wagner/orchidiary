@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { illustrationPrompt, needsIllustration } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
@@ -6,7 +6,7 @@ import { sourceLogger } from "../logger.ts";
 import { loadIntegration, type OpenaiConfig } from "./integrations.ts";
 import { storage } from "./storage.ts";
 
-const { plants, photos } = schema;
+const { plants, photos, taxa } = schema;
 const log = sourceLogger("ilustracao");
 
 /** Paisagem 3:2: casa com a capa da ficha; no app a prancha é exibida inteira (object-contain) sobre papel da mesma cor. */
@@ -33,8 +33,13 @@ export async function illustrateCovers(plantIds?: string[]): Promise<void> {
   if (!ai?.enabled || !ai.secrets.apiKey) return;
 
   const plantRows = await db
-    .select({ id: plants.id, coverPhotoId: plants.coverPhotoId, taxon: plants.taxonText })
+    .select({
+      id: plants.id,
+      coverPhotoId: plants.coverPhotoId,
+      taxon: sql<string | null>`coalesce(${taxa.fullName}, ${plants.taxonText})`,
+    })
     .from(plants)
+    .leftJoin(taxa, eq(taxa.id, plants.taxonId))
     .where(plantIds ? inArray(plants.id, plantIds) : undefined);
   if (!plantRows.length) return;
   const ids = plantRows.map((p) => p.id);

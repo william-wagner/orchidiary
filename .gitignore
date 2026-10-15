@@ -8,3 +8,6 @@ dist/
 coverage/
 # Fotos e backups locais (dados do usuário, nunca no git)
 data/
+
+# Anotações locais (comandos úteis etc.), nunca no git
+.local/

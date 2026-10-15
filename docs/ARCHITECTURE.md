@@ -20,9 +20,22 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 - Login por e-mail e senha (hash scrypt), sessão em cookie httpOnly (o banco guarda só o sha256 do token).
 - **Somente o master** acessa `/api/settings/*` e a tela Ajustes: Telegram, Google Drive e backups. Também só ele edita o Guia de Cultivo por enquanto.
 
+## Guia de Cultivo: árvore taxonômica
+
+- Uma tabela só, `taxa`, em que cada táxon aponta para o pai (`parent_id`): família → subfamília → tribo → subtribo → gênero → espécie → subespécie / variedade / forma. Híbridos registrados (grex) ficam abaixo do gênero ou de um gênero híbrido (`nothogenus`, ex.: *Rhyncholaeliocattleya*); cultivares, abaixo da espécie ou do híbrido.
+- Pular níveis é permitido (um gênero pode ficar direto abaixo da família). Quais níveis podem ficar abaixo de quais está em `canBeChildOf` (`packages/shared/src/taxonomy.ts`); a API também impede ciclos.
+- `name` guarda só a parte própria ("coerulea"); `full_name` ("Vanda coerulea var. alba") e `search_text` derivam da linhagem e são recalculados quando um táxon muda de nome ou de lugar.
+- A planta aponta para **qualquer nível** (`plants.taxon_id`): quem só sabe que é uma Vanda escolhe o gênero. `taxon_text` fica para o nome livre, quando o táxon não está no catálogo.
+- **Ficha herdada**: cada campo de cultivo vem do táxon mais específico da linhagem que o preencheu (`inheritCare`). Uma *Vanda coerulea* sem faixa própria usa a do gênero *Vanda*, inclusive nos alertas.
+- Busca (`GET /api/taxa?q=`): palavra por palavra em `search_text` (nome completo + nomes populares, sem acento), com índice de trigramas (`pg_trgm`). Sem resultado exato, tenta por semelhança, para erros de grafia.
+- Nomes antigos entram como nomes populares (*Laelia purpurata* → *Cattleya purpurata*, *Ascocenda* → *Vanda*). Sinônimos com nome aceito são uma evolução futura.
+- O catálogo inicial (`apps/api/src/db/catalog.ts`, classificação de Chase et al. 2015) é aplicado pelo seed sem desfazer edições: cria o que falta, encaixa gêneros soltos na árvore, soma nomes populares e só preenche a ficha de táxons que não têm nenhum campo.
+- Itálico: gênero e abaixo; acima do gênero, grex e cultivar ficam em redondo ("*Vanda* Sansai Blue 'Azul Real'"), via `taxonNameParts`.
+
 ## Localização da planta (regra central)
 
 - Cada planta tem um **histórico de locais** (`plant_locations`), com `valid_from` e `valid_to`. O local atual é o que tem `valid_to` nulo (garantido por índice único parcial).
+- O **nome do lugar** ("Orquidário quarto") vive na tabela `places` (por usuário, nome único sem diferenciar maiúsculas) e cada período aponta para ela por `plant_locations.place_id`. Os lugares são cadastrados, renomeados e apagados no próprio campo "Nome do lugar" (`PlacePicker`, rotas `/api/places`). Renomear vale para o histórico; só se apaga lugar que nenhum período usa.
 - **Mudar de lugar nunca altera o passado.** Uma mudança fecha o período atual e abre outro a partir da data informada. Coordenadas antigas não são editadas. A planta pode ter ido de Belo Horizonte para São Paulo, e o diário de BH continua com o clima de BH.
 - A nova data precisa ser posterior ao início do local atual e não pode estar no futuro (`planMove`, em `packages/shared/src/locations.ts`). Não se insere período no meio do histórico.
 - O **ambiente** (`indoor` / `outdoor`) faz parte do período: levar a planta da varanda para dentro de casa também é uma mudança registrada.
@@ -57,7 +70,7 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 
 - O master cadastra o token do bot e o chat id. Os segredos ficam criptografados no banco (AES-256-GCM com `SECRETS_KEY`) e nunca voltam para o navegador.
 - Cada alerta tem uma `dedupe_key` (ex.: `cold:<planta>:<data>`): o mesmo alerta não é enviado duas vezes.
-- Alertas atuais: frio ou calor previsto para amanhã fora da faixa da espécie; falha no backup.
+- Alertas atuais: frio ou calor previsto para amanhã fora da faixa da ficha (própria ou herdada do gênero); falha no backup.
 
 ## Backup semanal no Google Drive
 

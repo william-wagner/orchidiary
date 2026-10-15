@@ -39,5 +39,26 @@ export type Integration = (typeof INTEGRATIONS)[number];
 export const ILLUSTRATION_STATUSES = ["pending", "ready", "error"] as const;
 export type IllustrationStatus = (typeof ILLUSTRATION_STATUSES)[number];
 
-export const ILLUSTRATION_QUALITIES = ["low", "medium", "high"] as const;
+/**
+ * Níveis da classificação, do mais alto ao mais baixo. `nothogenus` é um gênero
+ * híbrido (ex.: Rhyncholaeliocattleya); `hybrid` é um grex registrado
+ * (ex.: Vanda Sansai Blue); `cultivar` é um clone ('Azul Real').
+ */
+export const TAXON_RANKS = [
+  "family",
+  "subfamily",
+  "tribe",
+  "subtribe",
+  "genus",
+  "nothogenus",
+  "species",
+  "subspecies",
+  "variety",
+  "form",
+  "hybrid",
+  "cultivar",
+] as const;
+export type TaxonRank = (typeof TAXON_RANKS)[number];
+
+export const ILLUSTRATION_QUALITIES =["low", "medium", "high"] as const;
 export type IllustrationQuality = (typeof ILLUSTRATION_QUALITIES)[number];

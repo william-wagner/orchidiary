@@ -12,6 +12,7 @@ import {
   real,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -23,6 +24,7 @@ import {
   PHOTO_SOURCES,
   PLANT_ORIGINS,
   PLANT_STATUSES,
+  TAXON_RANKS,
   USER_ROLES,
 } from "@orchidiary/shared";
 
@@ -64,16 +66,29 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
-// ─── Guia de Cultivo ─────────────────────────────────────────────────────────
+// ─── Guia de Cultivo: árvore taxonômica ──────────────────────────────────────
 
-export const species = pgTable(
-  "species",
+export const taxonRank = pgEnum("taxon_rank", TAXON_RANKS);
+
+/**
+ * Catálogo de táxons em árvore (família → … → gênero → espécie → variedade;
+ * híbridos e cultivares abaixo do gênero). Cada táxon tem um único pai; a ficha
+ * de cultivo é opcional e herdada do ancestral mais próximo que a preencheu.
+ * `full_name` e `search_text` derivam da linhagem e são recalculados quando
+ * um nome ou pai muda (ver services/taxonomy.ts).
+ */
+export const taxa = pgTable(
+  "taxa",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    genus: text("genus").notNull(),
-    epithet: text("epithet"),
-    /** Nome exibido, ex.: "Cattleya walkeriana" ou "Phalaenopsis (híbridos)" */
-    displayName: text("display_name").notNull(),
+    parentId: uuid("parent_id").references((): AnyPgColumn => taxa.id, { onDelete: "restrict" }),
+    rank: taxonRank("rank").notNull(),
+    /** Só a parte própria do nome: "Vanda", "coerulea", "alba", "Sansai Blue" */
+    name: text("name").notNull(),
+    /** Nome completo, ex.: "Vanda coerulea var. alba" */
+    fullName: text("full_name").notNull(),
+    /** Nome completo e populares, normalizados (sem acento, minúsculos) para a busca */
+    searchText: text("search_text").notNull(),
     commonNames: text("common_names").array().notNull().default(sql`'{}'::text[]`),
     tempDayMin: real("temp_day_min"),
     tempDayMax: real("temp_day_max"),
@@ -92,7 +107,15 @@ export const species = pgTable(
     createdAt: createdAt(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("species_display_name_idx").on(t.displayName)],
+  (t) => [
+    index("taxa_parent_idx").on(t.parentId),
+    unique("taxa_parent_rank_name_uq").on(t.parentId, t.rank, t.name).nullsNotDistinct(),
+    // gênero e níveis acima têm nome único no catálogo inteiro
+    uniqueIndex("taxa_higher_name_uq")
+      .on(t.rank, t.name)
+      .where(sql`${t.rank} in ('family', 'subfamily', 'tribe', 'subtribe', 'genus', 'nothogenus')`),
+    index("taxa_search_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
+  ],
 );
 
 // ─── Diário ──────────────────────────────────────────────────────────────────
@@ -104,7 +127,9 @@ export const plants = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    speciesId: uuid("species_id").references(() => species.id, { onDelete: "set null" }),
+    /** Pode ser qualquer nível: quem só sabe que é uma Vanda aponta para o gênero */
+    taxonId: uuid("taxon_id").references(() => taxa.id, { onDelete: "set null" }),
+    /** Nome livre quando o táxon não está no catálogo */
     taxonText: text("taxon_text"),
     nickname: text("nickname").notNull(),
     /** Número de tombo: sequencial por usuário, nunca reaproveitado (identidade "Herbário") */
@@ -123,8 +148,27 @@ export const plants = pgTable(
   },
   (t) => [
     index("plants_user_idx").on(t.userId),
+    index("plants_taxon_idx").on(t.taxonId),
     uniqueIndex("plants_user_accession_idx").on(t.userId, t.accessionNumber),
   ],
+);
+
+/**
+ * Lugares nomeados do usuário ("Orquidário quarto", "Varanda dos fundos").
+ * Cadastrados e mantidos direto no campo "Nome do lugar"; os períodos de local
+ * das plantas apontam para cá. O nome é único por usuário, sem diferenciar maiúsculas.
+ */
+export const places = pgTable(
+  "places",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("places_user_name_uq").on(t.userId, sql`lower(${t.name})`)],
 );
 
 /**
@@ -141,7 +185,8 @@ export const plantLocations = pgTable(
       .references(() => plants.id, { onDelete: "cascade" }),
     lat: doublePrecision("lat").notNull(),
     lng: doublePrecision("lng").notNull(),
-    label: text("label"),
+    /** Lugar nomeado deste período. Só dá para apagar um lugar que nenhum período usa. */
+    placeId: uuid("place_id").references(() => places.id, { onDelete: "restrict" }),
     environment: environment("environment").notNull(),
     validFrom: ts("valid_from").notNull(),
     validTo: ts("valid_to"),
