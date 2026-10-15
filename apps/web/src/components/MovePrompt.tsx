@@ -45,19 +45,19 @@ export function MovePrompt({
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="move-title" className="fixed inset-0 z-20 flex items-end bg-black/40">
-      <div className="mx-auto w-full max-w-xl space-y-4 rounded-t-3xl bg-velame p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-        <h2 id="move-title" className="font-serif text-2xl font-semibold">
+    <div role="dialog" aria-modal="true" aria-labelledby="move-title" className="fixed inset-0 z-20 flex items-end bg-[#1c1a16]/45">
+      <div className="mx-auto w-full max-w-xl space-y-4 border-t border-sepia bg-papel p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <h2 id="move-title" className="text-2xl font-medium">
           A planta mudou de lugar?
         </h2>
         <p>
-          Esta foto foi tirada a {formatDistance(check.distanceMeters)} do local registrado
-          {check.plantLocation.label ? ` (${check.plantLocation.label})` : ""}.
+          Esta foto foi tirada a <span className="typed">{formatDistance(check.distanceMeters)}</span> do local
+          registrado na etiqueta{check.plantLocation.label ? ` (${check.plantLocation.label})` : ""}.
         </p>
 
         {check.canMoveFromPhoto ? (
           <>
-            <p className="text-sm text-musgo-2">
+            <p className="text-pontilhado">
               Se mudou, o novo local vale a partir desta foto. O histórico anterior continua ligado ao local antigo.
             </p>
             <Field label="Nome do novo lugar" hint="Opcional">
@@ -76,7 +76,7 @@ export function MovePrompt({
           </>
         ) : (
           <>
-            <p className="text-sm text-musgo-2">
+            <p className="text-pontilhado">
               A foto é anterior ao local atual, então ela não pode mudar o local da planta. Ela fica no diário na data em que foi tirada.
             </p>
             <Button onClick={() => onDone(false)} className="w-full">

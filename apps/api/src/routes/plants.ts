@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -38,22 +38,52 @@ const rangeQuery = z.object({
 export const plantRoutes = new Hono<AppEnv>()
   .use(requireUser)
 
-  // Coleção: plantas com o local atual
+  // Coleção: plantas com local atual, última foto e se está em flor
   .get("/", async (c) => {
-    const rows = await db
-      .select({ plant: plants, location: plantLocations })
-      .from(plants)
-      .leftJoin(plantLocations, and(eq(plantLocations.plantId, plants.id), isNull(plantLocations.validTo)))
-      .where(eq(plants.userId, c.get("user").id))
-      .orderBy(asc(plants.nickname));
-    return c.json(rows.map((r) => ({ ...r.plant, currentLocation: r.location })));
+    const userId = c.get("user").id;
+    const [rows, lastPhotos, lastBloomEvents] = await Promise.all([
+      db
+        .select({ plant: plants, location: plantLocations })
+        .from(plants)
+        .leftJoin(plantLocations, and(eq(plantLocations.plantId, plants.id), isNull(plantLocations.validTo)))
+        .where(eq(plants.userId, userId))
+        .orderBy(desc(plants.accessionNumber)),
+      db
+        .selectDistinctOn([photos.plantId], { plantId: photos.plantId, id: photos.id })
+        .from(photos)
+        .where(eq(photos.userId, userId))
+        .orderBy(photos.plantId, desc(photos.takenAt)),
+      db
+        .selectDistinctOn([events.plantId], { plantId: events.plantId, type: events.type })
+        .from(events)
+        .where(and(eq(events.userId, userId), inArray(events.type, ["bloom_start", "bloom_end"])))
+        .orderBy(events.plantId, desc(events.occurredAt)),
+    ]);
+    const photoBy = new Map(lastPhotos.map((p) => [p.plantId, p.id]));
+    const bloomBy = new Map(lastBloomEvents.map((e) => [e.plantId, e.type === "bloom_start"]));
+    return c.json(
+      rows.map((r) => ({
+        ...r.plant,
+        currentLocation: r.location,
+        lastPhotoId: r.plant.coverPhotoId ?? photoBy.get(r.plant.id) ?? null,
+        inBloom: bloomBy.get(r.plant.id) ?? false,
+      })),
+    );
   })
 
   .post("/", zValidator("json", plantCreateSchema), async (c) => {
     const { location, ...data } = c.req.valid("json");
     const userId = c.get("user").id;
     const created = await db.transaction(async (tx) => {
-      const [plant] = await tx.insert(plants).values({ ...data, userId }).returning();
+      // Próximo número de tombo (nunca reaproveitado; o índice único protege contra corrida)
+      const [{ next } = { next: 1 }] = await tx
+        .select({ next: sql<number>`coalesce(max(${plants.accessionNumber}), 0) + 1` })
+        .from(plants)
+        .where(eq(plants.userId, userId));
+      const [plant] = await tx
+        .insert(plants)
+        .values({ ...data, userId, accessionNumber: Number(next) })
+        .returning();
       const [loc] = await tx
         .insert(plantLocations)
         .values({

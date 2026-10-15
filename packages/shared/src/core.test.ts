@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { checkPhotoLocation, distanceMeters } from "./geo.ts";
-import { addDays, dateRange, toContiguousRanges, toLocalDate } from "./dates.ts";
+import { addDays, dateRange, formatAccession, herbariumDate, toContiguousRanges, toLocalDate } from "./dates.ts";
 import { periodAt, periodDays, planMove, RetroactiveMoveError, type LocationPeriod } from "./locations.ts";
 import { aggregateHourly, vpd } from "./climate.ts";
 
@@ -76,4 +76,14 @@ test("VPD e agregação horária", () => {
   assert.equal(daily.humidityMean, 63.3);
   assert.equal(daily.dewPointMean, 15.7);
   assert.ok(daily.vpdMax! > daily.vpdMean!);
+});
+
+test("data de herbário e número de tombo", () => {
+  assert.equal(herbariumDate("2026-10-14", "America/Sao_Paulo"), "14.X.2026");
+  // 01:30 UTC do dia 1º de março ainda é 28 de fevereiro em São Paulo
+  assert.equal(herbariumDate(new Date("2026-03-01T01:30:00Z"), "America/Sao_Paulo"), "28.II.2026");
+  assert.equal(herbariumDate("2026-12-01T15:00:00.000Z", "America/Sao_Paulo"), "1.XII.2026");
+  assert.equal(formatAccession(7), "0007");
+  assert.equal(formatAccession(12345), "12345");
+  assert.equal(formatAccession(null), "s/n");
 });

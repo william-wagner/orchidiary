@@ -51,6 +51,7 @@ export interface PlantLocation {
 export interface Plant {
   id: string;
   nickname: string;
+  accessionNumber: number | null;
   speciesId: string | null;
   taxonText: string | null;
   status: string;
@@ -58,6 +59,12 @@ export interface Plant {
   notes: string | null;
   coverPhotoId: string | null;
   currentLocation: PlantLocation | null;
+}
+
+/** Item da coleção: inclui a foto mais recente e se a planta está em flor. */
+export interface CollectionPlant extends Plant {
+  lastPhotoId: string | null;
+  inBloom: boolean;
 }
 
 export interface Species {

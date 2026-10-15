@@ -105,6 +105,8 @@ export const plants = pgTable(
     speciesId: uuid("species_id").references(() => species.id, { onDelete: "set null" }),
     taxonText: text("taxon_text"),
     nickname: text("nickname").notNull(),
+    /** Número de tombo: sequencial por usuário, nunca reaproveitado (identidade "Herbário") */
+    accessionNumber: integer("accession_number"),
     status: plantStatus("status").notNull().default("active"),
     origin: plantOrigin("origin"),
     acquiredAt: ts("acquired_at"),
@@ -117,7 +119,10 @@ export const plants = pgTable(
     createdAt: createdAt(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
-  (t) => [index("plants_user_idx").on(t.userId)],
+  (t) => [
+    index("plants_user_idx").on(t.userId),
+    uniqueIndex("plants_user_accession_idx").on(t.userId, t.accessionNumber),
+  ],
 );
 
 /**
