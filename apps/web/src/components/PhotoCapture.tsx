@@ -25,7 +25,7 @@ export function PhotoCapture({ plantId, onSaved }: Props) {
       form.set("file", file);
       form.set("source", source);
       if (source === "camera") {
-        setBusy("Pegando a localização…");
+        setBusy("Anotando a localização…");
         form.set("takenAt", new Date().toISOString());
         const pos = await getPosition();
         if (pos) {
@@ -53,16 +53,16 @@ export function PhotoCapture({ plantId, onSaved }: Props) {
     <div>
       <div className="grid grid-cols-2 gap-2">
         <Button onClick={() => cameraRef.current?.click()} disabled={!!busy}>
-          Tirar foto
+          Fotografar
         </Button>
         <Button variant="quiet" onClick={() => galleryRef.current?.click()} disabled={!!busy}>
-          Escolher da galeria
+          Da galeria
         </Button>
       </div>
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={pick("camera")} />
       <input ref={galleryRef} type="file" accept="image/*" hidden onChange={pick("upload")} />
-      {busy && <p className="mt-2 text-sm text-musgo-2">{busy}</p>}
-      {error && <p className="mt-2 text-sm text-alerta">{error}</p>}
+      {busy && <p className="typed mt-2 text-[0.85rem]">{busy}</p>}
+      {error && <p className="mt-2 text-alerta">{error}</p>}
     </div>
   );
 }

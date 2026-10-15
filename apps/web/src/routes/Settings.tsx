@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
 import { api } from "../lib/api.ts";
 import { useLogout } from "../lib/auth.tsx";
+import { typedDate } from "../lib/format.ts";
 
 interface IntegrationView<C> {
   enabled: boolean;
@@ -42,8 +43,9 @@ export function Settings() {
   const driveStatus = params.get("drive");
 
   return (
-    <main className="space-y-6 px-4 pb-10">
-      <PageHeader title="Ajustes" />
+    <main className="pb-10">
+      <PageHeader kicker="Somente o usuário master" title="Ajustes" />
+      <div className="space-y-6 px-4 pt-5">
       {driveStatus === "ok" && <Notice tone="ok">Google Drive conectado. O backup semanal está ativo.</Notice>}
       {driveStatus === "erro" && <Notice tone="error">Não foi possível conectar o Google Drive. Confira o Client ID, o Client Secret e o endereço de retorno.</Notice>}
       {data.data && !data.data.secretsKeyConfigured && (
@@ -59,14 +61,15 @@ export function Settings() {
       <Button variant="quiet" onClick={logout} className="w-full">
         Sair
       </Button>
+      </div>
     </main>
   );
 }
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-4 rounded-2xl bg-etiqueta p-4">
-      <h2 className="font-serif text-xl font-semibold">{title}</h2>
+    <section className="herb-label space-y-4 p-4">
+      <h2 className="border-b border-sepia pb-1 text-xl font-medium">{title}</h2>
       {children}
     </section>
   );
@@ -74,7 +77,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 
 function Notice({ tone, children }: { tone: "ok" | "error"; children: ReactNode }) {
   return (
-    <p className={`rounded-xl p-3 ${tone === "ok" ? "bg-velame-2 text-folha" : "bg-labelo-soft text-alerta"}`}>{children}</p>
+    <p className={`border-[1.5px] p-3 ${tone === "ok" ? "border-prensada text-sepia" : "border-alerta text-alerta"}`}>{children}</p>
   );
 }
 
@@ -95,7 +98,7 @@ function TelegramCard({ view }: { view: Integrations["telegram"] }) {
 
   return (
     <Card title="Alertas no Telegram">
-      <p className="text-sm text-musgo-2">
+      <p className="text-pontilhado">
         Crie um bot com o @BotFather, envie uma mensagem para ele e use o seu chat id (o @userinfobot mostra o número).
       </p>
       <form onSubmit={onSubmit} className="space-y-3">
@@ -110,7 +113,7 @@ function TelegramCard({ view }: { view: Integrations["telegram"] }) {
           Enviar alertas
         </label>
         <ErrorText error={save.error ?? test.error} />
-        {test.isSuccess && <p className="text-sm text-folha">Mensagem de teste enviada.</p>}
+        {test.isSuccess && <p className="typed text-[0.85rem]">Mensagem de teste enviada.</p>}
         <div className="grid grid-cols-2 gap-2">
           <Button type="submit" disabled={save.isPending}>
             Salvar
@@ -153,14 +156,14 @@ function DriveCard({ view }: { view: Integrations["googleDrive"] }) {
 
   return (
     <Card title="Backup no Google Drive">
-      <details className="text-sm text-musgo-2">
-        <summary className="cursor-pointer font-semibold text-musgo">Como criar o acesso no Google</summary>
+      <details className="text-pontilhado">
+        <summary className="cursor-pointer text-sepia underline underline-offset-4">Como criar o acesso no Google</summary>
         <ol className="mt-2 list-decimal space-y-1 pl-5">
           <li>No Google Cloud Console, crie um projeto e ative a Google Drive API.</li>
           <li>Em "Tela de consentimento OAuth", escolha Externo e adicione seu e-mail como usuário de teste.</li>
           <li>Em "Credenciais", crie um ID do cliente OAuth do tipo Aplicativo da Web.</li>
           <li>
-            Em "URIs de redirecionamento autorizados", cole: <code className="break-all text-musgo">{view.redirectUri}</code>
+            Em "URIs de redirecionamento autorizados", cole: <code className="typed break-all text-[0.85rem]">{view.redirectUri}</code>
           </li>
           <li>Copie o Client ID e o Client Secret para cá, salve e toque em Conectar.</li>
         </ol>
@@ -213,8 +216,8 @@ function DriveCard({ view }: { view: Integrations["googleDrive"] }) {
       </form>
 
       {connected ? (
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-velame-2 p-3">
-          <p className="text-sm">
+        <div className="flex items-center justify-between gap-3 border border-dotted border-sepia p-3">
+          <p>
             Conectado{cfg?.connectedEmail ? ` como ${cfg.connectedEmail}` : ""}. Os arquivos ficam na pasta Orchidiary.
           </p>
           <Button variant="quiet" onClick={() => disconnect.mutate()}>
@@ -242,16 +245,16 @@ function BackupsCard({ connected }: { connected: boolean }) {
       <Button onClick={() => run.mutate()} disabled={!connected || run.isPending} className="w-full">
         {run.isPending ? "Fazendo backup…" : "Fazer backup agora"}
       </Button>
-      {run.data && !run.data.ok && <p className="text-sm text-alerta">{run.data.error}</p>}
-      {runs.data?.length === 0 && <p className="text-sm text-musgo-2">Nenhum backup feito ainda.</p>}
-      <ul className="divide-y divide-linha text-sm">
+      {run.data && !run.data.ok && <p className="text-alerta">{run.data.error}</p>}
+      {runs.data?.length === 0 && <p className="text-pontilhado">Nenhum backup feito ainda.</p>}
+      <ul className="divide-y divide-dotted divide-linha">
         {runs.data?.map((r) => (
           <li key={r.id} className="flex justify-between gap-3 py-2">
             <span>
-              {new Date(r.startedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+              <span className="typed text-[0.85rem]">{typedDate(r.startedAt)}</span>
               {r.trigger === "manual" ? ", manual" : ""}
             </span>
-            <span className={r.status === "error" ? "text-alerta" : r.status === "success" ? "text-folha" : ""} title={r.error ?? undefined}>
+            <span className={r.status === "error" ? "stamp border-alerta text-alerta" : r.status === "success" ? "stamp" : "typed text-[0.8rem]"} title={r.error ?? undefined}>
               {r.status === "success"
                 ? `OK${r.sizeBytes ? `, ${Math.max(1, Math.round(r.sizeBytes / 1024))} KB` : ""}`
                 : r.status === "error"

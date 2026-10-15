@@ -50,8 +50,8 @@ export function NewPlant() {
 
   return (
     <main>
-      <PageHeader title="Nova planta" />
-      <form onSubmit={onSubmit} className="space-y-5 px-4">
+      <PageHeader kicker="Nova entrada no livro de tombo" title="Tombar planta" />
+      <form onSubmit={onSubmit} className="space-y-5 px-4 pt-5">
         <Field label="Apelido" hint="Como você chama esta planta. Ex.: Walkeriana da vó">
           <Input name="nickname" required maxLength={80} />
         </Field>
@@ -94,19 +94,19 @@ export function NewPlant() {
             <Input name="label" maxLength={120} />
           </Field>
           <Button type="button" variant="quiet" onClick={locate} disabled={locating} className="w-full">
-            {locating ? "Localizando…" : position ? "Atualizar localização" : "Usar minha localização atual"}
+            {locating ? "Localizando…" : position ? "Marcar de novo" : "Marcar minha localização atual"}
           </Button>
           {position && (
-            <p className="text-sm text-folha">
-              Local marcado (precisão de {Math.round(position.accuracy)} m).
+            <p className="typed text-[0.85rem]">
+              {position.lat.toFixed(4)}, {position.lng.toFixed(4)} (precisão de {Math.round(position.accuracy)} m)
             </p>
           )}
-          {geoError && <p className="text-sm text-alerta">{geoError}</p>}
+          {geoError && <p className="text-alerta">{geoError}</p>}
         </div>
 
         <ErrorText error={create.error} />
         <Button type="submit" disabled={create.isPending} className="w-full">
-          Cadastrar planta
+          Tombar planta
         </Button>
       </form>
     </main>

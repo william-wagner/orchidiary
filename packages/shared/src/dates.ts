@@ -31,6 +31,21 @@ export function dateRange(from: IsoDate, to: IsoDate): IsoDate[] {
   return out;
 }
 
+const ROMAN_MONTHS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+
+/**
+ * Data no estilo de etiqueta de herbário: dia, mês em algarismo romano, ano.
+ * Ex.: 14.X.2026. Usa o dia local do fuso informado.
+ */
+export function herbariumDate(instant: Date | string, timeZone: string): string {
+  const d = typeof instant === "string" && /^\d{4}-\d{2}-\d{2}$/.test(instant) ? instant : toLocalDate(new Date(instant), timeZone);
+  const [y, m, day] = d.split("-");
+  return `${Number(day)}.${ROMAN_MONTHS[Number(m) - 1]}.${y}`;
+}
+
+/** Número de tombo com quatro dígitos: 7 → "0007". */
+export const formatAccession = (n: number | null | undefined) => (n == null ? "s/n" : String(n).padStart(4, "0"));
+
 /**
  * Agrupa datas soltas em intervalos contíguos, para pedir à API de clima
  * o mínimo de requisições possível.

@@ -9,7 +9,7 @@ import { Settings } from "./routes/Settings.tsx";
 
 export function App() {
   const me = useMe();
-  if (me.isPending) return <div className="p-6 text-musgo-2">Carregando…</div>;
+  if (me.isPending) return <div className="typed p-6">Abrindo o herbário…</div>;
   if (!me.data) return <Login />;
 
   return (
@@ -29,13 +29,15 @@ export function App() {
 
 function Shell({ isMaster }: { isMaster: boolean }) {
   const tab = ({ isActive }: { isActive: boolean }) =>
-    `flex-1 py-3 text-center text-sm font-semibold ${isActive ? "text-labelo" : "text-musgo-2"}`;
+    `flex min-h-14 flex-1 items-center justify-center text-lg ${
+      isActive ? "text-carimbo underline decoration-1 underline-offset-[5px]" : "text-sepia"
+    }`;
   return (
-    <div className="mx-auto min-h-dvh max-w-xl pb-[calc(4rem+env(safe-area-inset-bottom))]">
+    <div className="mx-auto min-h-dvh max-w-xl pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
       <Outlet />
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 border-t border-linha bg-velame/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+        className="fixed inset-x-0 bottom-0 border-t border-sepia bg-papel pb-[env(safe-area-inset-bottom)]"
       >
         <div className="mx-auto flex max-w-xl">
           <NavLink to="/" end className={tab}>

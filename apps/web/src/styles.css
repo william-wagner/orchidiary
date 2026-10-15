@@ -1,97 +1,139 @@
 @import "tailwindcss";
 
 /*
- * Paleta tirada da própria planta:
- * velame (prateado das raízes), musgo, casca de pinus, labelo (magenta da flor), folha.
+ * Identidade "Herbário": a coleção como exsicatas catalogadas.
+ * Folha de montagem, sépia, tinta de máquina de escrever, carimbo violeta,
+ * planta prensada e pasta kraft.
  */
 :root {
-  --velame: #e9eee8;
-  --velame-2: #dde5dc;
-  --musgo: #1f3a2e;
-  --musgo-2: #3d5a4c;
-  --casca: #6b5440;
-  --labelo: #8e2c6e;
-  --labelo-soft: #f1dcea;
-  --folha: #4e7a5a;
-  --etiqueta: #fbfcf8;
-  --linha: #c6d3c6;
-  --alerta: #a2471b;
+  --papel: #eeefe8; /* folha de montagem (fundo) */
+  --etiqueta: #fbfbf7; /* etiqueta e cartões */
+  --sepia: #3a2c20; /* texto e traços principais */
+  --tinta: #22304a; /* dados datilografados */
+  --carimbo: #5b3f8c; /* carimbos, ações e destaques */
+  --prensada: #66713f; /* desenho da planta, estados positivos */
+  --kraft: #b89c6e; /* pasta e fitas (só preenchimento) */
+  --fita: #e5ddc7; /* fita de papel que prende a foto */
+  --linha: #c9c6b6; /* bordas suaves */
+  --pontilhado: #8c8775; /* pontilhados e textos auxiliares */
+  --alerta: #8a3a20;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --velame: #121a16;
-    --velame-2: #19241f;
-    --musgo: #e3eae3;
-    --musgo-2: #a9bcae;
-    --casca: #c9ab8f;
-    --labelo: #d07ab4;
-    --labelo-soft: #3a2033;
-    --folha: #86b893;
-    --etiqueta: #1c2822;
-    --linha: #2c3b33;
-    --alerta: #e58a5c;
+    --papel: #1c1a16;
+    --etiqueta: #26231d;
+    --sepia: #e8e4d8;
+    --tinta: #a9b8d6;
+    --carimbo: #b49be0;
+    --prensada: #a3ae78;
+    --kraft: #8c7652;
+    --fita: #4a4335;
+    --linha: #3b372e;
+    --pontilhado: #8f8a7a;
+    --alerta: #e0906a;
   }
 }
 
 @theme inline {
-  --color-velame: var(--velame);
-  --color-velame-2: var(--velame-2);
-  --color-musgo: var(--musgo);
-  --color-musgo-2: var(--musgo-2);
-  --color-casca: var(--casca);
-  --color-labelo: var(--labelo);
-  --color-labelo-soft: var(--labelo-soft);
-  --color-folha: var(--folha);
+  --color-papel: var(--papel);
   --color-etiqueta: var(--etiqueta);
+  --color-sepia: var(--sepia);
+  --color-tinta: var(--tinta);
+  --color-carimbo: var(--carimbo);
+  --color-prensada: var(--prensada);
+  --color-kraft: var(--kraft);
+  --color-fita: var(--fita);
   --color-linha: var(--linha);
+  --color-pontilhado: var(--pontilhado);
   --color-alerta: var(--alerta);
-  --font-sans: "Figtree", system-ui, sans-serif;
-  --font-serif: "Literata", Georgia, serif;
+  --font-serif: "EB Garamond", Georgia, serif;
+  --font-mono: "Courier Prime", "Courier New", monospace;
 }
 
 html {
-  background: var(--velame);
-  color: var(--musgo);
+  background: var(--papel);
+  color: var(--sepia);
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  font-family: var(--font-sans);
-  font-size: 1rem;
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
   line-height: 1.5;
   min-height: 100dvh;
 }
 
-/* Convenção botânica: gênero e epíteto em itálico */
-.taxon {
-  font-family: var(--font-serif);
-  font-style: italic;
-}
-
 :focus-visible {
-  outline: 2px solid var(--labelo);
+  outline: 2px solid var(--carimbo);
   outline-offset: 2px;
 }
 
-/* Etiqueta de vaso: retângulo com a ponta arredondada e o furinho do arame */
-.tag {
-  position: relative;
-  background: var(--etiqueta);
-  border: 1px solid var(--linha);
-  border-radius: 6px 28px 28px 6px;
-}
-.tag::after {
-  content: "";
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  margin-top: -4px;
-  border-radius: 999px;
-  border: 1.5px solid var(--linha);
-  background: var(--velame);
+/* Classes da identidade em @layer components: utilitários do Tailwind podem sobrescrevê-las */
+@layer components {
+  /* Convenção botânica: gênero e epíteto em itálico */
+  .taxon {
+    font-style: italic;
+  }
+
+  /* Dados de coleta: datas, locais, medições, como numa ficha datilografada */
+  .typed {
+    font-family: var(--font-mono);
+    color: var(--tinta);
+  }
+
+  /* Etiqueta de herbário: borda fina com cabeçalho impresso */
+  .herb-label {
+    background: var(--etiqueta);
+    border: 1px solid var(--sepia);
+  }
+
+  /* Carimbo de borracha levemente torto */
+  .stamp {
+    display: inline-block;
+    border: 1.5px solid var(--carimbo);
+    color: var(--carimbo);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    padding: 2px 6px;
+    rotate: -5deg;
+  }
+
+  /* Foto "montada" na folha, presa por duas fitas de papel */
+  .mounted {
+    position: relative;
+    background: var(--etiqueta);
+    border: 1px solid var(--linha);
+  }
+  .mounted::before,
+  .mounted::after {
+    content: "";
+    position: absolute;
+    width: 34%;
+    height: 10px;
+    background: var(--fita);
+    opacity: 0.9;
+    z-index: 1;
+  }
+  .mounted::before {
+    left: -6px;
+    top: 18%;
+    transform: rotate(-8deg);
+  }
+  .mounted::after {
+    right: -6px;
+    bottom: 18%;
+    transform: rotate(-8deg);
+  }
+
+  /* Linha pontilhada entre rótulo e valor (fichas do guia) */
+  .leader {
+    flex: 1;
+    border-bottom: 1.5px dotted var(--pontilhado);
+    transform: translateY(-5px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
