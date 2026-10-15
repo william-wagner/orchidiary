@@ -15,6 +15,7 @@ import { db, schema } from "../db/client.ts";
 import { type AppEnv, requireUser } from "../auth/session.ts";
 import { zValidator } from "../lib/validate.ts";
 import { listLocations, movePlant } from "../services/locations.ts";
+import { requestCoverIllustration } from "../services/illustration.ts";
 import { savePhoto } from "../services/photos.ts";
 
 const { plants, plantLocations, photos, events, manualReadings, weatherDaily } = schema;
@@ -61,13 +62,27 @@ export const plantRoutes = new Hono<AppEnv>()
     ]);
     const photoBy = new Map(lastPhotos.map((p) => [p.plantId, p.id]));
     const bloomBy = new Map(lastBloomEvents.map((e) => [e.plantId, e.type === "bloom_start"]));
+    const coverOf = (p: typeof plants.$inferSelect) => p.coverPhotoId ?? photoBy.get(p.id) ?? null;
+    const coverIds = rows.map((r) => coverOf(r.plant)).filter((id): id is string => !!id);
+    const illustrated = coverIds.length
+      ? await db
+          .select({ id: photos.id, updatedAt: photos.illustrationUpdatedAt })
+          .from(photos)
+          .where(and(inArray(photos.id, coverIds), eq(photos.illustrationStatus, "ready")))
+      : [];
+    const illustratedAt = new Map(illustrated.map((p) => [p.id, p.updatedAt]));
     return c.json(
-      rows.map((r) => ({
-        ...r.plant,
-        currentLocation: r.location,
-        lastPhotoId: r.plant.coverPhotoId ?? photoBy.get(r.plant.id) ?? null,
-        inBloom: bloomBy.get(r.plant.id) ?? false,
-      })),
+      rows.map((r) => {
+        const cover = coverOf(r.plant);
+        return {
+          ...r.plant,
+          currentLocation: r.location,
+          lastPhotoId: cover,
+          /** Quando a prancha botânica da capa ficou pronta (versiona a URL da imagem) */
+          coverIllustratedAt: (cover && illustratedAt.get(cover)) || null,
+          inBloom: bloomBy.get(r.plant.id) ?? false,
+        };
+      }),
     );
   })
 
@@ -108,11 +123,21 @@ export const plantRoutes = new Hono<AppEnv>()
 
   .patch("/:id", zValidator("json", plantUpdateSchema), async (c) => {
     const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
+    const input = c.req.valid("json");
+    if (input.coverPhotoId) {
+      const [photo] = await db
+        .select({ id: photos.id })
+        .from(photos)
+        .where(and(eq(photos.id, input.coverPhotoId), eq(photos.plantId, plant.id)))
+        .limit(1);
+      if (!photo) return c.json({ error: "A foto de capa precisa ser desta planta." }, 400);
+    }
     const [updated] = await db
       .update(plants)
-      .set({ ...c.req.valid("json"), updatedAt: new Date() })
+      .set({ ...input, updatedAt: new Date() })
       .where(eq(plants.id, plant.id))
       .returning();
+    if (input.coverPhotoId !== undefined) requestCoverIllustration(plant.id);
     return c.json(updated);
   })
 
@@ -145,7 +170,10 @@ export const plantRoutes = new Hono<AppEnv>()
     const meta = photoMetaSchema.safeParse(body);
     if (!meta.success) return c.json({ error: "Dados inválidos.", issues: meta.error.issues }, 400);
     // locationCheck.mismatch = true → o app pergunta "a planta mudou de lugar?"
-    return c.json(await savePhoto({ plantId: plant.id, userId: user.id, file, meta: meta.data }), 201);
+    const saved = await savePhoto({ plantId: plant.id, userId: user.id, file, meta: meta.data });
+    // sem capa escolhida, a foto nova pode ter virado a capa
+    if (!plant.coverPhotoId) requestCoverIllustration(plant.id);
+    return c.json(saved, 201);
   })
 
   // ─── Eventos do diário ─────────────────────────────────────────────────────

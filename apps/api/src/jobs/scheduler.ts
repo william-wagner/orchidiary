@@ -2,8 +2,11 @@ import { Cron } from "croner";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
+import { sourceLogger } from "../logger.ts";
+import { purgeOldLogs } from "../logging/retention.ts";
 import { runForecastAlerts } from "../services/alerts.ts";
 import { runBackup } from "../services/backup.ts";
+import { illustrateCovers } from "../services/illustration.ts";
 import { loadIntegration } from "../services/integrations.ts";
 import { collectWeather } from "../services/weather/collect.ts";
 import { shouldRunBackup } from "./backupSchedule.ts";
@@ -11,8 +14,11 @@ import { shouldRunBackup } from "./backupSchedule.ts";
 let backupRunning = false;
 
 async function weatherJob() {
+  const log = sourceLogger("scheduler:clima");
   const r = await collectWeather();
-  console.log(`[clima] ${r.daysSaved} dias salvos em ${r.locations} locais`, r.errors.length ? r.errors : "");
+  const summary = { daysSaved: r.daysSaved, locations: r.locations };
+  if (r.errors.length) log.warn({ ...summary, errors: r.errors }, "coleta de clima concluída com erros");
+  else log.info(summary, `${r.daysSaved} dias de clima salvos em ${r.locations} locais`);
 }
 
 async function backupCheck() {
@@ -35,7 +41,8 @@ async function backupCheck() {
   if (!due) return;
   backupRunning = true;
   try {
-    console.log("[backup]", await runBackup("schedule"));
+    // o resultado (sucesso ou erro) é registrado dentro de runBackup
+    await runBackup("schedule");
   } finally {
     backupRunning = false;
   }
@@ -44,8 +51,8 @@ async function backupCheck() {
 const safe = (name: string, fn: () => Promise<unknown>) => async () => {
   try {
     await fn();
-  } catch (e) {
-    console.error(`[${name}]`, e);
+  } catch (err) {
+    sourceLogger(`scheduler:${name}`).error({ err }, `rotina "${name}" falhou`);
   }
 };
 
@@ -58,9 +65,15 @@ export function startScheduler() {
   new Cron("0 18 * * *", opts, safe("alertas", () => runForecastAlerts()));
   // Backup semanal: checa toda hora (recupera se o PC estava desligado)
   new Cron("25 * * * *", opts, safe("backup", backupCheck));
+  // Limpeza de app_logs vencidos
+  new Cron("40 4 * * *", opts, safe("logs", purgeOldLogs));
+  // Pranchas botânicas: retoma capas interrompidas e tenta de novo as que falharam (no máximo 1x por dia)
+  new Cron("*/30 * * * *", opts, safe("ilustracao", () => illustrateCovers()));
 
   // Ao ligar o servidor, completa o que faltou enquanto o PC estava desligado
   setTimeout(safe("clima", weatherJob), 5_000);
   setTimeout(safe("backup", backupCheck), 60_000);
-  console.log(`[agenda] rotinas ativas no fuso ${tz}`);
+  setTimeout(safe("logs", purgeOldLogs), 120_000);
+  setTimeout(safe("ilustracao", () => illustrateCovers()), 90_000);
+  sourceLogger("scheduler").info({ timezone: tz }, `rotinas ativas no fuso ${tz}`);
 }

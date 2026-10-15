@@ -6,6 +6,7 @@ import { loginSchema } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { isProd } from "../env.ts";
 import { verifyPassword } from "../auth/password.ts";
+import { audit } from "../logging/audit.ts";
 import { type AppEnv, createSession, deleteSession, requireUser, SESSION_COOKIE } from "../auth/session.ts";
 
 export const authRoutes = new Hono<AppEnv>()
@@ -13,9 +14,17 @@ export const authRoutes = new Hono<AppEnv>()
     const { email, password } = c.req.valid("json");
     const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email.toLowerCase())).limit(1);
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      audit(c, {
+        event: "auth.login",
+        outcome: "failure",
+        message: "falha de login",
+        userId: user?.id,
+        context: { email: email.toLowerCase(), reason: user ? "senha incorreta" : "e-mail não cadastrado" },
+      });
       return c.json({ error: "E-mail ou senha inválidos." }, 401);
     }
     const { token, expiresAt } = await createSession(user.id);
+    audit(c, { event: "auth.login", message: "login realizado", userId: user.id });
     setCookie(c, SESSION_COOKIE, token, {
       httpOnly: true,
       secure: isProd,
@@ -27,7 +36,10 @@ export const authRoutes = new Hono<AppEnv>()
   })
   .post("/logout", async (c) => {
     const token = getCookie(c, SESSION_COOKIE);
-    if (token) await deleteSession(token);
+    if (token) {
+      await deleteSession(token);
+      audit(c, { event: "auth.logout", message: "logout realizado" });
+    }
     deleteCookie(c, SESSION_COOKIE, { path: "/" });
     return c.body(null, 204);
   })

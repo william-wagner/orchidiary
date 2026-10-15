@@ -51,6 +51,7 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 | Ao iniciar a API e todo dia às 06:10 | Coleta e backfill do clima |
 | Todo dia às 18:00 | Previsão de amanhã x faixas da ficha (só `outdoor`) e alerta de frio/calor no Telegram |
 | De hora em hora | Verifica se o backup semanal está na hora ou atrasado |
+| Todo dia às 04:40 | Apaga registros vencidos de `app_logs` |
 
 ## Alertas no Telegram
 
@@ -66,6 +67,24 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
   - `Orchidiary/backups/orchidiary-backup-AAAA-MM-DD.json.gz`: exportação completa dos dados (sem senhas, sessões nem segredos). Mantém os N últimos.
   - `Orchidiary/fotos/<id>.webp`: incremental, cada foto sobe uma vez.
 - Dia, hora e retenção são configuráveis. Se o PC estiver desligado no horário, o backup roda assim que possível.
+
+## Logs
+
+Logger único (`apps/api/src/logger.ts`, pino) com três destinos:
+
+| Destino | O que recebe | Retenção |
+|---|---|---|
+| stdout | Tudo a partir de `LOG_LEVEL` (legível em dev, JSON em produção) | — |
+| Arquivo `LOG_DIR/api.AAAA-MM-DD.N.log` | O mesmo, em JSON, um arquivo por dia | `LOG_FILE_RETENTION_DAYS` (14) |
+| Tabela `app_logs` | Só `warn`/`error`/`fatal` e eventos de **auditoria** (`level = audit`) | `LOG_DB_RETENTION_DAYS` (90); auditoria 365 dias |
+
+- Cada requisição ganha um `requestId` (header `X-Request-Id`), presente na linha de acesso, nos erros e nas auditorias. O corpo e a query string nunca são logados.
+- `password`, `token`, `botToken`, `clientSecret`, `refreshToken`, `secrets`, cookies e `Authorization` são redigidos pelo pino antes de chegar ao arquivo ou ao banco.
+- Auditoria (`logging/audit.ts`): login e logout, falha de login, alterações de Telegram e Google Drive, backup manual. Registra o IP da conexão direta.
+- A gravação no banco é em lote e nunca derruba a API: se o Postgres estiver fora, o buffer é limitado e o arquivo continua gravando. Ao encerrar (SIGINT/SIGTERM ou erro fatal) o buffer é gravado antes de sair.
+- A limpeza de `app_logs` roda todo dia às 04:40. Os arquivos são removidos pela própria rotação.
+- `GET /api/settings/logs` (**somente master**) lista `app_logs` com filtros `level`, `source` (prefixo), `q` (texto), `from`, `to` e paginação por `cursor`.
+- `app_logs` não entra no backup do Drive.
 
 ## Fotos
 

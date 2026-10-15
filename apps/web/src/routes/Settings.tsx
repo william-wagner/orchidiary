@@ -22,6 +22,7 @@ interface Integrations {
     keepLast: number;
     connectedEmail?: string;
   }> & { redirectUri: string };
+  openai: IntegrationView<{ model: string; quality: "low" | "medium" | "high" }>;
   secretsKeyConfigured: boolean;
 }
 interface BackupRun {
@@ -56,6 +57,7 @@ export function Settings() {
           <TelegramCard view={data.data.telegram} />
           <DriveCard view={data.data.googleDrive} />
           <BackupsCard connected={!!data.data.googleDrive.hasSecrets.refreshToken} />
+          <IllustrationCard view={data.data.openai} />
         </>
       )}
       <Button variant="quiet" onClick={logout} className="w-full">
@@ -229,6 +231,66 @@ function DriveCard({ view }: { view: Integrations["googleDrive"] }) {
           Conectar conta Google
         </Button>
       )}
+    </Card>
+  );
+}
+
+const QUALITIES = [
+  { value: "low", label: "Rascunho (mais barata)" },
+  { value: "medium", label: "Normal" },
+  { value: "high", label: "Detalhada (mais cara)" },
+];
+
+function IllustrationCard({ view }: { view: Integrations["openai"] }) {
+  const qc = useQueryClient();
+  const [enabled, setEnabled] = useState(view.enabled);
+  const save = useMutation({
+    mutationFn: (body: unknown) => api.put("/settings/openai", body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["integrations"] }),
+  });
+
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    save.mutate({ enabled, apiKey: f.get("apiKey") || undefined, model: f.get("model"), quality: f.get("quality") });
+  }
+
+  return (
+    <Card title="Pranchas botânicas">
+      <p className="text-pontilhado">
+        A foto de capa de cada planta é redesenhada como uma prancha de livro de botânica pela API de imagens da OpenAI. A
+        foto original continua guardada no diário. Cada prancha é cobrada pela OpenAI e só é feita quando a capa muda.
+      </p>
+      <form onSubmit={onSubmit} className="space-y-3">
+        <Field label="Chave da API" hint={view.hasSecrets.apiKey ? "Já salva. Deixe em branco para manter." : undefined}>
+          <Input name="apiKey" type="password" autoComplete="off" />
+        </Field>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Modelo">
+            <Input name="model" defaultValue={view.config?.model ?? "gpt-image-2"} required autoComplete="off" />
+          </Field>
+          <Field label="Qualidade">
+            <Select name="quality" defaultValue={view.config?.quality ?? "medium"}>
+              {QUALITIES.map((q) => (
+                <option key={q.value} value={q.value}>
+                  {q.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="size-5" />
+          Desenhar as capas
+        </label>
+        <ErrorText error={save.error} />
+        {save.isSuccess && enabled && (
+          <p className="typed text-[0.85rem]">Salvo. As capas sem prancha entram na fila, uma de cada vez.</p>
+        )}
+        <Button type="submit" disabled={save.isPending} className="w-full">
+          Salvar
+        </Button>
+      </form>
     </Card>
   );
 }

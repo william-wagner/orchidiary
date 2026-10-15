@@ -2,6 +2,7 @@ import { and, eq, isNull, ne } from "drizzle-orm";
 import { addDays, toLocalDate } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
+import { sourceLogger } from "../logger.ts";
 import { sendAlert } from "./telegram.ts";
 import { evaluateForecast, type ForecastDay } from "./alertRules.ts";
 
@@ -52,7 +53,7 @@ export async function runForecastAlerts(now = new Date(), fetchImpl: typeof fetc
         if (r === "sent") sent++;
       }
     } catch (e) {
-      console.error(`[alertas] planta ${plant.id}:`, e);
+      sourceLogger("scheduler:alertas").error({ err: e, plantId: plant.id }, "falha ao avaliar a previsão da planta");
     }
   }
   return { checked: rows.length, sent };

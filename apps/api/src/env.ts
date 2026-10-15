@@ -12,6 +12,14 @@ const schema = z.object({
   SECRETS_KEY: z.string().optional(),
   LOCATION_MISMATCH_METERS: z.coerce.number().positive().default(300),
   NODE_ENV: z.string().default("development"),
+  /** Nível mínimo dos logs (a auditoria é gravada em info; não use nível acima de warn) */
+  LOG_LEVEL: z.enum(["debug", "info", "warn"]).default("info"),
+  /** Pasta dos arquivos de log (um por dia) */
+  LOG_DIR: z.string().default("./data/logs"),
+  /** Quantos dias de arquivos de log manter */
+  LOG_FILE_RETENTION_DAYS: z.coerce.number().int().positive().default(14),
+  /** Quantos dias manter warn/error na tabela app_logs (a auditoria tem prazo próprio, mais longo) */
+  LOG_DB_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 });
 
 const parsed = schema.safeParse(process.env);

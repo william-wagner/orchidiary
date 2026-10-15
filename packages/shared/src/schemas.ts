@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ENVIRONMENTS, EVENT_TYPES, PHOTO_SOURCES, PLANT_ORIGINS, PLANT_STATUSES } from "./enums.ts";
+import { ENVIRONMENTS, EVENT_TYPES, ILLUSTRATION_QUALITIES, PHOTO_SOURCES, PLANT_ORIGINS, PLANT_STATUSES } from "./enums.ts";
 
 export const latLngSchema = z.object({
   lat: z.number().min(-90).max(90),
@@ -31,7 +31,11 @@ export const plantCreateSchema = z.object({
 export const plantUpdateSchema = plantCreateSchema
   .omit({ location: true })
   .partial()
-  .extend({ status: z.enum(PLANT_STATUSES).optional() });
+  .extend({
+    status: z.enum(PLANT_STATUSES).optional(),
+    /** Foto de capa escolhida; null volta para a mais recente */
+    coverPhotoId: z.string().uuid().nullish(),
+  });
 
 /** Leitura manual de termo-higrômetro (opcional, complementa o clima externo). */
 export const manualReadingSchema = z
@@ -80,6 +84,14 @@ export const googleDriveSettingsSchema = z.object({
   keepLast: z.number().int().min(1).max(52).default(8),
 });
 
+/** Ilustração botânica das fotos de capa (API de imagens da OpenAI) */
+export const openaiSettingsSchema = z.object({
+  enabled: z.boolean(),
+  apiKey: z.string().min(20).optional(),
+  model: z.string().trim().min(1).default("gpt-image-2"),
+  quality: z.enum(ILLUSTRATION_QUALITIES).default("medium"),
+});
+
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -93,3 +105,4 @@ export type EventCreate = z.infer<typeof eventCreateSchema>;
 export type PhotoMeta = z.infer<typeof photoMetaSchema>;
 export type TelegramSettings = z.infer<typeof telegramSettingsSchema>;
 export type GoogleDriveSettings = z.infer<typeof googleDriveSettingsSchema>;
+export type OpenaiSettings = z.infer<typeof openaiSettingsSchema>;

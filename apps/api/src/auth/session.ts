@@ -16,7 +16,7 @@ export interface SessionUser {
   role: UserRole;
 }
 
-export type AppEnv = { Variables: { user: SessionUser } };
+export type AppEnv = { Variables: { user: SessionUser; requestId: string } };
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 

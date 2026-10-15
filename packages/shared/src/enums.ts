@@ -32,5 +32,12 @@ export type EventType = (typeof EVENT_TYPES)[number];
 export const PHOTO_SOURCES = ["camera", "upload"] as const;
 export type PhotoSource = (typeof PHOTO_SOURCES)[number];
 
-export const INTEGRATIONS = ["telegram", "google_drive"] as const;
+export const INTEGRATIONS = ["telegram", "google_drive", "openai"] as const;
 export type Integration = (typeof INTEGRATIONS)[number];
+
+/** Estado da ilustração botânica gerada a partir da foto de capa */
+export const ILLUSTRATION_STATUSES = ["pending", "ready", "error"] as const;
+export type IllustrationStatus = (typeof ILLUSTRATION_STATUSES)[number];
+
+export const ILLUSTRATION_QUALITIES = ["low", "medium", "high"] as const;
+export type IllustrationQuality = (typeof ILLUSTRATION_QUALITIES)[number];

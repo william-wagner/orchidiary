@@ -15,6 +15,20 @@
       "when": 1792086818287,
       "tag": "0001_typical_starbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792088682429,
+      "tag": "0002_nappy_dexter_bennett",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792090212843,
+      "tag": "0003_optimal_karma",
+      "breakpoints": true
     }
   ]
 }

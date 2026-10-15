@@ -5,9 +5,10 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-import { logger } from "hono/logger";
 import { env, isProd } from "./env.ts";
 import { startScheduler } from "./jobs/scheduler.ts";
+import { flushLogs, logger } from "./logger.ts";
+import { type RequestEnv, requestLogger } from "./logging/requestLogger.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { photoRoutes } from "./routes/photos.ts";
 import { plantRoutes } from "./routes/plants.ts";
@@ -24,15 +25,18 @@ const api = new Hono()
 
 export type Api = typeof api;
 
-const app = new Hono();
-app.use(logger());
-app.use("/api/*", cors({ origin: env.WEB_ORIGIN, credentials: true }));
+const app = new Hono<RequestEnv>();
+app.use(requestLogger);
+app.use("/api/*", cors({ origin: env.WEB_ORIGIN, credentials: true, exposeHeaders: ["X-Request-Id"] }));
 app.route("/api", api);
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) return c.json({ error: err.message }, err.status);
-  console.error(err);
-  return c.json({ error: "Erro interno." }, 500);
+  logger.error(
+    { err, source: "http", requestId: c.get("requestId"), userId: c.get("user")?.id, method: c.req.method, path: c.req.path },
+    "erro não tratado na requisição",
+  );
+  return c.json({ error: "Erro interno.", requestId: c.get("requestId") }, 500);
 });
 
 // Em produção a própria API serve o app web (um único endereço para o Tailscale)
@@ -42,7 +46,27 @@ if (isProd && existsSync(resolve(env.WEB_DIST))) {
   app.get("*", serveStatic({ path: `${env.WEB_DIST}/index.html` }));
 }
 
-serve({ fetch: app.fetch, port: env.API_PORT }, (info) => {
-  console.log(`Orchidiary API em http://localhost:${info.port}`);
+const server = serve({ fetch: app.fetch, port: env.API_PORT }, (info) => {
+  logger.info({ source: "app", port: info.port, env: env.NODE_ENV }, `Orchidiary API em http://localhost:${info.port}`);
   startScheduler();
+});
+
+// Encerramento: grava o que ainda está no buffer do banco antes de sair
+let closing = false;
+async function shutdown(code: number) {
+  if (closing) return;
+  closing = true;
+  server.close();
+  await Promise.race([flushLogs(), new Promise((r) => setTimeout(r, 3_000))]);
+  process.exit(code);
+}
+process.on("SIGINT", () => void shutdown(0));
+process.on("SIGTERM", () => void shutdown(0));
+process.on("uncaughtException", (err) => {
+  logger.fatal({ err, source: "process" }, "exceção não capturada");
+  void shutdown(1);
+});
+process.on("unhandledRejection", (reason) => {
+  logger.fatal({ err: reason, source: "process" }, "promessa rejeitada sem tratamento");
+  void shutdown(1);
 });

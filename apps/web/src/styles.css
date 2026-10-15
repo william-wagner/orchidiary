@@ -17,6 +17,8 @@
   --linha: #c9c6b6; /* bordas suaves */
   --pontilhado: #8c8775; /* pontilhados e textos auxiliares */
   --alerta: #8a3a20;
+  /* fundo das pranchas botânicas geradas; igual nos dois temas (é o papel da ilustração) */
+  --prancha: #fbfbf7;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -47,6 +49,7 @@
   --color-linha: var(--linha);
   --color-pontilhado: var(--pontilhado);
   --color-alerta: var(--alerta);
+  --color-prancha: var(--prancha);
   --font-serif: "EB Garamond", Georgia, serif;
   --font-mono: "Courier Prime", "Courier New", monospace;
 }

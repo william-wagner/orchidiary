@@ -55,7 +55,10 @@ export interface Plant {
   speciesId: string | null;
   taxonText: string | null;
   status: string;
+  origin: string | null;
   acquiredAt: string | null;
+  potNotes: string | null;
+  substrate: string | null;
   notes: string | null;
   coverPhotoId: string | null;
   currentLocation: PlantLocation | null;
@@ -64,6 +67,8 @@ export interface Plant {
 /** Item da coleção: inclui a foto mais recente e se a planta está em flor. */
 export interface CollectionPlant extends Plant {
   lastPhotoId: string | null;
+  /** Quando a prancha botânica da capa ficou pronta; null enquanto não existe */
+  coverIllustratedAt: string | null;
   inBloom: boolean;
 }
 
@@ -94,6 +99,8 @@ export interface Photo {
   source: "camera" | "upload";
   caption: string | null;
   locationId: string | null;
+  illustrationStatus: "pending" | "ready" | "error" | null;
+  illustrationUpdatedAt: string | null;
 }
 
 export interface DiaryEvent {
@@ -142,3 +149,7 @@ export interface LocationCheck {
 
 export const photoUrl = (id: string, size: "thumb" | "full" = "full") =>
   `/api/photos/${id}/file${size === "thumb" ? "?size=thumb" : ""}`;
+
+/** Prancha botânica da capa; a data versiona a URL (o arquivo é servido como imutável). */
+export const illustrationUrl = (id: string, illustratedAt: string, size: "thumb" | "full" = "full") =>
+  `/api/photos/${id}/file?variant=illustration${size === "thumb" ? "&size=thumb" : ""}&v=${new Date(illustratedAt).getTime()}`;

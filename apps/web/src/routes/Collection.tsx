@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { PageHeader, PressedOrchid } from "../components/ui.tsx";
-import { api, type CollectionPlant, photoUrl } from "../lib/api.ts";
+import { api, type CollectionPlant, illustrationUrl, photoUrl } from "../lib/api.ts";
 import { accession, environmentLabel } from "../lib/format.ts";
 
 export function Collection() {
@@ -34,8 +34,12 @@ export function Collection() {
         {plants.data?.map((p) => (
           <li key={p.id}>
             <Link to={`/plantas/${p.id}`} className="relative flex gap-3 border border-linha bg-etiqueta p-2.5">
-              <div className="mounted flex h-24 w-20 shrink-0 items-center justify-center overflow-visible">
-                {p.lastPhotoId ? (
+              <div
+                className={`mounted flex h-24 w-20 shrink-0 items-center justify-center overflow-visible ${p.coverIllustratedAt ? "bg-prancha" : ""}`}
+              >
+                {p.lastPhotoId && p.coverIllustratedAt ? (
+                  <img src={illustrationUrl(p.lastPhotoId, p.coverIllustratedAt, "thumb")} alt="" className="h-full w-full object-contain" />
+                ) : p.lastPhotoId ? (
                   <img src={photoUrl(p.lastPhotoId, "thumb")} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <PressedOrchid className="h-16 w-10" />

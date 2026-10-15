@@ -18,6 +18,7 @@ import {
 import {
   ENVIRONMENTS,
   EVENT_TYPES,
+  ILLUSTRATION_STATUSES,
   INTEGRATIONS,
   PHOTO_SOURCES,
   PLANT_ORIGINS,
@@ -35,6 +36,7 @@ export const plantOrigin = pgEnum("plant_origin", PLANT_ORIGINS);
 export const eventType = pgEnum("event_type", EVENT_TYPES);
 export const photoSource = pgEnum("photo_source", PHOTO_SOURCES);
 export const integration = pgEnum("integration", INTEGRATIONS);
+export const illustrationStatus = pgEnum("illustration_status", ILLUSTRATION_STATUSES);
 
 // ─── Usuários ────────────────────────────────────────────────────────────────
 
@@ -180,6 +182,11 @@ export const photos = pgTable(
     caption: text("caption"),
     /** Preenchido quando a foto já foi copiada para o Google Drive (backup incremental) */
     driveFileId: text("drive_file_id"),
+    /** Releitura da foto como prancha botânica (só fotos que foram capa). Pode ser refeita, por isso fica fora do backup. */
+    illustrationKey: text("illustration_key"),
+    illustrationThumbKey: text("illustration_thumb_key"),
+    illustrationStatus: illustrationStatus("illustration_status"),
+    illustrationUpdatedAt: ts("illustration_updated_at"),
     createdAt: createdAt(),
   },
   (t) => [index("photos_plant_idx").on(t.plantId, t.takenAt)],
@@ -278,6 +285,31 @@ export const backupRuns = pgTable("backup_runs", {
   sizeBytes: integer("size_bytes"),
   error: text("error"),
 });
+
+/**
+ * Logs consultáveis pelo master: só warn/error/fatal e eventos de auditoria.
+ * O detalhe completo (inclusive cada requisição) fica no arquivo de log.
+ */
+export const appLogs = pgTable(
+  "app_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: createdAt(),
+    level: text("level").notNull(), // "warn" | "error" | "fatal" | "audit"
+    source: text("source").notNull(), // "http" | "scheduler:clima" | "audit" ...
+    message: text("message").notNull(),
+    requestId: text("request_id"),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** Detalhes já sem segredos (o pino redige antes de gravar) */
+    context: jsonb("context").$type<Record<string, unknown>>().notNull().default({}),
+    errorStack: text("error_stack"),
+  },
+  (t) => [
+    index("app_logs_created_idx").on(t.createdAt.desc()),
+    index("app_logs_level_idx").on(t.level, t.createdAt.desc()),
+    index("app_logs_source_idx").on(t.source, t.createdAt.desc()),
+  ],
+);
 
 /** Registro de alertas enviados; dedupe_key evita repetir o mesmo alerta. */
 export const alerts = pgTable("alerts", {

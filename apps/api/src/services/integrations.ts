@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { Integration } from "@orchidiary/shared";
+import type { IllustrationQuality, Integration } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
 import { decryptJson, encryptJson } from "../lib/secrets.ts";
@@ -24,8 +24,16 @@ export interface DriveSecrets {
   refreshToken?: string;
 }
 
-type ConfigOf<K extends Integration> = K extends "telegram" ? TelegramConfig : DriveConfig;
-type SecretsOf<K extends Integration> = K extends "telegram" ? TelegramSecrets : DriveSecrets;
+export interface OpenaiConfig {
+  model: string;
+  quality: IllustrationQuality;
+}
+export interface OpenaiSecrets {
+  apiKey: string;
+}
+
+type ConfigOf<K extends Integration> = K extends "telegram" ? TelegramConfig : K extends "openai" ? OpenaiConfig : DriveConfig;
+type SecretsOf<K extends Integration> = K extends "telegram" ? TelegramSecrets : K extends "openai" ? OpenaiSecrets : DriveSecrets;
 
 export interface LoadedIntegration<K extends Integration> {
   enabled: boolean;

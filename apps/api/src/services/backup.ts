@@ -4,12 +4,14 @@ import { eq, isNull } from "drizzle-orm";
 import { toLocalDate } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
+import { sourceLogger } from "../logger.ts";
 import { DriveClient } from "./googleDrive.ts";
 import { loadIntegration, saveIntegration } from "./integrations.ts";
 import { storage } from "./storage.ts";
 import { sendAlert } from "./telegram.ts";
 
 const gzipAsync = promisify(gzip);
+const log = sourceLogger("backup");
 export const BACKUP_PREFIX = "orchidiary-backup-";
 
 /**
@@ -88,9 +90,11 @@ export async function runBackup(trigger: "schedule" | "manual") {
       .update(schema.backupRuns)
       .set({ status: "success", finishedAt: new Date(), driveFileId: uploaded.id, sizeBytes: uploaded.size })
       .where(eq(schema.backupRuns.id, run!.id));
+    log.info({ trigger, photosUploaded: pending.length, sizeBytes: uploaded.size }, "backup concluído");
     return { ok: true as const, photosUploaded: pending.length, sizeBytes: uploaded.size };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    log.error({ err: e, trigger, runId: run!.id }, "backup falhou");
     await db.update(schema.backupRuns).set({ status: "error", finishedAt: new Date(), error: message }).where(eq(schema.backupRuns.id, run!.id));
     const master = await masterId();
     if (master) {

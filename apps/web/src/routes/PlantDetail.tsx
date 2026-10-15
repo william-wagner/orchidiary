@@ -5,7 +5,7 @@ import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
 import { TemperatureRegister } from "../components/TemperatureRegister.tsx";
 import { Button, ErrorText, Field, Input, PressedOrchid } from "../components/ui.tsx";
-import { api, type LocationCheck, type Photo, photoUrl, type Timeline } from "../lib/api.ts";
+import { api, illustrationUrl, type LocationCheck, type Photo, photoUrl, type Timeline } from "../lib/api.ts";
 import { accession, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
 
 const EVENT_LABEL: Record<string, string> = {
@@ -42,10 +42,21 @@ type Item =
 
 const chip = "min-h-11 border border-sepia bg-transparent px-3 text-[1.02rem] active:bg-etiqueta";
 
+/** Capa: a foto escolhida ou, na falta dela, a mais recente. */
+function coverPhoto(t: Timeline | undefined): Photo | undefined {
+  if (!t) return undefined;
+  return (t.plant.coverPhotoId && t.photos.find((p) => p.id === t.plant.coverPhotoId)) || t.photos[0];
+}
+
 export function PlantDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
-  const timeline = useQuery({ queryKey: ["timeline", id], queryFn: () => api.get<Timeline>(`/plants/${id}/timeline`) });
+  const timeline = useQuery({
+    queryKey: ["timeline", id],
+    queryFn: () => api.get<Timeline>(`/plants/${id}/timeline`),
+    // enquanto a prancha da capa está sendo desenhada, confere de tempos em tempos
+    refetchInterval: (q) => (coverPhoto(q.state.data)?.illustrationStatus === "pending" ? 15_000 : false),
+  });
   const [pendingMove, setPendingMove] = useState<{ check: LocationCheck; takenAt: string } | null>(null);
   const [showReading, setShowReading] = useState(false);
   const refresh = () => {
@@ -86,21 +97,28 @@ export function PlantDetail() {
   const { plant, locations, weather } = timeline.data;
   const current = locations.find((l) => l.validTo === null);
   const first = locations[0];
-  const cover = plant.coverPhotoId ?? timeline.data.photos[0]?.id;
+  const cover = coverPhoto(timeline.data);
+  const plate = cover?.illustrationStatus === "ready" && cover.illustrationUpdatedAt ? cover.illustrationUpdatedAt : null;
 
   return (
     <main className="pb-8">
-      <div className="px-4 pt-3">
+      <div className="flex items-center justify-between px-4 pt-3">
         <Link to="/" className="inline-flex min-h-11 items-center">
           Voltar à coleção
+        </Link>
+        <Link to={`/plantas/${plant.id}/editar`} className="inline-flex min-h-11 items-center text-carimbo">
+          Editar
         </Link>
       </div>
 
       {/* A exsicata: foto montada na folha e a etiqueta datilografada */}
       <section className="mx-4 flex flex-col gap-3 border border-linha bg-etiqueta p-3.5" aria-label="Exsicata">
-        <div className="mounted flex h-60 items-center justify-center">
-          {cover ? (
-            <img src={photoUrl(cover)} alt={`Foto mais recente de ${plant.nickname}`} className="h-full w-full object-cover" />
+        <div className={`mounted flex h-60 items-center justify-center ${plate ? "bg-prancha" : ""}`}>
+          {cover && plate ? (
+            // prancha inteira, sem corte: o fundo do container é o mesmo papel da ilustração
+            <img src={illustrationUrl(cover.id, plate)} alt={`Prancha botânica de ${plant.nickname}`} className="h-full w-full object-contain" />
+          ) : cover ? (
+            <img src={photoUrl(cover.id)} alt={`Foto mais recente de ${plant.nickname}`} className="h-full w-full object-cover" />
           ) : (
             <PressedOrchid className="h-40 w-24" />
           )}
