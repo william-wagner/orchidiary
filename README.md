@@ -40,6 +40,18 @@ pnpm --filter @orchidiary/api start   # a API serve também o app web na 8787
 tailscale serve --bg 8787
 ```
 
+### Produção com Docker
+
+Sobe o Postgres e o app (API + app web) juntos, sem precisar de Node na máquina:
+
+```bash
+cp .env.example .env          # ajuste e-mail/senha do master e a SECRETS_KEY
+docker compose up -d --build  # app em http://localhost:8787
+tailscale serve --bg 8787
+```
+
+A cada início o container aplica as migrações e roda o seed (idempotente: não troca a senha de quem já existe). `DATABASE_URL`, `NODE_ENV`, `STORAGE_DIR` e `LOG_DIR` do `.env` são sobrescritos pelo `docker-compose.yml`; fotos e logs ficam em `apps/api/data/` no PC. Para atualizar depois de mudar o código: `docker compose up -d --build app`. Logs: `docker compose logs -f app`.
+
 ## Estrutura
 
 ```

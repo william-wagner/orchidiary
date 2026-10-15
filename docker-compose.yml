@@ -10,6 +10,33 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orchidiary -d orchidiary"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # App completo (API + app web) em modo produção: docker compose up -d --build
+  # Só o banco, para desenvolver com pnpm dev: pnpm db:up
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      # Sobrescreve o que no .env aponta para a máquina local
+      DATABASE_URL: postgres://orchidiary:orchidiary@db:5432/orchidiary
+      NODE_ENV: production
+      API_PORT: "8787"
+      STORAGE_DIR: /app/apps/api/data/photos
+      LOG_DIR: /app/apps/api/data/logs
+    ports:
+      - "8787:8787"
+    volumes:
+      # Fotos e logs ficam no disco do PC (mesma pasta usada em desenvolvimento)
+      - ./apps/api/data:/app/apps/api/data
 
 volumes:
   pgdata:
