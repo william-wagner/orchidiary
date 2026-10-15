@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/*
+ * Paleta tirada da própria planta:
+ * velame (prateado das raízes), musgo, casca de pinus, labelo (magenta da flor), folha.
+ */
+:root {
+  --velame: #e9eee8;
+  --velame-2: #dde5dc;
+  --musgo: #1f3a2e;
+  --musgo-2: #3d5a4c;
+  --casca: #6b5440;
+  --labelo: #8e2c6e;
+  --labelo-soft: #f1dcea;
+  --folha: #4e7a5a;
+  --etiqueta: #fbfcf8;
+  --linha: #c6d3c6;
+  --alerta: #a2471b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --velame: #121a16;
+    --velame-2: #19241f;
+    --musgo: #e3eae3;
+    --musgo-2: #a9bcae;
+    --casca: #c9ab8f;
+    --labelo: #d07ab4;
+    --labelo-soft: #3a2033;
+    --folha: #86b893;
+    --etiqueta: #1c2822;
+    --linha: #2c3b33;
+    --alerta: #e58a5c;
+  }
+}
+
+@theme inline {
+  --color-velame: var(--velame);
+  --color-velame-2: var(--velame-2);
+  --color-musgo: var(--musgo);
+  --color-musgo-2: var(--musgo-2);
+  --color-casca: var(--casca);
+  --color-labelo: var(--labelo);
+  --color-labelo-soft: var(--labelo-soft);
+  --color-folha: var(--folha);
+  --color-etiqueta: var(--etiqueta);
+  --color-linha: var(--linha);
+  --color-alerta: var(--alerta);
+  --font-sans: "Figtree", system-ui, sans-serif;
+  --font-serif: "Literata", Georgia, serif;
+}
+
+html {
+  background: var(--velame);
+  color: var(--musgo);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  min-height: 100dvh;
+}
+
+/* Convenção botânica: gênero e epíteto em itálico */
+.taxon {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
+:focus-visible {
+  outline: 2px solid var(--labelo);
+  outline-offset: 2px;
+}
+
+/* Etiqueta de vaso: retângulo com a ponta arredondada e o furinho do arame */
+.tag {
+  position: relative;
+  background: var(--etiqueta);
+  border: 1px solid var(--linha);
+  border-radius: 6px 28px 28px 6px;
+}
+.tag::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 999px;
+  border: 1.5px solid var(--linha);
+  background: var(--velame);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
