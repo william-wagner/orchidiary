@@ -4,6 +4,7 @@ import { checkPhotoLocation, distanceMeters } from "./geo.ts";
 import { addDays, dateRange, formatAccession, herbariumDate, toContiguousRanges, toLocalDate } from "./dates.ts";
 import { periodAt, periodDays, planMove, RetroactiveMoveError, type LocationPeriod } from "./locations.ts";
 import { aggregateHourly, vpd } from "./climate.ts";
+import { EMPTY_LOCALITY, formatLocality } from "./locality.ts";
 
 const BH = { lat: -19.9167, lng: -43.9345 }; // Belo Horizonte
 const SP = { lat: -23.5505, lng: -46.6333 }; // São Paulo
@@ -86,4 +87,13 @@ test("data de herbário e número de tombo", () => {
   assert.equal(formatAccession(7), "0007");
   assert.equal(formatAccession(12345), "12345");
   assert.equal(formatAccession(null), "s/n");
+});
+
+test("formatLocality junta cidade, sigla do estado e país", () => {
+  const bh = { city: "Belo Horizonte", state: "Minas Gerais", stateCode: "MG", country: "Brasil", countryCode: "BR" };
+  assert.equal(formatLocality(bh), "Belo Horizonte, MG, Brasil");
+  assert.equal(formatLocality({ ...bh, stateCode: null }), "Belo Horizonte, Minas Gerais, Brasil");
+  assert.equal(formatLocality({ ...EMPTY_LOCALITY, country: "Portugal" }), "Portugal");
+  assert.equal(formatLocality(EMPTY_LOCALITY), null);
+  assert.equal(formatLocality(null), null);
 });

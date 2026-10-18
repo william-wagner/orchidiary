@@ -1,4 +1,4 @@
-import type { Care, CareField, TaxonRank } from "@orchidiary/shared";
+import type { Care, CareField, TaxonOrigin, TaxonRank } from "@orchidiary/shared";
 
 export class ApiError extends Error {
   constructor(
@@ -55,6 +55,12 @@ export interface PlantLocation {
   id: string;
   lat: number;
   lng: number;
+  /** Cidade/estado/país das coordenadas; null enquanto não foi possível descobrir */
+  city: string | null;
+  state: string | null;
+  stateCode: string | null;
+  country: string | null;
+  countryCode: string | null;
   placeId: string | null;
   placeName: string | null;
   environment: "indoor" | "outdoor";
@@ -98,6 +104,8 @@ export interface TaxonRef {
 /** Táxon com o caminho na árvore (raiz → ele mesmo). */
 export interface TaxonSummary extends TaxonRef {
   commonNames: string[];
+  /** País, cruzamento ou desconhecida (já considera os ancestrais) */
+  origin: TaxonOrigin;
   lineage: TaxonRef[];
 }
 
@@ -113,6 +121,7 @@ export interface TaxonSheet extends TaxonRef, Care {
   commonNames: string[];
   notes: string | null;
   hasCare: boolean;
+  origin: TaxonOrigin;
   lineage: TaxonRef[];
   children: (TaxonRef & { hasCare: boolean })[];
   care: Care;

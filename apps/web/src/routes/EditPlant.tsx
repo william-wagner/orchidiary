@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { PlacePicker, type PlaceRef } from "../components/PlacePicker.tsx";
 import { TaxonPicker } from "../components/TaxonPicker.tsx";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
-import { api, type Photo, type Plant, photoUrl, type TaxonSummary, type Timeline } from "../lib/api.ts";
+import { api, type Photo, type Plant, type PlantLocation, photoUrl, type TaxonSummary, type Timeline } from "../lib/api.ts";
 import { accession, typedDate } from "../lib/format.ts";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -21,14 +22,19 @@ export function EditPlant() {
   const { id } = useParams();
   const timeline = useQuery({ queryKey: ["timeline", id], queryFn: () => api.get<Timeline>(`/plants/${id}/timeline`) });
   if (!timeline.data) return <p className="typed p-6">Abrindo a exsicata…</p>;
-  return <EditForm plant={timeline.data.plant} photos={timeline.data.photos} />;
+  const current = timeline.data.locations.find((l) => l.validTo === null) ?? null;
+  return <EditForm plant={timeline.data.plant} photos={timeline.data.photos} current={current} />;
 }
 
-function EditForm({ plant, photos }: { plant: Plant; photos: Photo[] }) {
+function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; current: PlantLocation | null }) {
   const navigate = useNavigate();
   const [cover, setCover] = useState<string | null>(plant.coverPhotoId);
   const qc = useQueryClient();
   const [taxon, setTaxon] = useState<TaxonSummary | null>(plant.taxon);
+  const initialPlaceId = current?.placeId ?? null;
+  const [place, setPlace] = useState<PlaceRef | null>(
+    current?.placeId && current.placeName ? { id: current.placeId, name: current.placeName } : null,
+  );
   const back = `/plantas/${plant.id}`;
   const initialDate = dateValue(plant.acquiredAt);
 
@@ -37,6 +43,7 @@ function EditForm({ plant, photos }: { plant: Plant; photos: Photo[] }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["timeline", plant.id] });
       qc.invalidateQueries({ queryKey: ["plants"] });
+      qc.invalidateQueries({ queryKey: ["places"] });
       navigate(back, { replace: true });
     },
   });
@@ -58,6 +65,8 @@ function EditForm({ plant, photos }: { plant: Plant; photos: Photo[] }) {
       potNotes: text("potNotes"),
       notes: text("notes"),
       coverPhotoId: cover,
+      // só reenvia se mudou (limpar o campo envia null)
+      ...((place?.id ?? null) !== initialPlaceId && { placeId: place?.id ?? null }),
     });
   }
 
@@ -97,6 +106,7 @@ function EditForm({ plant, photos }: { plant: Plant; photos: Photo[] }) {
             <Input name="acquiredAt" type="date" defaultValue={initialDate} />
           </Field>
         </div>
+        {current && <PlacePicker value={place} onChange={setPlace} />}
         <Field label="Situação">
           <Select name="status" defaultValue={plant.status}>
             {Object.entries(STATUS_LABEL).map(([value, label]) => (
@@ -158,7 +168,7 @@ function EditForm({ plant, photos }: { plant: Plant; photos: Photo[] }) {
         </fieldset>
 
         <p className="text-[0.95rem] text-pontilhado">
-          Para mudar a planta de lugar, tire uma foto no novo local: o histórico de lugares e de clima é preservado.
+          O nome do lugar corrige o local atual. Para registrar que a planta mudou de lugar, tire uma foto no novo local: o histórico de lugares e de clima é preservado.
         </p>
 
         <ErrorText error={save.error} />

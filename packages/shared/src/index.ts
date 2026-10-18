@@ -6,3 +6,6 @@ export * from "./climate.ts";
 export * from "./schemas.ts";
 export * from "./illustration.ts";
 export * from "./taxonomy.ts";
+export * from "./origin.ts";
+export * from "./locality.ts";
+export * from "./weatherPlan.ts";

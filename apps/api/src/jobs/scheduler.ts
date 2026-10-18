@@ -16,9 +16,9 @@ let backupRunning = false;
 async function weatherJob() {
   const log = sourceLogger("scheduler:clima");
   const r = await collectWeather();
-  const summary = { daysSaved: r.daysSaved, locations: r.locations };
+  const summary = { daysSaved: r.daysSaved, locations: r.locations, coordinates: r.coordinates, requests: r.requests };
   if (r.errors.length) log.warn({ ...summary, errors: r.errors }, "coleta de clima concluída com erros");
-  else log.info(summary, `${r.daysSaved} dias de clima salvos em ${r.locations} locais`);
+  else log.info(summary, `${r.daysSaved} dias de clima salvos em ${r.locations} locais (${r.requests} requisições)`);
 }
 
 async function backupCheck() {

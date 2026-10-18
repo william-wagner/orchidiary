@@ -623,7 +623,7 @@ export const catalog: CatalogNode[] = [
           ] }),
           genus("Encyclia", { care: care.encyclia, children: spp(`
             cordigera alata oncidioides patens dichroma odoratissima osmantha randii flava bractescens tampensis
-            adenocaula phoenicea granitica`) }),
+            adenocaula phoenicea granitica guatemalensis`) }),
           genus("Prosthechea", { care: care.encyclia, children: [
             aka("cochleata", "encyclia cochleata", "orquídea-polvo"),
             aka("fragrans", "encyclia fragrans"),
@@ -726,6 +726,7 @@ export const catalog: CatalogNode[] = [
           genus("Chiloschista", spp("lunifera")),
           genus("Seidenfadenia", spp("mitrata")),
           genus("Tuberolabium", spp("kotoense")),
+          genus("Micropera", { care: care.vandeae, children: spp("utriculosa") }),
           genus("Cleisostoma"),
           genus("Robiquetia"),
           genus("Pomatocalpa"),

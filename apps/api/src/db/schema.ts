@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -24,6 +25,7 @@ import {
   PHOTO_SOURCES,
   PLANT_ORIGINS,
   PLANT_STATUSES,
+  TAXON_ORIGIN_KINDS,
   TAXON_RANKS,
   USER_ROLES,
 } from "@orchidiary/shared";
@@ -69,6 +71,7 @@ export const sessions = pgTable(
 // ─── Guia de Cultivo: árvore taxonômica ──────────────────────────────────────
 
 export const taxonRank = pgEnum("taxon_rank", TAXON_RANKS);
+export const taxonOriginKind = pgEnum("taxon_origin_kind", TAXON_ORIGIN_KINDS);
 
 /**
  * Catálogo de táxons em árvore (família → … → gênero → espécie → variedade;
@@ -90,6 +93,13 @@ export const taxa = pgTable(
     /** Nome completo e populares, normalizados (sem acento, minúsculos) para a busca */
     searchText: text("search_text").notNull(),
     commonNames: text("common_names").array().notNull().default(sql`'{}'::text[]`),
+    /**
+     * De onde vem: países de ocorrência (`country` + `origin_country_codes`, ISO alfa-2, o principal
+     * primeiro) ou cruzamento (`cross`). Nulo herda do ancestral mais próximo que informou; sem
+     * ninguém, a origem é desconhecida.
+     */
+    originKind: taxonOriginKind("origin_kind"),
+    originCountryCodes: text("origin_country_codes").array().notNull().default(sql`'{}'::text[]`),
     tempDayMin: real("temp_day_min"),
     tempDayMax: real("temp_day_max"),
     tempNightMin: real("temp_night_min"),
@@ -115,6 +125,8 @@ export const taxa = pgTable(
       .on(t.rank, t.name)
       .where(sql`${t.rank} in ('family', 'subfamily', 'tribe', 'subtribe', 'genus', 'nothogenus')`),
     index("taxa_search_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
+    // países só existem junto de origin_kind = 'country', e country sempre tem pelo menos um
+    check("taxa_origin_countries_ck", sql`coalesce(${t.originKind} = 'country', false) = (cardinality(${t.originCountryCodes}) > 0)`),
   ],
 );
 
@@ -187,6 +199,12 @@ export const plantLocations = pgTable(
     lng: doublePrecision("lng").notNull(),
     /** Lugar nomeado deste período. Só dá para apagar um lugar que nenhum período usa. */
     placeId: uuid("place_id").references(() => places.id, { onDelete: "restrict" }),
+    /** Cidade/estado/país das coordenadas (geocodificação reversa); só complementa lat/lng, que seguem como fonte da verdade. */
+    city: text("city"),
+    state: text("state"),
+    stateCode: text("state_code"),
+    country: text("country"),
+    countryCode: text("country_code"),
     environment: environment("environment").notNull(),
     validFrom: ts("valid_from").notNull(),
     validTo: ts("valid_to"),

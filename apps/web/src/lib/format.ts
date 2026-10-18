@@ -12,5 +12,8 @@ export const accession = (n: number | null | undefined) => `Tombo nº ${formatAc
 export const environmentLabel = (env: "indoor" | "outdoor" | undefined) =>
   env === "indoor" ? "dentro de casa" : "ao ar livre";
 
+/** Coordenadas como dado de coleta: "-19.9167, -43.9345" */
+export const coords = (p: { lat: number; lng: number }) => `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
+
 /** Mês e ano por extenso, para separar o livro de registro: "outubro de 2026" */
 export const monthHeading = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });

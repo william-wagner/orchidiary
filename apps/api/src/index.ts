@@ -10,6 +10,7 @@ import { startScheduler } from "./jobs/scheduler.ts";
 import { flushLogs, logger } from "./logger.ts";
 import { type RequestEnv, requestLogger } from "./logging/requestLogger.ts";
 import { authRoutes } from "./routes/auth.ts";
+import { geoRoutes } from "./routes/geo.ts";
 import { photoRoutes } from "./routes/photos.ts";
 import { placeRoutes } from "./routes/places.ts";
 import { plantRoutes } from "./routes/plants.ts";
@@ -20,6 +21,7 @@ const api = new Hono()
   .get("/health", (c) => c.json({ ok: true, time: new Date().toISOString() }))
   .route("/auth", authRoutes)
   .route("/plants", plantRoutes)
+  .route("/geo", geoRoutes)
   .route("/places", placeRoutes)
   .route("/photos", photoRoutes)
   .route("/taxa", taxaRoutes)

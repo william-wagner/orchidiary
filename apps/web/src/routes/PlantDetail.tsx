@@ -1,13 +1,16 @@
+import { formatLocality } from "@orchidiary/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
+import { EventIcon } from "../components/EventIcon.tsx";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
-import { ancestorsLabel, PlantTaxon } from "../components/Taxon.tsx";
+import { OriginFlag } from "../components/OriginFlag.tsx";
+import { ancestorsLabel, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
 import { TemperatureRegister } from "../components/TemperatureRegister.tsx";
 import { Button, ErrorText, Field, Input, PressedOrchid } from "../components/ui.tsx";
 import { api, illustrationUrl, type LocationCheck, type Photo, photoUrl, type Timeline } from "../lib/api.ts";
-import { accession, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
+import { accession, coords, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
 
 const EVENT_LABEL: Record<string, string> = {
   note: "Anotação",
@@ -41,7 +44,11 @@ type Item =
   | { kind: "event"; at: string; id: string; type: string; notes: string | null }
   | { kind: "reading"; at: string; id: string; temperature: number | null; humidity: number | null };
 
-const chip = "min-h-11 border border-sepia bg-transparent px-3 text-[1.02rem] active:bg-etiqueta";
+/** Linha do livro: gravura do tipo de registro à frente do texto */
+const entry = "flex items-start gap-2";
+const glyph = "mt-[3px] h-5 w-5 shrink-0";
+
+const chip ="min-h-11 border border-sepia bg-transparent px-3 text-[1.02rem] active:bg-etiqueta";
 
 /** Capa: a foto escolhida ou, na falta dela, a mais recente. */
 function coverPhoto(t: Timeline | undefined): Photo | undefined {
@@ -51,6 +58,8 @@ function coverPhoto(t: Timeline | undefined): Photo | undefined {
 
 export function PlantDetail() {
   const { id } = useParams();
+  // vindo do tombo: a planta foi salva, mas a foto de capa não subiu
+  const photoError = (useLocation().state as { photoError?: string } | null)?.photoError;
   const qc = useQueryClient();
   const timeline = useQuery({
     queryKey: ["timeline", id],
@@ -133,15 +142,19 @@ export function PlantDetail() {
             <p className="typed text-[0.78rem]">{ancestorsLabel(plant.taxon.lineage)}</p>
           )}
           <h1 className="text-[1.6rem] leading-tight">
-            <PlantTaxon plant={plant} />
+            <PlantTaxon plant={plant} /> <OriginFlag origin={plantOrigin(plant)} />
           </h1>
           <p className="text-lg">{plant.nickname}</p>
           <div className="typed mt-1 text-[0.8rem] leading-relaxed">
             {current && (
-              <p>
-                {current.placeName ? `${current.placeName}, ` : ""}
-                {environmentLabel(current.environment)}
-              </p>
+              <>
+                <p>
+                  {current.placeName ? `${current.placeName}, ` : ""}
+                  {environmentLabel(current.environment)}
+                </p>
+                {formatLocality(current) && <p>{formatLocality(current)}</p>}
+                <p className="text-pontilhado">{coords(current)}</p>
+              </>
             )}
             {first && <p>Na coleção desde {typedDate(plant.acquiredAt ?? first.validFrom)}</p>}
             {locations.length > 1 && <p>Já passou por {locations.length} lugares</p>}
@@ -164,14 +177,18 @@ export function PlantDetail() {
       </section>
 
       <section className="mx-4 mt-5 space-y-3" aria-label="Registrar">
-        <PhotoCapture
-          plantId={plant.id}
-          onSaved={({ photo, locationCheck }) => {
-            refresh();
-            if (locationCheck?.mismatch) setPendingMove({ check: locationCheck, takenAt: photo.takenAt });
-          }}
-        />
+        {photoError && !cover && (
+          <p className="text-alerta">A planta foi tombada, mas a foto de capa não foi enviada ({photoError}). Tente de novo abaixo.</p>
+        )}
         <div className="flex flex-wrap gap-2">
+          <PhotoCapture
+            plantId={plant.id}
+            className="min-h-11 border border-sepia bg-sepia px-3 text-[1.02rem] text-papel active:opacity-85"
+            onSaved={({ photo, locationCheck }) => {
+              refresh();
+              if (locationCheck?.mismatch) setPendingMove({ check: locationCheck, takenAt: photo.takenAt });
+            }}
+          />
           {QUICK_EVENTS.map((t) => (
             <button key={t} onClick={() => addEvent.mutate(t)} disabled={addEvent.isPending} className={chip}>
               {EVENT_LABEL[t]}
@@ -210,31 +227,40 @@ export function PlantDetail() {
                   <div className="min-w-0 flex-1">
                     {it.kind === "photo" && (
                       <>
-                        <p>Fotografia{it.photo.caption ? `: ${it.photo.caption}` : ""}</p>
+                        <p className={entry}>
+                          <EventIcon type="photo" className={glyph} />
+                          <span>Fotografia{it.photo.caption ? `: ${it.photo.caption}` : ""}</span>
+                        </p>
                         <img
                           src={photoUrl(it.photo.id, "thumb")}
                           alt=""
                           loading="lazy"
-                          className="mt-1.5 w-full max-w-[14rem] border border-linha"
+                          className="mt-1.5 ml-7 w-full max-w-[14rem] border border-linha"
                         />
                       </>
                     )}
                     {it.kind === "event" && (
-                      <p>
-                        {EVENT_LABEL[it.type] ?? it.type}
-                        {it.notes && <span className="block text-pontilhado">{it.notes}</span>}
+                      <p className={entry}>
+                        <EventIcon type={it.type} className={glyph} />
+                        <span>
+                          {EVENT_LABEL[it.type] ?? it.type}
+                          {it.notes && <span className="block text-pontilhado">{it.notes}</span>}
+                        </span>
                       </p>
                     )}
                     {it.kind === "reading" && (
-                      <p>
-                        Medição:{" "}
-                        <span className="typed text-[0.9rem]">
-                          {[
-                            it.temperature != null ? `${it.temperature} °C` : null,
-                            it.humidity != null ? `${it.humidity}%` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(", ")}
+                      <p className={entry}>
+                        <EventIcon type="reading" className={glyph} />
+                        <span>
+                          Medição:{" "}
+                          <span className="typed text-[0.9rem]">
+                            {[
+                              it.temperature != null ? `${it.temperature} °C` : null,
+                              it.humidity != null ? `${it.humidity}%` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </span>
                         </span>
                       </p>
                     )}

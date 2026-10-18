@@ -1,5 +1,5 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import { inheritCare, taxonFullName, taxonSearchText, type TaxonRank } from "@orchidiary/shared";
+import { inheritCare, resolveOrigin, taxonFullName, taxonSearchText, type TaxonOrigin, type TaxonRank } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 
 const { taxa } = schema;
@@ -18,6 +18,8 @@ export interface TaxonRef {
 
 export interface TaxonSummary extends TaxonRef {
   commonNames: string[];
+  /** País, cruzamento ou desconhecida: a do táxon ou, se ele não informou, a do ancestral mais próximo */
+  origin: TaxonOrigin;
   /** Raiz → táxon, incluindo ele mesmo */
   lineage: TaxonRef[];
 }
@@ -62,7 +64,7 @@ export async function summariesOf(ids: readonly (string | null)[], tx: Executor 
   const out = new Map<string, TaxonSummary>();
   for (const [id, chain] of lineages) {
     const self = chain.at(-1)!;
-    out.set(id, { ...toRef(self), commonNames: self.commonNames, lineage: chain.map(toRef) });
+    out.set(id, { ...toRef(self), commonNames: self.commonNames, origin: resolveOrigin(chain), lineage: chain.map(toRef) });
   }
   return out;
 }

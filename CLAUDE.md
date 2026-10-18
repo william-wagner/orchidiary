@@ -5,7 +5,7 @@
 - Imports locais com extensão `.ts`/`.tsx` (rodamos com tsx e `allowImportingTsExtensions`).
 - Regras de negócio puras vão para `packages/shared` e ganham teste (`node:test` via `tsx --test`).
 - **Nunca** altere coordenadas de `plant_locations` existentes nem apague clima de períodos passados: mudança de local fecha o período atual e cria outro (ver docs/ARCHITECTURE.md).
-- Espécies vivem em `taxa` (árvore autorrelacionada por `parent_id`); a planta pode apontar para qualquer nível. Regras de nível, nome e herança de ficha em `packages/shared/src/taxonomy.ts`. Novos táxons do catálogo inicial vão em `apps/api/src/db/catalog.ts` (o teste valida a árvore).
+- Espécies vivem em `taxa` (árvore autorrelacionada por `parent_id`); a planta pode apontar para qualquer nível. Regras de nível, nome e herança de ficha em `packages/shared/src/taxonomy.ts`. Novos táxons do catálogo inicial vão em `apps/api/src/db/catalog.ts` (o teste valida a árvore); os países de origem das espécies vão em `catalogOrigins.ts` (principal em `byCountry`, demais em `alsoIn`). Países novos: acrescentar em `ORIGIN_COUNTRIES` (shared) e na lista do glob de `OriginFlag.tsx` (um teste confere).
 - Rotas de integração e backup (`/api/settings/*`) são exclusivas do usuário master.
 - Segredos de integrações só via `saveIntegration` (criptografados com `SECRETS_KEY`); nunca devolva segredos para o front.
 - Mudou o schema? Rode `pnpm db:generate` e faça commit da migração em `apps/api/drizzle/`.

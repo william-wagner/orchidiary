@@ -30,6 +30,7 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 - Busca (`GET /api/taxa?q=`): palavra por palavra em `search_text` (nome completo + nomes populares, sem acento), com índice de trigramas (`pg_trgm`). Sem resultado exato, tenta por semelhança, para erros de grafia.
 - Nomes antigos entram como nomes populares (*Laelia purpurata* → *Cattleya purpurata*, *Ascocenda* → *Vanda*). Sinônimos com nome aceito são uma evolução futura.
 - O catálogo inicial (`apps/api/src/db/catalog.ts`, classificação de Chase et al. 2015) é aplicado pelo seed sem desfazer edições: cria o que falta, encaixa gêneros soltos na árvore, soma nomes populares e só preenche a ficha de táxons que não têm nenhum campo.
+- Origem: `taxa.origin_kind` (`country` ou `cross`) + `origin_country_codes` (países de ocorrência, ISO alfa-2, o principal primeiro; lista em `ORIGIN_COUNTRIES`). Vazio herda do ancestral mais próximo que informou (`resolveOrigin`); sem ninguém, é desconhecida. Híbrido e gênero híbrido são `cross` (`normalizeOrigin`). O front mostra a bandeira do principal com "+N" (os outros países no title), "?" ou o ícone de cruzamento logo depois do nome (`OriginFlag`). Países do catálogo inicial: `apps/api/src/db/catalogOrigins.ts` (principal em `byCountry`, os demais em `alsoIn`).
 - Itálico: gênero e abaixo; acima do gênero, grex e cultivar ficam em redondo ("*Vanda* Sansai Blue 'Azul Real'"), via `taxonNameParts`.
 
 ## Localização da planta (regra central)
@@ -40,6 +41,7 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 - A nova data precisa ser posterior ao início do local atual e não pode estar no futuro (`planMove`, em `packages/shared/src/locations.ts`). Não se insere período no meio do histórico.
 - O **ambiente** (`indoor` / `outdoor`) faz parte do período: levar a planta da varanda para dentro de casa também é uma mudança registrada.
 - Cada mudança gera um evento `moved` na linha do tempo.
+- **Cidade/estado/país**: cada período guarda também `city`, `state`, `state_code`, `country` e `country_code`, obtidos por geocodificação reversa (Nominatim/OpenStreetMap, `services/geocode.ts`: 1 requisição/s, cache em memória, nunca bloqueia o salvamento). É só um complemento legível: `lat`/`lng` seguem como fonte da verdade e continuam visíveis. Períodos antigos sem localidade são completados ao abrir a planta (`ensureLocality`), mexendo apenas nessas colunas. Formatação ("Belo Horizonte, MG, Brasil") em `formatLocality`, no `packages/shared`.
 
 ### Foto tirada em outro lugar
 
@@ -52,6 +54,7 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 
 - Fonte: Open-Meteo (gratuita, sem chave). Últimos ~85 dias pela API de previsão; períodos mais antigos pela API histórica.
 - Guardado por **período de local** e por dia (`weather_daily`, único por `location_id + date`). Por isso o clima também nunca muda retroativamente.
+- A consulta é agrupada por **coordenada** (4 casas decimais, `coordKey`), sem filtro de usuário: períodos no mesmo ponto, de qualquer usuário, dividem a mesma requisição, e cada dia retornado é gravado só nos períodos que precisavam dele (`planWeatherFetches` em `packages/shared`). O mesmo vale para a previsão dos alertas.
 - Dias no fuso `APP_TIMEZONE`. O dia da mudança pertence ao local novo.
 - Métricas: mínima, máxima e média, umidade (média, mínima e máxima), ponto de orvalho, VPD (calculado a partir de temperatura e umidade horárias), chuva, radiação, horas de sol, evapotranspiração e vento máximo.
 - **Backfill**: a coleta calcula os dias que faltam no banco e busca só esses. Se o PC ficar desligado, os dias perdidos são preenchidos quando ele voltar.

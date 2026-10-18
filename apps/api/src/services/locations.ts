@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
-import { type LocationInput, planMove } from "@orchidiary/shared";
+import { EMPTY_LOCALITY, formatLocality, type Locality, type LocationInput, planMove } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
+import { reverseGeocode } from "./geocode.ts";
 import { placeNameOf } from "./places.ts";
 import { pruneWeatherOutsidePeriods } from "./weather/collect.ts";
 
@@ -26,12 +27,32 @@ export async function getCurrentLocation(plantId: string) {
   return row;
 }
 
+/** Colunas de localidade de `plant_locations` a partir de uma `Locality` (null limpa todas). */
+export const localityColumns = (l: Locality | null) => ({ ...EMPTY_LOCALITY, ...l });
+
+/**
+ * Preenche cidade/estado/país de um período que ainda não os tem (criado antes desse recurso
+ * ou quando a geocodificação estava fora do ar). Só completa essas colunas: as coordenadas
+ * nunca são tocadas. Sem resposta, deixa como está e tenta de novo na próxima vez.
+ */
+export async function ensureLocality<
+  T extends { id: string; lat: number; lng: number; city: string | null; state: string | null; country: string | null },
+>(period: T): Promise<T> {
+  if (period.city || period.state || period.country) return period;
+  const found = await reverseGeocode(period.lat, period.lng);
+  if (!found) return period;
+  await db.update(schema.plantLocations).set(localityColumns(found)).where(eq(schema.plantLocations.id, period.id));
+  return { ...period, ...found };
+}
+
 /**
  * Muda a planta de lugar (ou de ambiente indoor/outdoor) a partir de `validFrom`.
  * Fecha o período atual e abre outro. Nunca edita coordenadas antigas: o clima,
  * as fotos e os eventos do passado continuam ligados ao local onde aconteceram.
  */
 export async function movePlant(plantId: string, userId: string, input: LocationInput) {
+  // fora da transação: a chamada de rede não pode segurar conexão do banco
+  const locality = await reverseGeocode(input.lat, input.lng);
   const created = await db.transaction(async (tx) => {
     const toPlaceName = await placeNameOf(userId, input.placeId, tx);
     const periods = await listLocations(plantId, tx);
@@ -50,6 +71,7 @@ export async function movePlant(plantId: string, userId: string, input: Location
         plantId,
         lat: input.lat,
         lng: input.lng,
+        ...localityColumns(locality),
         placeId: input.placeId ?? null,
         environment: input.environment,
         validFrom,
@@ -64,8 +86,8 @@ export async function movePlant(plantId: string, userId: string, input: Location
         occurredAt: validFrom,
         // o nome do lugar vai por extenso: o evento continua legível mesmo se o lugar for renomeado depois
         data: {
-          from: { lat: close.lat, lng: close.lng, label: close.placeName, environment: close.environment },
-          to: { lat: input.lat, lng: input.lng, label: toPlaceName, environment: input.environment },
+          from: { lat: close.lat, lng: close.lng, label: close.placeName, locality: formatLocality(close), environment: close.environment },
+          to: { lat: input.lat, lng: input.lng, label: toPlaceName, locality: formatLocality(locality), environment: input.environment },
         },
       });
     }

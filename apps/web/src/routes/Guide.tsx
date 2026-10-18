@@ -2,6 +2,7 @@ import { type CareField, RANK_LABEL } from "@orchidiary/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
+import { OriginFlag } from "../components/OriginFlag.tsx";
 import { ancestorsLabel, TaxonName } from "../components/Taxon.tsx";
 import { Input, PageHeader } from "../components/ui.tsx";
 import { api, type TaxonHit, type TaxonRef, type TaxonSheet } from "../lib/api.ts";
@@ -38,7 +39,10 @@ export function Guide() {
           {list.data?.map((t) => (
             <li key={t.id} className="border-b border-dotted border-linha">
               <Link to={`/guia/${t.id}`} className="block py-3">
-                <TaxonName lineage={t.lineage} className="block text-xl leading-tight" />
+                <span className="flex items-baseline gap-1.5 text-xl leading-tight">
+                  <TaxonName lineage={t.lineage} className="min-w-0 truncate" />
+                  <OriginFlag origin={t.origin} />
+                </span>
                 <span className="typed block truncate text-[0.75rem]">
                   {RANK_LABEL[t.rank]}
                   {t.lineage.length > 1 && ` · ${ancestorsLabel(t.lineage, 2)}`}
@@ -102,7 +106,7 @@ export function TaxonPage() {
           </nav>
         )}
         <h1 className="mt-1 text-[2.4rem] leading-[1.05]">
-          <TaxonName lineage={s.lineage} />
+          <TaxonName lineage={s.lineage} /> <OriginFlag origin={s.origin} />
         </h1>
         <p className="mt-1 first-letter:uppercase">{RANK_LABEL[s.rank]}</p>
         {s.commonNames.length > 0 && <p className="text-pontilhado">Nomes populares e antigos: {s.commonNames.join(", ")}</p>}

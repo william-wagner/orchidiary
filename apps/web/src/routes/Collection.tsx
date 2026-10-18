@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { PlantTaxon } from "../components/Taxon.tsx";
+import { OriginFlag } from "../components/OriginFlag.tsx";
+import { PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
 import { PageHeader, PressedOrchid } from "../components/ui.tsx";
 import { api, type CollectionPlant, illustrationUrl, photoUrl } from "../lib/api.ts";
 import { accession, environmentLabel } from "../lib/format.ts";
@@ -39,7 +40,11 @@ export function Collection() {
                 className={`mounted flex h-24 w-20 shrink-0 items-center justify-center overflow-visible ${p.coverIllustratedAt ? "bg-prancha" : ""}`}
               >
                 {p.lastPhotoId && p.coverIllustratedAt ? (
-                  <img src={illustrationUrl(p.lastPhotoId, p.coverIllustratedAt, "thumb")} alt="" className="h-full w-full object-contain" />
+                  // zoom de 30% na prancha (que tem muita margem de papel); o recorte fica no wrapper para não esconder a fita,
+                  // e sem transform para a fita (::before/::after do .mounted) continuar por cima da imagem
+                  <div className="flex h-full w-full items-center justify-center overflow-hidden">
+                    <img src={illustrationUrl(p.lastPhotoId, p.coverIllustratedAt, "thumb")} alt="" className="h-[130%] w-[130%] max-w-none shrink-0 object-contain" />
+                  </div>
                 ) : p.lastPhotoId ? (
                   <img src={photoUrl(p.lastPhotoId, "thumb")} alt="" className="h-full w-full object-cover" />
                 ) : (
@@ -48,7 +53,10 @@ export function Collection() {
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <p className="typed text-[0.78rem]">{accession(p.accessionNumber)}</p>
-                <PlantTaxon plant={p} className="block truncate text-xl leading-tight" />
+                <p className="flex items-baseline gap-1.5 text-xl leading-tight">
+                  <PlantTaxon plant={p} className="min-w-0 truncate" />
+                  <OriginFlag origin={plantOrigin(p)} />
+                </p>
                 <p className="truncate">{p.nickname}</p>
                 <p className="typed mt-auto truncate text-[0.78rem]">
                   {p.currentLocation?.placeName ? `${p.currentLocation.placeName}, ` : ""}

@@ -1,5 +1,5 @@
 import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
-import { addDays, toLocalDate } from "@orchidiary/shared";
+import { addDays, coordKey, toLocalDate } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
 import { sourceLogger } from "../logger.ts";
@@ -46,12 +46,21 @@ export async function runForecastAlerts(now = new Date(), fetchImpl: typeof fetc
   // faixas herdadas: uma Vanda coerulea sem faixa própria usa a do gênero Vanda
   const careBy = await effectiveCareOf(rows.map((r) => r.plant.taxonId!));
 
+  // Uma previsão por coordenada, compartilhada entre plantas (e usuários) no mesmo ponto
+  const forecasts = new Map<string, Promise<ForecastDay | null>>();
+  const forecastAt = (lat: number, lng: number) => {
+    const key = coordKey({ lat, lng });
+    let p = forecasts.get(key);
+    if (!p) forecasts.set(key, (p = fetchTomorrow(lat, lng, tomorrow, fetchImpl)));
+    return p;
+  };
+
   let sent = 0;
   for (const { plant, location } of rows) {
     const care = careBy.get(plant.taxonId!)?.care;
     if (!care || (care.tempNightMin == null && care.tempDayMax == null)) continue;
     try {
-      const day = await fetchTomorrow(location.lat, location.lng, tomorrow, fetchImpl);
+      const day = await forecastAt(location.lat, location.lng);
       if (!day) continue;
       for (const draft of evaluateForecast(plant.nickname, care, day)) {
         const r = await sendAlert({
@@ -67,5 +76,5 @@ export async function runForecastAlerts(now = new Date(), fetchImpl: typeof fetc
       sourceLogger("scheduler:alertas").error({ err: e, plantId: plant.id }, "falha ao avaliar a previsão da planta");
     }
   }
-  return { checked: rows.length, sent };
+  return { checked: rows.length, requests: forecasts.size, sent };
 }

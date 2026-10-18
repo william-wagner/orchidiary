@@ -1,4 +1,4 @@
-import { type NamePart, taxonNameParts } from "@orchidiary/shared";
+import { type NamePart, type TaxonOrigin, taxonNameParts, UNKNOWN_ORIGIN } from "@orchidiary/shared";
 import type { Plant, TaxonRef } from "../lib/api.ts";
 
 /**
@@ -26,6 +26,9 @@ export function PlantTaxon({ plant, className = "" }: { plant: Pick<Plant, "taxo
   if (plant.taxon) return <TaxonName lineage={plant.taxon.lineage} className={className} />;
   return <span className={`taxon ${className}`}>{plant.taxonText ?? "Espécie não determinada"}</span>;
 }
+
+/** Origem da planta: a do táxon do catálogo; sem táxon (nome livre ou nada), desconhecida. */
+export const plantOrigin = (plant: Pick<Plant, "taxon">): TaxonOrigin => plant.taxon?.origin ?? UNKNOWN_ORIGIN;
 
 /** Os níveis logo acima do táxon, de cima para baixo: "Vandeae › Aeridinae › Vanda". */
 export function ancestorsLabel(lineage: readonly TaxonRef[], depth = 3) {

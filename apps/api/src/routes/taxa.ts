@@ -4,8 +4,10 @@ import { z } from "zod";
 import {
   canBeChildOf,
   hasOwnCare,
+  normalizeOrigin,
   normalizeSearch,
   TAXON_RANKS,
+  resolveOrigin,
   type TaxonInput,
   taxonFullName,
   taxonInputSchema,
@@ -111,6 +113,7 @@ export const taxaRoutes = new Hono<AppEnv>()
     return c.json({
       ...row,
       hasCare: hasOwnCare(self),
+      origin: resolveOrigin(lineage),
       lineage: lineage.map(toRef),
       children: children
         .sort((a, b) => rankOrder(a.rank) - rankOrder(b.rank) || a.name.localeCompare(b.name))
@@ -125,7 +128,7 @@ export const taxaRoutes = new Hono<AppEnv>()
     const place = await placement(input);
     if ("error" in place) return c.json({ error: place.error }, 400);
     try {
-      const [row] = await db.insert(taxa).values({ ...input, ...place }).returning();
+      const [row] = await db.insert(taxa).values({ ...input, ...normalizeOrigin(input.rank, input), ...place }).returning();
       return c.json(row, 201);
     } catch (e) {
       if (isUniqueViolation(e)) return c.json({ error: "Esse táxon já está no catálogo." }, 409);
@@ -146,7 +149,7 @@ export const taxaRoutes = new Hono<AppEnv>()
       const row = await db.transaction(async (tx) => {
         const [updated] = await tx
           .update(taxa)
-          .set({ ...input, ...place, updatedAt: new Date() })
+          .set({ ...input, ...normalizeOrigin(input.rank, input), ...place, updatedAt: new Date() })
           .where(eq(taxa.id, id))
           .returning();
         // nome ou pai mudou: os descendentes mudam de nome junto

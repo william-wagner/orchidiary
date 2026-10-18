@@ -6,8 +6,10 @@ import {
   PHOTO_SOURCES,
   PLANT_ORIGINS,
   PLANT_STATUSES,
+  TAXON_ORIGIN_KINDS,
   TAXON_RANKS,
 } from "./enums.ts";
+import { originError } from "./origin.ts";
 
 export const latLngSchema = z.object({
   lat: z.number().min(-90).max(90),
@@ -49,6 +51,8 @@ export const plantUpdateSchema = plantCreateSchema
     status: z.enum(PLANT_STATUSES).optional(),
     /** Foto de capa escolhida; null volta para a mais recente */
     coverPhotoId: z.string().uuid().nullish(),
+    /** Corrige o lugar nomeado do período atual (null limpa); não cria período novo */
+    placeId: z.string().uuid().nullish(),
   });
 
 /** Leitura manual de termo-higrômetro (opcional, complementa o clima externo). */
@@ -123,11 +127,14 @@ export type GoogleDriveSettings = z.infer<typeof googleDriveSettingsSchema>;
 export type OpenaiSettings = z.infer<typeof openaiSettingsSchema>;
 
 /** Táxon do Guia de Cultivo. Os campos de cultivo são opcionais: o que faltar vem do ancestral. */
-export const taxonInputSchema = z.object({
+const taxonFieldsSchema = z.object({
   parentId: z.string().uuid().nullable(),
   rank: z.enum(TAXON_RANKS),
   name: z.string().trim().min(1).max(80),
   commonNames: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+  /** Países de ocorrência (`country` + códigos ISO, o principal primeiro) ou cruzamento; vazio herda do ancestral */
+  originKind: z.enum(TAXON_ORIGIN_KINDS).nullable().default(null),
+  originCountryCodes: z.array(z.string().length(2)).max(40).default([]),
   tempDayMin: z.number().min(-10).max(50).nullish(),
   tempDayMax: z.number().min(-10).max(50).nullish(),
   tempNightMin: z.number().min(-10).max(50).nullish(),
@@ -141,5 +148,10 @@ export const taxonInputSchema = z.object({
   bloomMonths: z.array(z.number().int().min(1).max(12)).max(12).default([]),
   restPeriod: z.string().max(2000).nullish(),
   notes: z.string().max(4000).nullish(),
+});
+
+export const taxonInputSchema = taxonFieldsSchema.superRefine((t, ctx) => {
+  const message = originError(t);
+  if (message) ctx.addIssue({ code: "custom", path: ["originCountryCodes"], message });
 });
 export type TaxonInput = z.infer<typeof taxonInputSchema>;

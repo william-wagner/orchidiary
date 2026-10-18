@@ -60,5 +60,13 @@ export const TAXON_RANKS = [
 ] as const;
 export type TaxonRank = (typeof TAXON_RANKS)[number];
 
+/**
+ * De onde vem o táxon: de países (`country`, com os códigos em `origin_country_codes`, o principal primeiro) ou de
+ * cruzamento (`cross`: híbridos feitos por gente, sem lugar de origem). Sem nada preenchido,
+ * vale o do ancestral mais próximo; se ninguém sabe, a origem é desconhecida.
+ */
+export const TAXON_ORIGIN_KINDS = ["country", "cross"] as const;
+export type TaxonOriginKind = (typeof TAXON_ORIGIN_KINDS)[number];
+
 export const ILLUSTRATION_QUALITIES =["low", "medium", "high"] as const;
 export type IllustrationQuality = (typeof ILLUSTRATION_QUALITIES)[number];

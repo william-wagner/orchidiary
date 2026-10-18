@@ -14,7 +14,8 @@ import {
 import { db, schema } from "../db/client.ts";
 import { type AppEnv, requireUser } from "../auth/session.ts";
 import { zValidator } from "../lib/validate.ts";
-import { listLocations, movePlant } from "../services/locations.ts";
+import { reverseGeocode } from "../services/geocode.ts";
+import { ensureLocality, listLocations, localityColumns, movePlant } from "../services/locations.ts";
 import { placeNameOf } from "../services/places.ts";
 import { requestCoverIllustration } from "../services/illustration.ts";
 import { savePhoto } from "../services/photos.ts";
@@ -108,6 +109,7 @@ export const plantRoutes = new Hono<AppEnv>()
     const userId = c.get("user").id;
     await assertTaxon(data.taxonId);
     const placeName = await placeNameOf(userId, location.placeId);
+    const locality = await reverseGeocode(location.lat, location.lng);
     const created = await db.transaction(async (tx) => {
       // Próximo número de tombo (nunca reaproveitado; o índice único protege contra corrida)
       const [{ next } = { next: 1 }] = await tx
@@ -124,6 +126,7 @@ export const plantRoutes = new Hono<AppEnv>()
           plantId: plant!.id,
           lat: location.lat,
           lng: location.lng,
+          ...localityColumns(locality),
           placeId: location.placeId ?? null,
           environment: location.environment,
           validFrom: location.validFrom ?? data.acquiredAt ?? new Date(),
@@ -141,9 +144,11 @@ export const plantRoutes = new Hono<AppEnv>()
   })
 
   .patch("/:id", zValidator("json", plantUpdateSchema), async (c) => {
-    const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
-    const input = c.req.valid("json");
+    const userId = c.get("user").id;
+    const plant = await ownedPlant(c.req.param("id"), userId);
+    const { placeId, ...input } = c.req.valid("json");
     await assertTaxon(input.taxonId);
+    await placeNameOf(userId, placeId);
     if (input.coverPhotoId) {
       const [photo] = await db
         .select({ id: photos.id })
@@ -152,11 +157,22 @@ export const plantRoutes = new Hono<AppEnv>()
         .limit(1);
       if (!photo) return c.json({ error: "A foto de capa precisa ser desta planta." }, 400);
     }
-    const [updated] = await db
-      .update(plants)
-      .set({ ...input, updatedAt: new Date() })
-      .where(eq(plants.id, plant.id))
-      .returning();
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(plants)
+        .set({ ...input, updatedAt: new Date() })
+        .where(eq(plants.id, plant.id))
+        .returning();
+      // Corrige o nome do lugar do período atual. Coordenadas e histórico não mudam;
+      // mudar de lugar de fato continua sendo um novo período (POST /:id/locations).
+      if (placeId !== undefined) {
+        await tx
+          .update(plantLocations)
+          .set({ placeId })
+          .where(and(eq(plantLocations.plantId, plant.id), isNull(plantLocations.validTo)));
+      }
+      return row!;
+    });
     if (input.coverPhotoId !== undefined) requestCoverIllustration(plant.id);
     return c.json(updated);
   })
@@ -224,7 +240,9 @@ export const plantRoutes = new Hono<AppEnv>()
   .get("/:id/timeline", zValidator("query", rangeQuery), async (c) => {
     const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
     const { from, to } = c.req.valid("query");
-    const locations = await listLocations(plant.id);
+    const listed = await listLocations(plant.id);
+    // Completa cidade/estado/país do local atual de plantas antigas (só lê o histórico, não muda coordenadas)
+    const locations = await Promise.all(listed.map((l) => (l.validTo === null ? ensureLocality(l) : l)));
     const locationIds = locations.map((l) => l.id);
 
     const between = <C extends typeof photos.takenAt | typeof events.occurredAt | typeof manualReadings.measuredAt>(col: C) =>

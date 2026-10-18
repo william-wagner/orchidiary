@@ -72,6 +72,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.85.0
         version: 5.104.3(react@19.3.1)
+      country-flag-icons:
+        specifier: ^1.6.20
+        version: 1.6.20
       react:
         specifier: ^19.2.0
         version: 19.3.1
@@ -1706,6 +1709,9 @@ packages:
   core-js-compat@3.50.0:
     resolution: {integrity: sha512-XGpFGbMLHwSt74YLTKho7Ib242qi6O8MSX+sRokV4oz7iKXvQWGYZthjIhjRGMxjzVkAubBO512dKGYcefmX3Q==}
     engines: {node: '>=6.4.0'}
+
+  country-flag-icons@1.6.20:
+    resolution: {integrity: sha512-py8JiEKzjhYw6HPJ0L7SxLgCYim36UPRTZX43/kqGueUCZLSvnrqAiwW8HtQibur7mdkFQUkjOgdK+o/9FBtaw==}
 
   croner@9.1.0:
     resolution: {integrity: sha512-p9nwwR4qyT5W996vBZhdvBCnMhicY5ytZkR4D1Xj0wuTDEiMnjwR57Q3RXYY/s0EpX6Ay3vgIcfaR+ewGHsi+g==}
@@ -4306,6 +4312,8 @@ snapshots:
   core-js-compat@3.50.0:
     dependencies:
       browserslist: 4.29.3
+
+  country-flag-icons@1.6.20: {}
 
   croner@9.1.0: {}
 
