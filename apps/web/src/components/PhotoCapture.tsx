@@ -1,8 +1,7 @@
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { api, type LocationCheck, type Photo } from "../lib/api.ts";
 import { getPosition, type Position } from "../lib/geo.ts";
-import { CameraIcon } from "./EventIcon.tsx";
-import { Button } from "./ui.tsx";
+import { Button, Icon } from "./ui.tsx";
 
 export type PhotoSource = "camera" | "upload";
 
@@ -72,7 +71,7 @@ export function PhotoCapture({ plantId, onSaved, className = "" }: Props) {
         disabled={busy}
         className={`inline-flex items-center gap-2 disabled:opacity-45 ${className}`}
       >
-        <CameraIcon className="h-5 w-5" />
+        <Icon name="camera" className="size-4" />
         {busy ? "Enviando foto…" : "Fotografar"}
       </button>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={(e) => void send(e)} />
@@ -108,7 +107,7 @@ export function PhotoPicker({ value, onChange }: { value: PickedPhoto | null; on
   return (
     <div className="space-y-2">
       {preview && (
-        <div className="mounted flex h-48 items-center justify-center">
+        <div className="fixada flex h-48 items-center justify-center overflow-hidden rounded-lg border border-linha">
           <img src={preview} alt="Foto de capa escolhida" className="h-full w-full object-cover" />
         </div>
       )}
@@ -117,12 +116,12 @@ export function PhotoPicker({ value, onChange }: { value: PickedPhoto | null; on
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex w-full items-center gap-3 rounded border border-dashed border-pontilhado bg-etiqueta px-4 py-4 text-left"
+        className="flex w-full items-center gap-3 rounded-lg border border-dashed border-contorno bg-folha px-4 py-4 text-left"
       >
-        <CameraIcon className="h-8 w-8 shrink-0 text-carimbo" />
+        <Icon name="camera" className="size-8 text-orquidea" />
         <span>
           <span className="block font-medium">{value ? "Trocar a foto" : "Foto da planta"}</span>
-          <span className="block text-[0.95rem] text-pontilhado">Toque para tirar uma foto ou escolher da galeria</span>
+          <span className="block text-[0.95rem] text-musgo">Toque para tirar uma foto ou escolher da galeria</span>
         </span>
       </button>
       {value && (

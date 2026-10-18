@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { PlacePicker, type PlaceRef } from "../components/PlacePicker.tsx";
 import { TaxonPicker } from "../components/TaxonPicker.tsx";
-import { Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
+import { BackLink, Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
 import { api, type Photo, type Plant, type PlantLocation, photoUrl, type TaxonSummary, type Timeline } from "../lib/api.ts";
 import { accession, typedDate } from "../lib/format.ts";
 
@@ -72,13 +72,13 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
 
   return (
     <main className="pb-8">
-      <div className="px-4 pt-3">
-        <Link to={back} className="inline-flex min-h-11 items-center">
-          Voltar à planta
+      <div className="px-5 pt-3">
+        <Link to={back}>
+          <BackLink>Voltar à planta</BackLink>
         </Link>
       </div>
       <PageHeader kicker={accession(plant.accessionNumber)} title="Editar planta" />
-      <form onSubmit={onSubmit} className="space-y-5 px-4 pt-5">
+      <form onSubmit={onSubmit} className="space-y-5 px-5">
         <Field label="Apelido">
           <Input name="nickname" required maxLength={80} defaultValue={plant.nickname} />
         </Field>
@@ -128,22 +128,22 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
             rows={4}
             maxLength={4000}
             defaultValue={plant.notes ?? ""}
-            className="w-full border border-linha bg-etiqueta px-3 py-2 font-mono text-[0.95rem] text-tinta focus:border-sepia"
+            className="w-full rounded-md border border-contorno bg-folha px-3 py-2.5 text-[0.95rem] text-tinta focus:border-tinta focus:outline-none"
           />
         </Field>
 
         <fieldset>
-          <legend className="mb-1 font-medium">Foto de capa</legend>
+          <legend className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">Foto de capa</legend>
           {photos.length === 0 ? (
-            <p className="text-[0.95rem] text-pontilhado">Ainda não há fotos. Fotografe a planta para escolher a capa.</p>
+            <p className="text-[0.85rem] text-musgo">Ainda não há fotos. Fotografe a planta para escolher a capa.</p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setCover(null)}
                 aria-pressed={cover === null}
-                className={`flex aspect-square items-center justify-center border p-2 text-center text-[0.95rem] ${
-                  cover === null ? "border-2 border-carimbo text-carimbo" : "border-linha"
+                className={`flex aspect-square items-center justify-center rounded-lg border p-2 text-center text-[0.85rem] ${
+                  cover === null ? "border-tinta bg-salvia-clara text-tinta ring-2 ring-tinta" : "border-linha"
                 }`}
               >
                 A mais recente
@@ -155,10 +155,10 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
                   onClick={() => setCover(p.id)}
                   aria-pressed={cover === p.id}
                   aria-label={`Usar a foto de ${typedDate(p.takenAt)} como capa`}
-                  className={`relative aspect-square border ${cover === p.id ? "border-2 border-carimbo" : "border-linha"}`}
+                  className={`relative aspect-square overflow-hidden rounded-lg border ${cover === p.id ? "border-tinta ring-2 ring-tinta" : "border-linha"}`}
                 >
                   <img src={photoUrl(p.id, "thumb")} alt="" loading="lazy" className="h-full w-full object-cover" />
-                  <span className="typed absolute inset-x-0 bottom-0 bg-etiqueta/85 text-[0.7rem]">
+                  <span className="typed absolute inset-x-0 bottom-0 bg-folha/85 py-0.5 text-[0.62rem]">
                     {typedDate(p.takenAt)}
                   </span>
                 </button>
@@ -167,7 +167,7 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
           )}
         </fieldset>
 
-        <p className="text-[0.95rem] text-pontilhado">
+        <p className="text-[0.85rem] text-musgo">
           O nome do lugar corrige o local atual. Para registrar que a planta mudou de lugar, tire uma foto no novo local: o histórico de lugares e de clima é preservado.
         </p>
 

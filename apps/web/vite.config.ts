@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg"],
+      includeAssets: ["icon.svg", "jornada.webp"],
       manifest: {
         name: "Orchidiary",
         short_name: "Orchidiary",
@@ -17,8 +17,8 @@ export default defineConfig({
         lang: "pt-BR",
         start_url: "/",
         display: "standalone",
-        background_color: "#EEEFE8",
-        theme_color: "#EEEFE8",
+        background_color: "#F7F5EC",
+        theme_color: "#F7F5EC",
         icons: [
           { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

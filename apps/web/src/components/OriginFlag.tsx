@@ -26,11 +26,11 @@ export function OriginFlag({ origin, className = "" }: { origin: TaxonOrigin; cl
     return (
       <span role="img" aria-label={label} title={label} className={`inline-flex shrink-0 items-baseline gap-1 whitespace-nowrap ${className}`}>
         {src ? (
-          <img src={src} alt="" className="inline-block h-[0.8em] w-auto self-center border border-sepia/40" />
+          <img src={src} alt="" className="inline-block h-[0.8em] w-auto self-center border border-contorno" />
         ) : (
           <span className="typed text-[0.7em]">{main.code}</span>
         )}
-        {others > 0 && <span className="typed text-[0.6em] text-pontilhado">+{others}</span>}
+        {others > 0 && <span className="typed text-[0.6em] text-musgo">+{others}</span>}
       </span>
     );
   }
@@ -44,7 +44,7 @@ export function OriginFlag({ origin, className = "" }: { origin: TaxonOrigin; cl
       strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`${base} aspect-square h-[0.95em] ${origin.kind === "cross" ? "text-prensada" : "text-pontilhado"}`}
+      className={`${base} aspect-square h-[0.95em] ${origin.kind === "cross" ? "text-folhagem" : "text-musgo"}`}
     >
       <title>{label}</title>
       {origin.kind === "cross" ? (

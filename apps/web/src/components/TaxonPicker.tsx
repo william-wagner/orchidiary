@@ -67,10 +67,10 @@ export function TaxonPicker({
   if (value) {
     return (
       <div>
-        <span className="mb-1 block font-medium">{label}</span>
-        <div className="herb-label flex items-start justify-between gap-3 px-3 py-2">
+        <span className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">{label}</span>
+        <div className="cartao flex items-start justify-between gap-3 px-3 py-2">
           <div className="min-w-0">
-            <TaxonName lineage={value.lineage} className="block text-xl leading-tight" />
+            <TaxonName lineage={value.lineage} className="block font-serif text-[1.2rem] leading-tight" />
             <span className="typed block text-[0.78rem]">
               {RANK_LABEL[value.rank]}
               {value.lineage.length > 1 && ` · ${ancestorsLabel(value.lineage)}`}
@@ -78,7 +78,7 @@ export function TaxonPicker({
           </div>
           <button
             type="button"
-            className="min-h-11 shrink-0 px-2 text-carimbo"
+            className="min-h-11 shrink-0 px-2 text-orquidea"
             onClick={() => {
               onChange(null);
               requestAnimationFrame(() => inputRef.current?.focus());
@@ -93,7 +93,7 @@ export function TaxonPicker({
 
   return (
     <div className="relative">
-      <label htmlFor={id} className="mb-1 block font-medium">
+      <label htmlFor={id} className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">
         {label}
       </label>
       <input
@@ -116,9 +116,9 @@ export function TaxonPicker({
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        className="w-full min-h-12 border border-linha bg-etiqueta px-3 font-mono text-[0.95rem] text-tinta placeholder:text-pontilhado/70 focus:border-sepia"
+        className="w-full min-h-12 rounded-md border border-contorno bg-folha px-3 text-[0.95rem] text-tinta placeholder:text-musgo/70 focus:border-tinta focus:outline-none"
       />
-      <span className="mt-1 block text-[0.95rem] text-pontilhado">
+      <span className="mt-1.5 block text-[0.82rem] text-musgo">
         Pode ser só o gênero, se você não souber a espécie.
       </span>
       {showList && (
@@ -126,10 +126,10 @@ export function TaxonPicker({
           id={`${id}-list`}
           role="listbox"
           aria-label="Táxons encontrados"
-          className="absolute inset-x-0 top-[4.75rem] z-20 max-h-80 overflow-y-auto border border-sepia bg-papel shadow-md"
+          className="absolute inset-x-0 top-[4.6rem] z-20 max-h-80 overflow-y-auto rounded-lg border border-contorno bg-folha shadow-caderno"
         >
           {hits.length === 0 && (
-            <li className="px-3 py-3 text-pontilhado">Nada no catálogo com esse nome. Escreva o nome livre abaixo.</li>
+            <li className="px-3 py-3 text-musgo">Nada no catálogo com esse nome. Escreva o nome livre abaixo.</li>
           )}
           {hits.map((t, i) => (
             <li
@@ -143,15 +143,15 @@ export function TaxonPicker({
                 choose(t);
               }}
               onMouseEnter={() => setActive(i)}
-              className={`cursor-pointer border-b border-dotted border-linha px-3 py-2 last:border-b-0 ${i === active ? "bg-etiqueta" : ""}`}
+              className={`cursor-pointer border-b border-linha px-3 py-2 last:border-b-0 ${i === active ? "bg-salvia-clara" : ""}`}
             >
-              <TaxonName lineage={t.lineage} className="block text-lg leading-tight" />
+              <TaxonName lineage={t.lineage} className="block font-serif text-[1.1rem] leading-tight" />
               <span className="typed block truncate text-[0.75rem]">
                 {RANK_LABEL[t.rank]}
                 {t.lineage.length > 1 && ` · ${ancestorsLabel(t.lineage, 2)}`}
               </span>
               {t.commonNames.length > 0 && (
-                <span className="block truncate text-[0.9rem] text-pontilhado">{t.commonNames.slice(0, 3).join(", ")}</span>
+                <span className="block truncate text-[0.9rem] text-musgo">{t.commonNames.slice(0, 3).join(", ")}</span>
               )}
             </li>
           ))}
