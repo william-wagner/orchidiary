@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
 import { ancestorsLabel, PlantTaxon } from "../components/Taxon.tsx";
 import { TemperatureRegister } from "../components/TemperatureRegister.tsx";
-import { Button, ErrorText, Field, Input, PressedOrchid } from "../components/ui.tsx";
+import { BackLink, Button, ErrorText, Field, Icon, type IconName, Input, PressedOrchid } from "../components/ui.tsx";
 import { api, illustrationUrl, type LocationCheck, type Photo, photoUrl, type Timeline } from "../lib/api.ts";
 import { accession, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
 
@@ -25,7 +25,7 @@ const EVENT_LABEL: Record<string, string> = {
   moved: "Mudou de lugar",
 };
 
-/** Eventos que ganham carimbo no livro de registro */
+/** Eventos que ganham selo no livro de registro */
 const STAMPED: Record<string, string> = {
   bloom_start: "floração",
   bloom_end: "fim da flor",
@@ -41,7 +41,32 @@ type Item =
   | { kind: "event"; at: string; id: string; type: string; notes: string | null }
   | { kind: "reading"; at: string; id: string; temperature: number | null; humidity: number | null };
 
-const chip = "min-h-11 border border-sepia bg-transparent px-3 text-[1.02rem] active:bg-etiqueta";
+const chip =
+  "inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-linha bg-folha px-3 text-[0.85rem] text-folhagem active:bg-salvia-clara disabled:opacity-45";
+
+const EVENT_ICON: Partial<Record<string, IconName>> = {
+  watering: "drop",
+  fertilizing: "sprout",
+  bloom_start: "flower",
+  bloom_end: "flower",
+  new_growth: "sprout",
+  new_root: "sprout",
+  keiki: "sprout",
+  moved: "pin",
+};
+
+function itemIcon(it: Item): IconName {
+  if (it.kind === "photo") return "camera";
+  if (it.kind === "reading") return "thermometer";
+  return EVENT_ICON[it.type] ?? "note";
+}
+
+/** Floração em lilás; mudanças de manejo em ocre; o resto em sálvia. */
+function stampTone(type: string) {
+  if (type === "bloom_start" || type === "bloom_end") return "selo-flor";
+  if (type === "moved" || type === "repotting") return "selo-ocre";
+  return "";
+}
 
 /** Capa: a foto escolhida ou, na falta dela, a mais recente. */
 function coverPhoto(t: Timeline | undefined): Photo | undefined {
@@ -102,68 +127,80 @@ export function PlantDetail() {
   const plate = cover?.illustrationStatus === "ready" && cover.illustrationUpdatedAt ? cover.illustrationUpdatedAt : null;
 
   return (
-    <main className="pb-8">
-      <div className="flex items-center justify-between px-4 pt-3">
-        <Link to="/" className="inline-flex min-h-11 items-center">
-          Voltar à coleção
+    <main className="px-5 pt-3 pb-8">
+      <div className="flex items-center justify-between">
+        <Link to="/">
+          <BackLink>Voltar à coleção</BackLink>
         </Link>
-        <Link to={`/plantas/${plant.id}/editar`} className="inline-flex min-h-11 items-center text-carimbo">
+        <Link to={`/plantas/${plant.id}/editar`} className="inline-flex min-h-11 items-center text-[0.9rem] text-orquidea">
           Editar
         </Link>
       </div>
 
-      {/* A exsicata: foto montada na folha e a etiqueta datilografada */}
-      <section className="mx-4 flex flex-col gap-3 border border-linha bg-etiqueta p-3.5" aria-label="Exsicata">
-        <div className={`mounted flex h-60 items-center justify-center ${plate ? "bg-prancha" : ""}`}>
+      <header className="mt-2 mb-5">
+        <p className="eyebrow">{accession(plant.accessionNumber)}</p>
+        <h1 className="mt-1.5 text-[2.35rem] leading-[1.08] tracking-[-0.03em] [overflow-wrap:anywhere]">
+          <PlantTaxon plant={plant} />
+        </h1>
+        <p className="mt-1.5 font-serif text-[1.15rem] text-folhagem italic">{plant.nickname}</p>
+      </header>
+
+      {/* A exsicata: a prancha presa na página e a etiqueta com os dados */}
+      <section className="overflow-hidden rounded-xl border border-linha bg-folha shadow-caderno sm:grid sm:grid-cols-2" aria-label="Exsicata">
+        <div className={`fixada flex h-72 items-center justify-center p-5 ${plate ? "bg-prancha" : "bg-salvia-clara/60"}`}>
           {cover && plate ? (
             // prancha inteira, sem corte: o fundo do container é o mesmo papel da ilustração
             <img src={illustrationUrl(cover.id, plate)} alt={`Prancha botânica de ${plant.nickname}`} className="h-full w-full object-contain" />
           ) : cover ? (
-            <img src={photoUrl(cover.id)} alt={`Foto mais recente de ${plant.nickname}`} className="h-full w-full object-cover" />
+            <img
+              src={photoUrl(cover.id)}
+              alt={`Foto mais recente de ${plant.nickname}`}
+              className="h-full w-full rounded-sm object-cover"
+            />
           ) : (
             <PressedOrchid className="h-40 w-24" />
           )}
         </div>
-        <div className="herb-label px-3 py-2.5">
-          <div className="mb-1.5 flex justify-between border-b border-sepia pb-1 text-[0.9rem]">
+        <div className="border-t border-linha px-5 py-5 sm:border-t-0 sm:border-l">
+          <div className="typed mb-3 flex justify-between gap-2 border-b border-contorno pb-2.5 text-[0.68rem] tracking-[0.06em] uppercase">
             <span>Herbário Orchidiary</span>
             <span>{accession(plant.accessionNumber)}</span>
           </div>
           {plant.taxon && plant.taxon.lineage.length > 1 && (
-            <p className="typed text-[0.78rem]">{ancestorsLabel(plant.taxon.lineage)}</p>
+            <p className="typed text-[0.7rem] leading-relaxed">{ancestorsLabel(plant.taxon.lineage)}</p>
           )}
-          <h1 className="text-[1.6rem] leading-tight">
+          <p className="mt-1 font-serif text-[1.5rem] leading-tight">
             <PlantTaxon plant={plant} />
-          </h1>
-          <p className="text-lg">{plant.nickname}</p>
-          <div className="typed mt-1 text-[0.8rem] leading-relaxed">
+          </p>
+          <ul className="mt-4 grid gap-2 text-[0.88rem]">
             {current && (
-              <p>
+              <DataRow icon="pin">
                 {current.placeName ? `${current.placeName}, ` : ""}
                 {environmentLabel(current.environment)}
-              </p>
+              </DataRow>
             )}
-            {first && <p>Na coleção desde {typedDate(plant.acquiredAt ?? first.validFrom)}</p>}
-            {locations.length > 1 && <p>Já passou por {locations.length} lugares</p>}
-          </div>
+            {first && <DataRow icon="sprout">Na coleção desde {typedDate(plant.acquiredAt ?? first.validFrom)}</DataRow>}
+            {locations.length > 1 && <DataRow icon="arrow-right">Já passou por {locations.length} lugares</DataRow>}
+          </ul>
           {plant.taxon && (
-            <Link to={`/guia/${plant.taxon.id}`} className="inline-flex min-h-11 items-center text-carimbo">
+            <Link to={`/guia/${plant.taxon.id}`} className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[0.9rem] text-orquidea">
               Ver ficha de cultivo
+              <Icon name="arrow-right" className="size-4" />
             </Link>
           )}
         </div>
       </section>
 
-      <section className="mx-4 mt-5" aria-label="Registro térmico">
+      <section className="cartao mt-5 px-4 py-4" aria-label="Registro térmico">
         <TemperatureRegister days={weather.slice(-30)} />
         {current?.environment === "indoor" && (
-          <p className="mt-2 text-[0.95rem] text-pontilhado">
+          <p className="mt-2.5 text-[0.82rem] text-musgo">
             Clima de fora, como referência. Dentro de casa vale o que você medir.
           </p>
         )}
       </section>
 
-      <section className="mx-4 mt-5 space-y-3" aria-label="Registrar">
+      <section className="mt-6 space-y-3" aria-label="Registrar">
         <PhotoCapture
           plantId={plant.id}
           onSaved={({ photo, locationCheck }) => {
@@ -174,10 +211,12 @@ export function PlantDetail() {
         <div className="flex flex-wrap gap-2">
           {QUICK_EVENTS.map((t) => (
             <button key={t} onClick={() => addEvent.mutate(t)} disabled={addEvent.isPending} className={chip}>
+              <Icon name={EVENT_ICON[t] ?? "note"} className="size-4" />
               {EVENT_LABEL[t]}
             </button>
           ))}
           <button onClick={() => setShowReading((v) => !v)} className={chip} aria-expanded={showReading}>
+            <Icon name="thermometer" className="size-4" />
             Temperatura e umidade
           </button>
         </div>
@@ -192,43 +231,49 @@ export function PlantDetail() {
         )}
       </section>
 
-      <section className="mx-4 mt-7" aria-label="Livro de registro">
-        <h2 className="border-b border-sepia pb-1 text-xl font-medium">Livro de registro</h2>
+      <section className="mt-9" aria-label="Livro de registro">
+        <h2 className="border-b border-linha pb-3 text-[1.75rem] tracking-[-0.02em]">Livro de registro</h2>
         {items.length === 0 && (
-          <p className="mt-3">Nenhum registro ainda. Fotografe a planta para abrir o livro dela.</p>
+          <p className="mt-4 rounded-lg bg-salvia-clara/70 px-4 py-4 text-[0.9rem] text-musgo">
+            Nenhum registro ainda. Fotografe a planta para abrir o livro dela.
+          </p>
         )}
         {groups.map((g) => (
           <div key={g.month}>
-            <h3 className="mt-4 mb-1 text-pontilhado italic first-letter:uppercase">{g.month}</h3>
+            <h3 className="mt-6 mb-4 font-serif text-[1.05rem] text-musgo italic first-letter:uppercase">{g.month}</h3>
             <ol>
               {g.items.map((it) => (
                 <li
                   key={`${it.kind}-${it.kind === "photo" ? it.photo.id : it.id}`}
-                  className="flex items-baseline gap-3 border-b border-dotted border-linha py-2"
+                  className="group grid grid-cols-[4.6rem_1.25rem_minmax(0,1fr)] gap-x-2"
                 >
-                  <span className="typed w-[5.6rem] shrink-0 text-[0.78rem]">{typedDate(it.at)}</span>
-                  <div className="min-w-0 flex-1">
+                  <span className="typed pt-1 text-[0.68rem]">{typedDate(it.at)}</span>
+                  <span className="relative flex justify-center pt-0.5 text-folhagem">
+                    <Icon name={itemIcon(it)} className="size-4" />
+                    <span className="absolute top-6 -bottom-1 w-px bg-linha group-last:hidden" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 pb-6 pl-1">
                     {it.kind === "photo" && (
                       <>
-                        <p>Fotografia{it.photo.caption ? `: ${it.photo.caption}` : ""}</p>
-                        <img
-                          src={photoUrl(it.photo.id, "thumb")}
-                          alt=""
-                          loading="lazy"
-                          className="mt-1.5 w-full max-w-[14rem] border border-linha"
-                        />
+                        <p className="font-serif text-[1.1rem]">Fotografia{it.photo.caption ? `: ${it.photo.caption}` : ""}</p>
+                        <div className="fixada mt-3 max-w-[15rem] -rotate-1 border border-linha bg-folha p-2 pb-3 shadow-sm">
+                          <img src={photoUrl(it.photo.id, "thumb")} alt="" loading="lazy" className="w-full" />
+                        </div>
                       </>
                     )}
                     {it.kind === "event" && (
-                      <p>
-                        {EVENT_LABEL[it.type] ?? it.type}
-                        {it.notes && <span className="block text-pontilhado">{it.notes}</span>}
-                      </p>
+                      <div>
+                        <p className="flex flex-wrap items-center gap-2 font-serif text-[1.1rem]">
+                          {EVENT_LABEL[it.type] ?? it.type}
+                          {STAMPED[it.type] && <span className={`selo ${stampTone(it.type)}`}>{STAMPED[it.type]}</span>}
+                        </p>
+                        {it.notes && <p className="mt-1 text-[0.85rem] leading-relaxed text-musgo">{it.notes}</p>}
+                      </div>
                     )}
                     {it.kind === "reading" && (
-                      <p>
+                      <p className="font-serif text-[1.1rem]">
                         Medição:{" "}
-                        <span className="typed text-[0.9rem]">
+                        <span className="typed text-[0.85rem]">
                           {[
                             it.temperature != null ? `${it.temperature} °C` : null,
                             it.humidity != null ? `${it.humidity}%` : null,
@@ -239,7 +284,6 @@ export function PlantDetail() {
                       </p>
                     )}
                   </div>
-                  {it.kind === "event" && STAMPED[it.type] && <span className="stamp shrink-0">{STAMPED[it.type]}</span>}
                 </li>
               ))}
             </ol>
@@ -262,6 +306,15 @@ export function PlantDetail() {
   );
 }
 
+function DataRow({ icon, children }: { icon: IconName; children: ReactNode }) {
+  return (
+    <li className="flex items-start gap-2.5 text-folhagem">
+      <Icon name={icon} className="mt-0.5 size-4 text-musgo" />
+      <span>{children}</span>
+    </li>
+  );
+}
+
 function ReadingForm({ plantId, onSaved }: { plantId: string; onSaved: () => void }) {
   const save = useMutation({
     mutationFn: (body: unknown) => api.post(`/plants/${plantId}/readings`, body),
@@ -274,7 +327,7 @@ function ReadingForm({ plantId, onSaved }: { plantId: string; onSaved: () => voi
     save.mutate({ temperature: num("temperature"), humidity: num("humidity") });
   }
   return (
-    <form onSubmit={onSubmit} className="herb-label space-y-3 p-3">
+    <form onSubmit={onSubmit} className="cartao space-y-3 p-4">
       <div className="grid grid-cols-2 gap-3">
         <Field label="Temperatura (°C)">
           <Input name="temperature" type="number" step="0.1" inputMode="decimal" />

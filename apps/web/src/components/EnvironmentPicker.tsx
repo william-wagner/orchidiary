@@ -8,13 +8,13 @@ const OPTIONS: Array<{ value: Environment; title: string; hint: string }> = [
 export function EnvironmentPicker({ value, onChange }: { value: Environment; onChange: (v: Environment) => void }) {
   return (
     <fieldset className="grid grid-cols-2 gap-2">
-      <legend className="mb-1 font-medium">Onde ela vive</legend>
+      <legend className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">Onde ela vive</legend>
       {OPTIONS.map((o) => {
         const active = value === o.value;
         return (
           <label
             key={o.value}
-            className={`cursor-pointer border p-3 ${active ? "border-sepia bg-etiqueta" : "border-linha"}`}
+            className={`cursor-pointer rounded-lg border p-3 transition-colors ${active ? "border-tinta bg-folha" : "border-linha bg-transparent"}`}
           >
             <input
               type="radio"
@@ -24,14 +24,14 @@ export function EnvironmentPicker({ value, onChange }: { value: Environment; onC
               onChange={() => onChange(o.value)}
               className="sr-only"
             />
-            <span className="flex items-center gap-2 text-lg">
+            <span className="flex items-center gap-2 font-serif text-[1.1rem]">
               <span
-                className={`inline-block size-3 rounded-full border-[1.5px] border-carimbo ${active ? "bg-carimbo" : ""}`}
+                className={`inline-block size-3 rounded-full border-[1.5px] border-tinta ${active ? "bg-tinta" : ""}`}
                 aria-hidden="true"
               />
               {o.title}
             </span>
-            <span className="mt-1 block text-[0.92rem] leading-snug text-pontilhado">{o.hint}</span>
+            <span className="mt-1 block text-[0.8rem] leading-snug text-musgo">{o.hint}</span>
           </label>
         );
       })}

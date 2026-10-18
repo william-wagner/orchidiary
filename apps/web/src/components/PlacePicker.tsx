@@ -116,12 +116,12 @@ export function PlacePicker({
   if (value) {
     return (
       <div>
-        <span className="mb-1 block font-medium">{label}</span>
-        <div className="herb-label flex items-center justify-between gap-3 px-3 py-2">
-          <span className="min-w-0 truncate text-xl leading-tight">{value.name}</span>
+        <span className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">{label}</span>
+        <div className="cartao flex items-center justify-between gap-3 px-3 py-2">
+          <span className="min-w-0 truncate font-serif text-[1.2rem] leading-tight">{value.name}</span>
           <button
             type="button"
-            className="min-h-11 shrink-0 px-2 text-carimbo"
+            className="min-h-11 shrink-0 px-2 text-orquidea"
             onClick={() => {
               onChange(null);
               requestAnimationFrame(() => inputRef.current?.focus());
@@ -145,7 +145,7 @@ export function PlacePicker({
         }
       }}
     >
-      <label htmlFor={id} className="mb-1 block font-medium">
+      <label htmlFor={id} className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">
         {label}
       </label>
       <input
@@ -168,9 +168,9 @@ export function PlacePicker({
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        className="w-full min-h-12 border border-linha bg-etiqueta px-3 font-mono text-[0.95rem] text-tinta placeholder:text-pontilhado/70 focus:border-sepia"
+        className="w-full min-h-12 rounded-md border border-contorno bg-folha px-3 text-[0.95rem] text-tinta placeholder:text-musgo/70 focus:border-tinta focus:outline-none"
       />
-      <span className="mt-1 block text-[0.95rem] text-pontilhado">
+      <span className="mt-1.5 block text-[0.82rem] text-musgo">
         Opcional. Digite para buscar; um nome novo é cadastrado aqui mesmo.
       </span>
       <ErrorText error={error} />
@@ -183,10 +183,10 @@ export function PlacePicker({
           onMouseDown={(e) => {
             if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
           }}
-          className="absolute inset-x-0 top-[4.75rem] z-20 max-h-80 overflow-y-auto border border-sepia bg-papel shadow-md"
+          className="absolute inset-x-0 top-[4.6rem] z-20 max-h-80 overflow-y-auto rounded-lg border border-contorno bg-folha shadow-caderno"
         >
           {rowCount === 0 && (
-            <li className="px-3 py-3 text-pontilhado">Nenhum lugar cadastrado ainda. Digite um nome para criar o primeiro.</li>
+            <li className="px-3 py-3 text-musgo">Nenhum lugar cadastrado ainda. Digite um nome para criar o primeiro.</li>
           )}
           {matches.map((p, i) => (
             <li
@@ -194,7 +194,7 @@ export function PlacePicker({
               role="option"
               aria-selected={i === active}
               onMouseEnter={() => setActive(i)}
-              className={`border-b border-dotted border-linha last:border-b-0 ${i === active ? "bg-etiqueta" : ""}`}
+              className={`border-b border-linha last:border-b-0 ${i === active ? "bg-salvia-clara" : ""}`}
             >
               {editing?.id === p.id ? (
                 // div, não form: o campo já está dentro do formulário da página
@@ -214,17 +214,17 @@ export function PlacePicker({
                         setEditing(null);
                       }
                     }}
-                    className="min-h-11 min-w-0 flex-1 border border-sepia bg-etiqueta px-2 font-mono text-[0.95rem] text-tinta"
+                    className="min-h-11 min-w-0 flex-1 rounded-md border border-contorno bg-folha px-2 text-[0.95rem] text-tinta"
                   />
                   <button
                     type="button"
                     disabled={rename.isPending}
                     onClick={() => saveRename(p)}
-                    className="min-h-11 px-2 text-carimbo disabled:opacity-45"
+                    className="min-h-11 px-2 text-orquidea disabled:opacity-45"
                   >
                     Salvar
                   </button>
-                  <button type="button" onClick={() => setEditing(null)} className="min-h-11 px-1 text-pontilhado">
+                  <button type="button" onClick={() => setEditing(null)} className="min-h-11 px-1 text-musgo">
                     Cancelar
                   </button>
                 </div>
@@ -240,7 +240,7 @@ export function PlacePicker({
                     >
                       Apagar
                     </button>
-                    <button type="button" onClick={() => setRemoving(null)} className="min-h-11 px-2 text-pontilhado">
+                    <button type="button" onClick={() => setRemoving(null)} className="min-h-11 px-2 text-musgo">
                       Manter
                     </button>
                   </span>
@@ -248,7 +248,7 @@ export function PlacePicker({
               ) : (
                 <div className="flex items-center gap-1 pl-3">
                   <button type="button" onClick={() => choose(p)} className="min-h-12 min-w-0 flex-1 py-1.5 text-left">
-                    <span className="block truncate text-lg leading-tight">{p.name}</span>
+                    <span className="block truncate font-serif text-[1.1rem] leading-tight">{p.name}</span>
                     {p.plantCount > 0 && <span className="typed block text-[0.75rem]">{plantsLabel(p.plantCount)} aqui</span>}
                   </button>
                   <button
@@ -259,7 +259,7 @@ export function PlacePicker({
                       setRemoving(null);
                       setEditing({ id: p.id, name: p.name });
                     }}
-                    className="min-h-11 px-2 text-carimbo"
+                    className="min-h-11 px-2 text-orquidea"
                   >
                     Renomear
                   </button>
@@ -272,7 +272,7 @@ export function PlacePicker({
                         setEditing(null);
                         setRemoving(p.id);
                       }}
-                      className="min-h-11 px-2 pr-3 text-pontilhado"
+                      className="min-h-11 px-2 pr-3 text-musgo"
                     >
                       Apagar
                     </button>
@@ -286,13 +286,13 @@ export function PlacePicker({
               role="option"
               aria-selected={active === matches.length}
               onMouseEnter={() => setActive(matches.length)}
-              className={active === matches.length ? "bg-etiqueta" : ""}
+              className={active === matches.length ? "bg-salvia-clara" : ""}
             >
               <button
                 type="button"
                 disabled={create.isPending}
                 onClick={() => create.mutate(typed)}
-                className="min-h-12 w-full px-3 py-1.5 text-left text-carimbo disabled:opacity-45"
+                className="min-h-12 w-full px-3 py-1.5 text-left text-orquidea disabled:opacity-45"
               >
                 Cadastrar “{typed}”
               </button>

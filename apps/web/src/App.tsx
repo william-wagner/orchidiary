@@ -1,4 +1,6 @@
-import { Navigate, NavLink, Outlet, Route, Routes } from "react-router";
+import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from "react-router";
+import { Brand } from "./components/Logo.tsx";
+import { Icon } from "./components/ui.tsx";
 import { useMe } from "./lib/auth.tsx";
 import { Collection } from "./routes/Collection.tsx";
 import { EditPlant } from "./routes/EditPlant.tsx";
@@ -15,7 +17,7 @@ export function App() {
 
   return (
     <Routes>
-      <Route element={<Shell isMaster={me.data.role === "master"} />}>
+      <Route element={<Shell isMaster={me.data.role === "master"} name={me.data.name} />}>
         <Route index element={<Collection />} />
         <Route path="plantas/nova" element={<NewPlant />} />
         <Route path="plantas/:id" element={<PlantDetail />} />
@@ -29,27 +31,46 @@ export function App() {
   );
 }
 
-function Shell({ isMaster }: { isMaster: boolean }) {
+function Shell({ isMaster, name }: { isMaster: boolean; name: string }) {
   const tab = ({ isActive }: { isActive: boolean }) =>
-    `flex min-h-14 flex-1 items-center justify-center text-lg ${
-      isActive ? "text-carimbo underline decoration-1 underline-offset-[5px]" : "text-sepia"
+    `relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[0.72rem] transition-colors ${
+      isActive
+        ? "bg-salvia-clara/80 font-medium text-tinta after:absolute after:-bottom-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-folhagem"
+        : "text-musgo"
     }`;
   return (
-    <div className="mx-auto min-h-dvh max-w-xl pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
-      <Outlet />
+    <div className="mx-auto min-h-dvh max-w-2xl pb-[calc(4.75rem+env(safe-area-inset-bottom))]">
+      <header className="flex h-[4.5rem] items-center justify-between border-b border-linha px-5">
+        <Link to="/" aria-label="Orchidiary, ir para a coleção">
+          <Brand />
+        </Link>
+        <span
+          className="grid size-8 place-items-center rounded-full border border-contorno bg-salvia-clara font-serif text-[0.95rem] text-folhagem"
+          title={name}
+          aria-hidden="true"
+        >
+          {name.trim().charAt(0).toUpperCase() || "·"}
+        </span>
+      </header>
+      <div key={useLocation().pathname} className="pagina">
+        <Outlet />
+      </div>
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 border-t border-sepia bg-papel pb-[env(safe-area-inset-bottom)]"
+        className="fixed inset-x-0 bottom-0 z-10 border-t border-linha bg-papel/95 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur-md"
       >
-        <div className="mx-auto flex max-w-xl">
+        <div className="mx-auto flex max-w-2xl gap-1">
           <NavLink to="/" end className={tab}>
+            <Icon name="collection" className="size-[1.2rem]" />
             Coleção
           </NavLink>
           <NavLink to="/guia" className={tab}>
+            <Icon name="guide" className="size-[1.2rem]" />
             Guia de Cultivo
           </NavLink>
           {isMaster && (
             <NavLink to="/configuracoes" className={tab}>
+              <Icon name="settings" className="size-[1.2rem]" />
               Ajustes
             </NavLink>
           )}

@@ -46,9 +46,9 @@ export function MovePrompt({
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="move-title" className="fixed inset-0 z-20 flex items-end bg-[#1c1a16]/45">
-      <div className="mx-auto w-full max-w-xl space-y-4 border-t border-sepia bg-papel p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-        <h2 id="move-title" className="text-2xl font-medium">
+    <div role="dialog" aria-modal="true" aria-labelledby="move-title" className="fixed inset-0 z-20 flex items-end bg-[#24382a]/40 backdrop-blur-[3px]">
+      <div className="mx-auto w-full max-w-2xl space-y-4 rounded-t-2xl border border-b-0 border-linha bg-folha p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-caderno">
+        <h2 id="move-title" className="text-[1.75rem] tracking-[-0.02em]">
           A planta mudou de lugar?
         </h2>
         <p>
@@ -58,7 +58,7 @@ export function MovePrompt({
 
         {check.canMoveFromPhoto ? (
           <>
-            <p className="text-pontilhado">
+            <p className="text-musgo">
               Se mudou, o novo local vale a partir desta foto. O histórico anterior continua ligado ao local antigo.
             </p>
             <PlacePicker value={place} onChange={setPlace} label="Nome do novo lugar" />
@@ -75,7 +75,7 @@ export function MovePrompt({
           </>
         ) : (
           <>
-            <p className="text-pontilhado">
+            <p className="text-musgo">
               A foto é anterior ao local atual, então ela não pode mudar o local da planta. Ela fica no diário na data em que foi tirada.
             </p>
             <Button onClick={() => onDone(false)} className="w-full">
