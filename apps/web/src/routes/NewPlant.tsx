@@ -53,7 +53,7 @@ export function NewPlant() {
   return (
     <main>
       <PageHeader kicker="Nova entrada no livro de tombo" title="Tombar planta" />
-      <form onSubmit={onSubmit} className="space-y-5 px-4 pt-5">
+      <form onSubmit={onSubmit} className="space-y-5 px-5 pb-8">
         <Field label="Apelido" hint="Como você chama esta planta. Ex.: Walkeriana da vó">
           <Input name="nickname" required maxLength={80} />
         </Field>

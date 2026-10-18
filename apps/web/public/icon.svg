@@ -1,16 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#EEEFE8"/>
-  <g transform="translate(118 64) scale(5.2)" fill="none" stroke="#66713F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M23 68 C22 52 24 40 23 26"/>
-    <path d="M23 60 C12 58 6 50 4 44 C12 46 20 50 23 56"/>
-    <path d="M23 56 C33 52 40 46 42 40 C34 41 27 46 23 52"/>
-    <path d="M23 26 C17 16 15 10 17 4 C21 10 23 18 23 26"/>
-    <path d="M23 26 C29 16 31 10 29 4 C25 10 23 18 23 26"/>
-    <path d="M23 26 C13 24 8 20 6 14 C13 15 19 20 23 26"/>
-    <path d="M23 26 C33 24 38 20 40 14 C33 15 27 20 23 26"/>
-    <path d="M19 30 C21 36 25 36 27 30"/>
+  <!-- O Relógio: mostrador verde, ponteiro-folha cor de orquídea que ultrapassa o mostrador, broto em sálvia -->
+  <defs>
+    <clipPath id="mostrador"><circle cx="50" cy="52" r="30"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#E6ECDB"/>
+  <g transform="translate(256 256) scale(4.55) translate(-50 -51)">
+    <circle cx="50" cy="52" r="35.5" fill="none" stroke="#8AA286" stroke-width="0.9"/>
+    <circle cx="50" cy="52" r="30" fill="#2C5A45"/>
+    <path transform="translate(50 52) rotate(-55)" d="M0 0C13 -11 31 -11 44 0C31 11 13 11 0 0Z" fill="#C27F9C"/>
+    <g clip-path="url(#mostrador)"><path transform="translate(50 52) rotate(-55)" d="M0 0C13 -11 31 -11 44 0C31 11 13 11 0 0Z" fill="#F7F5EC"/></g>
+    <path transform="translate(50 52) rotate(200)" d="M0 0C7 -7 15 -7 22 0C15 7 7 7 0 0Z" fill="#BCD3A0"/>
+    <circle cx="50" cy="52" r="2.6" fill="#E6ECDB"/>
   </g>
-  <rect x="150" y="300" width="120" height="22" fill="#E5DDC7" transform="rotate(-9 210 311)"/>
-  <circle cx="392" cy="392" r="66" fill="none" stroke="#5B3F8C" stroke-width="10"/>
-  <circle cx="392" cy="392" r="48" fill="none" stroke="#5B3F8C" stroke-width="4"/>
 </svg>

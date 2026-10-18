@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
+import { Button, ErrorText, Field, Input, PageHeader, Select, Toggle } from "../components/ui.tsx";
 import { api } from "../lib/api.ts";
 import { useLogout } from "../lib/auth.tsx";
 import { typedDate } from "../lib/format.ts";
@@ -46,7 +46,7 @@ export function Settings() {
   return (
     <main className="pb-10">
       <PageHeader kicker="Somente o usuário master" title="Ajustes" />
-      <div className="space-y-6 px-4 pt-5">
+      <div className="space-y-5 px-5">
       {driveStatus === "ok" && <Notice tone="ok">Google Drive conectado. O backup semanal está ativo.</Notice>}
       {driveStatus === "erro" && <Notice tone="error">Não foi possível conectar o Google Drive. Confira o Client ID, o Client Secret e o endereço de retorno.</Notice>}
       {data.data && !data.data.secretsKeyConfigured && (
@@ -70,8 +70,8 @@ export function Settings() {
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="herb-label space-y-4 p-4">
-      <h2 className="border-b border-sepia pb-1 text-xl font-medium">{title}</h2>
+    <section className="cartao space-y-4 p-5">
+      <h2 className="text-[1.55rem] tracking-[-0.02em]">{title}</h2>
       {children}
     </section>
   );
@@ -79,7 +79,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 
 function Notice({ tone, children }: { tone: "ok" | "error"; children: ReactNode }) {
   return (
-    <p className={`border-[1.5px] p-3 ${tone === "ok" ? "border-prensada text-sepia" : "border-alerta text-alerta"}`}>{children}</p>
+    <p className={`rounded-lg border px-4 py-3 text-[0.9rem] ${tone === "ok" ? "border-contorno bg-salvia-clara text-tinta" : "border-alerta text-alerta"}`}>{children}</p>
   );
 }
 
@@ -100,7 +100,7 @@ function TelegramCard({ view }: { view: Integrations["telegram"] }) {
 
   return (
     <Card title="Alertas no Telegram">
-      <p className="text-pontilhado">
+      <p className="text-[0.88rem] leading-relaxed text-musgo">
         Crie um bot com o @BotFather, envie uma mensagem para ele e use o seu chat id (o @userinfobot mostra o número).
       </p>
       <form onSubmit={onSubmit} className="space-y-3">
@@ -110,10 +110,9 @@ function TelegramCard({ view }: { view: Integrations["telegram"] }) {
         <Field label="Chat id">
           <Input name="chatId" defaultValue={view.config?.chatId ?? ""} required inputMode="numeric" />
         </Field>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="size-5" />
+        <Toggle checked={enabled} onChange={setEnabled}>
           Enviar alertas
-        </label>
+        </Toggle>
         <ErrorText error={save.error ?? test.error} />
         {test.isSuccess && <p className="typed text-[0.85rem]">Mensagem de teste enviada.</p>}
         <div className="grid grid-cols-2 gap-2">
@@ -158,8 +157,8 @@ function DriveCard({ view }: { view: Integrations["googleDrive"] }) {
 
   return (
     <Card title="Backup no Google Drive">
-      <details className="text-pontilhado">
-        <summary className="cursor-pointer text-sepia underline underline-offset-4">Como criar o acesso no Google</summary>
+      <details className="text-[0.88rem] text-musgo">
+        <summary className="cursor-pointer text-orquidea underline underline-offset-4">Como criar o acesso no Google</summary>
         <ol className="mt-2 list-decimal space-y-1 pl-5">
           <li>No Google Cloud Console, crie um projeto e ative a Google Drive API.</li>
           <li>Em "Tela de consentimento OAuth", escolha Externo e adicione seu e-mail como usuário de teste.</li>
@@ -207,10 +206,9 @@ function DriveCard({ view }: { view: Integrations["googleDrive"] }) {
             </Select>
           </Field>
         </div>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="size-5" />
+        <Toggle checked={enabled} onChange={setEnabled}>
           Backup semanal ativo
-        </label>
+        </Toggle>
         <ErrorText error={save.error ?? connect.error} />
         <Button type="submit" disabled={save.isPending} className="w-full">
           Salvar
@@ -218,7 +216,7 @@ function DriveCard({ view }: { view: Integrations["googleDrive"] }) {
       </form>
 
       {connected ? (
-        <div className="flex items-center justify-between gap-3 border border-dotted border-sepia p-3">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-linha bg-salvia-clara/60 p-3 text-[0.9rem]">
           <p>
             Conectado{cfg?.connectedEmail ? ` como ${cfg.connectedEmail}` : ""}. Os arquivos ficam na pasta Orchidiary.
           </p>
@@ -257,7 +255,7 @@ function IllustrationCard({ view }: { view: Integrations["openai"] }) {
 
   return (
     <Card title="Pranchas botânicas">
-      <p className="text-pontilhado">
+      <p className="text-[0.88rem] leading-relaxed text-musgo">
         A foto de capa de cada planta é redesenhada como uma prancha de livro de botânica pela API de imagens da OpenAI. A
         foto original continua guardada no diário. Cada prancha é cobrada pela OpenAI e só é feita quando a capa muda.
       </p>
@@ -279,10 +277,9 @@ function IllustrationCard({ view }: { view: Integrations["openai"] }) {
             </Select>
           </Field>
         </div>
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="size-5" />
+        <Toggle checked={enabled} onChange={setEnabled}>
           Desenhar as capas
-        </label>
+        </Toggle>
         <ErrorText error={save.error} />
         {save.isSuccess && enabled && (
           <p className="typed text-[0.85rem]">Salvo. As capas sem prancha entram na fila, uma de cada vez.</p>
@@ -308,15 +305,15 @@ function BackupsCard({ connected }: { connected: boolean }) {
         {run.isPending ? "Fazendo backup…" : "Fazer backup agora"}
       </Button>
       {run.data && !run.data.ok && <p className="text-alerta">{run.data.error}</p>}
-      {runs.data?.length === 0 && <p className="text-pontilhado">Nenhum backup feito ainda.</p>}
-      <ul className="divide-y divide-dotted divide-linha">
+      {runs.data?.length === 0 && <p className="text-musgo">Nenhum backup feito ainda.</p>}
+      <ul className="divide-y divide-linha">
         {runs.data?.map((r) => (
           <li key={r.id} className="flex justify-between gap-3 py-2">
             <span>
               <span className="typed text-[0.85rem]">{typedDate(r.startedAt)}</span>
               {r.trigger === "manual" ? ", manual" : ""}
             </span>
-            <span className={r.status === "error" ? "stamp border-alerta text-alerta" : r.status === "success" ? "stamp" : "typed text-[0.8rem]"} title={r.error ?? undefined}>
+            <span className={r.status === "error" ? "selo border-alerta text-alerta" : r.status === "success" ? "selo" : "typed text-[0.8rem]"} title={r.error ?? undefined}>
               {r.status === "success"
                 ? `OK${r.sizeBytes ? `, ${Math.max(1, Math.round(r.sizeBytes / 1024))} KB` : ""}`
                 : r.status === "error"
