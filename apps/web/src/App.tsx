@@ -17,7 +17,7 @@ export function App() {
 
   return (
     <Routes>
-      <Route element={<Shell isMaster={me.data.role === "master"} name={me.data.name} />}>
+      <Route element={<Shell isMaster={me.data.role === "master"} />}>
         <Route index element={<Collection />} />
         <Route path="plantas/nova" element={<NewPlant />} />
         <Route path="plantas/:id" element={<PlantDetail />} />
@@ -31,7 +31,7 @@ export function App() {
   );
 }
 
-function Shell({ isMaster, name }: { isMaster: boolean; name: string }) {
+function Shell({ isMaster }: { isMaster: boolean }) {
   const tab = ({ isActive }: { isActive: boolean }) =>
     `relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[0.72rem] transition-colors ${
       isActive
@@ -44,13 +44,6 @@ function Shell({ isMaster, name }: { isMaster: boolean; name: string }) {
         <Link to="/" aria-label="Orchidiary, ir para a coleção">
           <Brand />
         </Link>
-        <span
-          className="grid size-8 place-items-center rounded-full border border-contorno bg-salvia-clara font-serif text-[0.95rem] text-folhagem"
-          title={name}
-          aria-hidden="true"
-        >
-          {name.trim().charAt(0).toUpperCase() || "·"}
-        </span>
       </header>
       <div key={useLocation().pathname} className="pagina">
         <Outlet />
