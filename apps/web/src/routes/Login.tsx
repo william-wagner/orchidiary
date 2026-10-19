@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { Brand, ClockMark } from "../components/Logo.tsx";
+import { ClockMark } from "../components/Logo.tsx";
 import { Button, ErrorText, Field, Icon, Input } from "../components/ui.tsx";
 import { api, type User } from "../lib/api.ts";
 
@@ -12,8 +12,7 @@ import { api, type User } from "../lib/api.ts";
  * canto. Quando uma for definida, as outras e o seletor saem daqui.
  */
 const LAYOUTS = [
-  { id: "duas", label: "Duas linhas" },
-  { id: "uma", label: "Uma linha" },
+  { id: "simples", label: "Simples" },
   { id: "cartao", label: "Em cartão" },
   { id: "invertida", label: "Invertida" },
 ] as const;
@@ -29,7 +28,7 @@ function readLayout(): LayoutId {
   } catch {
     // sem armazenamento: usa o padrão
   }
-  return "duas";
+  return "simples";
 }
 
 export function Login() {
@@ -93,31 +92,17 @@ function Journey({ className = "" }: { className?: string }) {
 }
 
 /**
- * Texto e formulário de um lado, a ilustração do outro. No celular, a
- * ilustração fica entre a etiqueta e o formulário, e o céu da própria
- * animação sobe por trás da etiqueta (ver .ceu em styles.css).
+ * A etiqueta de herbário e o formulário de um lado, a ilustração do outro.
+ * No celular, a ilustração fica entre a etiqueta e o formulário, e o céu da
+ * própria animação sobe por trás da etiqueta (ver .ceu em styles.css).
  *
- * - duas: título em duas linhas, grande.
- * - uma: título numa linha só.
- * - cartao: título numa linha, formulário num cartão de caderno.
- * - invertida: título numa linha, ilustração à esquerda.
+ * - simples: etiqueta e formulário soltos sobre o papel.
+ * - cartao: formulário num cartão de caderno, com a etiqueta presa no topo dele.
+ * - invertida: como a simples, com a ilustração à esquerda.
  */
 function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
-  const umaLinha = variant !== "duas";
   const emCartao = variant === "cartao";
   const invertida = variant === "invertida";
-
-  const title = umaLinha ? (
-    <h1 className="mt-5 max-md:hidden text-[clamp(1.6rem,8.2vw,2.4rem)] leading-[1.04] tracking-[-0.04em] whitespace-nowrap md:mt-0 md:text-[clamp(1.9rem,min(2.9vw,6dvh),3.2rem)]">
-      Cultive <em className="text-folhagem">o seu melhor.</em>
-    </h1>
-  ) : (
-    <h1 className="mt-5 max-md:hidden text-[clamp(2.4rem,7.5dvh,3.3rem)] leading-[1.02] tracking-[-0.045em] md:mt-0 md:text-[clamp(3.4rem,min(5.4vw,9dvh),5rem)]">
-      Cultive
-      <br />
-      <em className="text-folhagem">o seu melhor.</em>
-    </h1>
-  );
 
   return (
     <main
@@ -130,22 +115,15 @@ function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
         aria-hidden="true"
       />
 
-      <section className="relative z-[1] flex shrink-0 flex-col px-6 pt-6 md:h-dvh md:px-[clamp(2rem,5vw,5rem)] md:pt-10 md:pb-10">
-        <SpecimenLabel className="md:hidden" />
-        <div className="max-md:hidden">
-          <Brand size="lg" animated />
-        </div>
-        <div className="md:flex md:flex-1 md:flex-col md:justify-center">
+      <section className="relative z-[1] flex shrink-0 flex-col px-6 pt-6 md:h-dvh md:items-center md:justify-center md:px-[clamp(2rem,5vw,5rem)] md:py-10">
+        <div className="md:w-full md:max-w-[26rem]">
+          <SpecimenLabel className={emCartao ? "md:relative md:z-[1] md:mx-3 md:-mb-6" : ""} />
           {emCartao ? (
-            <div className="md:rounded-[10px] md:border md:border-linha md:bg-folha md:p-[clamp(1.5rem,3vw,2.5rem)] md:shadow-caderno">
-              {title}
-              <LoginForm {...form} className="mt-8 hidden md:block" />
+            <div className="hidden rounded-[10px] border border-linha bg-folha px-[clamp(1.5rem,3vw,2.5rem)] pt-12 pb-[clamp(1.5rem,3vw,2.5rem)] shadow-caderno md:block">
+              <LoginForm {...form} />
             </div>
           ) : (
-            <>
-              {title}
-              <LoginForm {...form} className="mt-8 hidden max-w-sm md:block" />
-            </>
+            <LoginForm {...form} className="mt-10 hidden md:block" />
           )}
         </div>
       </section>
@@ -163,24 +141,27 @@ function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
 }
 
 /**
- * Celular: a etiqueta de herbário com a marca e o slogan, presa um pouco
- * torta sobre a ilustração. O slogan vem como uma nota escrita à mão.
+ * A etiqueta de herbário com a marca e o slogan, presa um pouco torta. O
+ * slogan vem como uma nota escrita à mão.
  */
 function SpecimenLabel({ className = "" }: { className?: string }) {
   return (
     <div className={`-rotate-[1.2deg] border border-musgo/45 bg-folha p-[5px] shadow-caderno ${className}`}>
       <div className="flex flex-col gap-2.5 border border-linha px-4 pt-3.5 pb-3">
         <div className="flex items-center gap-3.5">
-          <ClockMark className="size-12 shrink-0" animated />
+          <ClockMark className="size-12 shrink-0 md:size-[clamp(2.75rem,4vw,3.5rem)]" animated />
           <div className="min-w-0">
-            <p className="eyebrow">Herbário pessoal · Nº 001</p>
-            <p className="font-serif text-[2.2rem] leading-none tracking-[-0.02em]">Orchidiary</p>
+            {/* no tablet a coluna é estreita: a etiqueta fica só com o essencial */}
+            <p className="eyebrow whitespace-nowrap">
+              Herbário pessoal<span className="md:max-lg:hidden"> · Nº 001</span>
+            </p>
+            <p className="font-serif text-[2.2rem] leading-none tracking-[-0.02em] md:text-[clamp(1.7rem,2.7vw,2.6rem)]">Orchidiary</p>
           </div>
         </div>
-        <div className="flex items-baseline gap-2.5 border-t border-dashed border-contorno pt-2">
-          <span className="eyebrow">Nota:</span>
+        <div className="flex flex-wrap items-baseline gap-x-2.5 border-t border-dashed border-contorno pt-2">
+          <span className="eyebrow md:max-lg:hidden">Nota:</span>
           {/* ! vence a regra base de h1 em styles.css, que fica fora das camadas */}
-          <h1 className="font-mao! text-[1.6rem] leading-[1.2]! text-tinta">Cultive o seu melhor.</h1>
+          <h1 className="font-mao! text-[1.6rem] leading-[1.2]! text-tinta md:text-[clamp(1.3rem,1.95vw,1.9rem)]">Cultive o seu melhor.</h1>
         </div>
       </div>
     </div>
