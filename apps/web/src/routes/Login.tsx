@@ -43,13 +43,18 @@ export function Login() {
         <LoginForm onSubmit={onSubmit} busy={busy} error={error} className="mt-10 hidden max-w-sm md:block" />
       </section>
 
-      {/* Ilustração: a jornada de quem cultiva */}
-      <div className="relative -mt-4 min-h-[21rem] flex-1 md:mt-0 md:min-h-dvh">
-        <img
-          src="/jornada.webp"
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover object-[50%_58%] [mask-image:linear-gradient(transparent,#000_22%)] md:[mask-image:none]"
-        />
+      {/* Ilustração: a jornada de quem cultiva, atravessando as quatro estações em 20 quadros (2 s, em loop).
+          O quadro 01 parado fica por baixo enquanto a animação carrega, e é o que aparece para quem pede menos movimento. */}
+      <div className="relative -mt-4 min-h-[21rem] flex-1 bg-[url(/jornada.webp)] bg-cover bg-[50%_58%] [mask-image:linear-gradient(transparent,#000_22%)] md:mt-0 md:min-h-dvh md:[mask-image:none]">
+        <picture>
+          <source media="(prefers-reduced-motion: reduce)" srcSet="/jornada.webp" />
+          <img
+            src="/jornada-ciclo.webp"
+            alt=""
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover object-[50%_58%]"
+          />
+        </picture>
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-salvia md:hidden" aria-hidden="true" />
       </div>
 

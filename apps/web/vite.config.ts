@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "jornada.webp"],
+      includeAssets: ["icon.svg", "jornada.webp", "jornada-ciclo.webp"],
       manifest: {
         name: "Orchidiary",
         short_name: "Orchidiary",
@@ -26,6 +26,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // a animação da página inicial tem ~2,7 MB; o padrão do Workbox (2 MB) a deixaria fora do cache
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // A API nunca é cacheada pelo service worker
         navigateFallbackDenylist: [/^\/api\//],
       },
