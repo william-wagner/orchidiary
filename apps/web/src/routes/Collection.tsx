@@ -1,14 +1,40 @@
+import { joinsBatch } from "@orchidiary/shared";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { OriginFlag } from "../components/OriginFlag.tsx";
+import { PlaceBatchSheet } from "../components/PlaceBatchSheet.tsx";
 import { PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
 import { Icon, PageHeader, PressedOrchid } from "../components/ui.tsx";
 import { api, type CollectionPlant, illustrationUrl, photoUrl } from "../lib/api.ts";
 import { accession, environmentLabel } from "../lib/format.ts";
 
+/** Lugares onde há plantas agora, com quantas estão em cada um, em ordem alfabética. */
+function placesOf(plants: CollectionPlant[]) {
+  const by = new Map<string, { id: string; name: string; count: number }>();
+  for (const p of plants) {
+    const loc = p.currentLocation;
+    if (!loc?.placeId || !loc.placeName) continue;
+    const place = by.get(loc.placeId) ?? { id: loc.placeId, name: loc.placeName, count: 0 };
+    place.count++;
+    by.set(loc.placeId, place);
+  }
+  return [...by.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+}
+
+const placeChip = "inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.86rem] whitespace-nowrap transition-colors";
+
 export function Collection() {
   const plants = useQuery({ queryKey: ["plants"], queryFn: () => api.get<CollectionPlant[]>("/plants") });
   const count = plants.data?.length ?? 0;
+  // O lugar escolhido fica na URL: voltar de uma planta mantém o filtro
+  const [params, setParams] = useSearchParams();
+  const [batchOpen, setBatchOpen] = useState(false);
+  const places = useMemo(() => placesOf(plants.data ?? []), [plants.data]);
+  const place = places.find((p) => p.id === params.get("local")) ?? null;
+  const shown = place ? (plants.data ?? []).filter((p) => p.currentLocation?.placeId === place.id) : plants.data;
+  const batchable = shown?.filter((p) => joinsBatch(p.status)).length ?? 0;
+  const choose = (id: string | null) => setParams(id ? { local: id } : {}, { replace: true });
 
   return (
     <main className="pb-8">
@@ -35,8 +61,55 @@ export function Collection() {
         </div>
       )}
 
+      {places.length > 0 && (
+        <div className="mb-5 px-5">
+          <div role="toolbar" aria-label="Filtrar por lugar" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+            <button
+              aria-pressed={!place}
+              onClick={() => choose(null)}
+              className={`${placeChip} ${!place ? "border-tinta bg-tinta text-folha" : "border-contorno bg-folha text-folhagem active:bg-salvia-clara"}`}
+            >
+              Todas <span className={`typed text-[0.72rem] ${!place ? "text-salvia" : ""}`}>{count}</span>
+            </button>
+            {places.map((pl) => {
+              const on = pl.id === place?.id;
+              return (
+                <button
+                  key={pl.id}
+                  aria-pressed={on}
+                  onClick={() => choose(pl.id)}
+                  className={`${placeChip} ${on ? "border-tinta bg-tinta text-folha" : "border-contorno bg-folha text-folhagem active:bg-salvia-clara"}`}
+                >
+                  <Icon name="pin" className="size-3.5" />
+                  {pl.name} <span className={`typed text-[0.72rem] ${on ? "text-salvia" : ""}`}>{pl.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {place && (
+            <div className="mt-3.5 flex items-center justify-between gap-3 rounded-lg border border-linha bg-salvia-clara py-3 pr-3 pl-4">
+              <div className="min-w-0">
+                <p className="truncate font-serif text-[1.1rem] leading-tight">{place.name}</p>
+                <p className="typed mt-0.5 text-[0.72rem]">
+                  {place.count} {place.count === 1 ? "planta" : "plantas"} aqui agora
+                </p>
+              </div>
+              <button
+                onClick={() => setBatchOpen(true)}
+                disabled={batchable === 0}
+                className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-tinta px-4 text-[0.88rem] font-medium text-folha active:bg-tinta-viva disabled:opacity-45"
+              >
+                <Icon name="layers" className="size-4" />
+                Registrar no local
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <ul className="grid grid-cols-2 gap-x-3 gap-y-4 px-5 sm:grid-cols-3">
-        {plants.data?.map((p) => (
+        {shown?.map((p) => (
           <li key={p.id} className="min-w-0">
             <Link
               to={`/plantas/${p.id}`}
@@ -82,6 +155,8 @@ export function Collection() {
           </li>
         ))}
       </ul>
+
+      {batchOpen && place && shown && <PlaceBatchSheet place={place} plants={shown} onClose={() => setBatchOpen(false)} />}
     </main>
   );
 }

@@ -78,6 +78,13 @@
       "when": 1792152845157,
       "tag": "0010_taxon_origin_countries",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792450658899,
+      "tag": "0011_place_batches",
+      "breakpoints": true
     }
   ]
 }

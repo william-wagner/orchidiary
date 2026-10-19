@@ -19,7 +19,7 @@ export const BACKUP_PREFIX = "orchidiary-backup-";
  * o hash de senha também não sai do servidor.
  */
 export async function exportDiary() {
-  const [users, taxa, places, plants, plantLocations, photos, events, weatherDaily, manualReadings] = await Promise.all([
+  const [users, taxa, places, plants, plantLocations, photos, events, weatherDaily, manualReadings, placeBatchExclusions] = await Promise.all([
     db.select({ id: schema.users.id, email: schema.users.email, name: schema.users.name, role: schema.users.role, createdAt: schema.users.createdAt }).from(schema.users),
     db.select().from(schema.taxa),
     db.select().from(schema.places),
@@ -29,12 +29,14 @@ export async function exportDiary() {
     db.select().from(schema.events),
     db.select().from(schema.weatherDaily),
     db.select().from(schema.manualReadings),
+    db.select().from(schema.placeBatchExclusions),
   ]);
   return {
     format: "orchidiary-backup",
-    version: 3,
+    // 4: events.batch_id, manual_readings.place_id e place_batch_exclusions
+    version: 4,
     exportedAt: new Date().toISOString(),
-    tables: { users, taxa, places, plants, plantLocations, photos, events, weatherDaily, manualReadings },
+    tables: { users, taxa, places, plants, plantLocations, photos, events, weatherDaily, manualReadings, placeBatchExclusions },
   };
 }
 

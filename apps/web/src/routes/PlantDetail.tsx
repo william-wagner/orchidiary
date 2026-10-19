@@ -1,14 +1,25 @@
-import { formatLocality } from "@orchidiary/shared";
+import { formatLocality, joinsBatch } from "@orchidiary/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
 import { OriginFlag } from "../components/OriginFlag.tsx";
+import { type BatchAction, PlaceBatchSheet } from "../components/PlaceBatchSheet.tsx";
 import { ancestorsLabel, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
 import { TemperatureRegister } from "../components/TemperatureRegister.tsx";
+import { useToast } from "../components/Toast.tsx";
 import { BackLink, Button, ErrorText, Field, Icon, type IconName, Input, PressedOrchid } from "../components/ui.tsx";
-import { api, illustrationUrl, type LocationCheck, type Photo, photoUrl, type Timeline } from "../lib/api.ts";
+import {
+  api,
+  type CollectionPlant,
+  illustrationUrl,
+  type LocationCheck,
+  type Photo,
+  photoUrl,
+  type PlantLocation,
+  type Timeline,
+} from "../lib/api.ts";
 import { accession, coords, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
 
 const EVENT_LABEL: Record<string, string> = {
@@ -38,10 +49,28 @@ const STAMPED: Record<string, string> = {
 
 const QUICK_EVENTS = ["watering", "fertilizing", "bloom_start", "new_growth"] as const;
 
+/** Depois destes, o toast oferece o mesmo registro para as outras plantas do lugar */
+const BATCH_SHORTCUT: Partial<Record<string, BatchAction>> = { watering: "watering", fertilizing: "fertilizing" };
+
 type Item =
   | { kind: "photo"; at: string; photo: Photo }
-  | { kind: "event"; at: string; id: string; type: string; notes: string | null }
-  | { kind: "reading"; at: string; id: string; temperature: number | null; humidity: number | null };
+  | {
+      kind: "event";
+      at: string;
+      id: string;
+      type: string;
+      notes: string | null;
+      /** Registro em lote: tamanho e o lugar onde a planta estava na data */
+      batch: { size: number; placeName: string | null } | null;
+    }
+  | { kind: "reading"; at: string; id: string; temperature: number | null; humidity: number | null; placeName: string | null };
+
+/** Lugar onde a planta estava num instante (o período cobre [validFrom, validTo)). */
+function placeNameAt(locations: PlantLocation[], at: string) {
+  const t = Date.parse(at);
+  const loc = locations.find((l) => Date.parse(l.validFrom) <= t && (l.validTo === null || t < Date.parse(l.validTo)));
+  return loc?.placeName ?? null;
+}
 
 const chip =
   "inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-linha bg-folha px-3 text-[0.85rem] text-folhagem active:bg-salvia-clara disabled:opacity-45";
@@ -87,16 +116,34 @@ export function PlantDetail() {
     // enquanto a prancha da capa está sendo desenhada, confere de tempos em tempos
     refetchInterval: (q) => (coverPhoto(q.state.data)?.illustrationStatus === "pending" ? 15_000 : false),
   });
+  // a coleção (já em cache) diz quem mais está no mesmo lugar, para o atalho do lote
+  const collection = useQuery({ queryKey: ["plants"], queryFn: () => api.get<CollectionPlant[]>("/plants") });
+  const toast = useToast();
   const [pendingMove, setPendingMove] = useState<{ check: LocationCheck; takenAt: string } | null>(null);
   const [showReading, setShowReading] = useState(false);
+  const [batch, setBatch] = useState<{ place: { id: string; name: string }; action: BatchAction } | null>(null);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["timeline", id] });
     qc.invalidateQueries({ queryKey: ["plants"] });
   };
 
+  const current = timeline.data?.locations.find((l) => l.validTo === null);
+  const neighbors = (collection.data ?? []).filter((p) => current?.placeId && p.currentLocation?.placeId === current.placeId);
+
   const addEvent = useMutation({
     mutationFn: (type: string) => api.post(`/plants/${id}/events`, { type }),
-    onSuccess: refresh,
+    onSuccess: (_, type) => {
+      refresh();
+      const action = BATCH_SHORTCUT[type];
+      const others = neighbors.filter((p) => p.id !== id && joinsBatch(p.status)).length;
+      if (!action || !current?.placeId || !current.placeName || others === 0) return;
+      const place = { id: current.placeId, name: current.placeName };
+      toast({
+        message: `${EVENT_LABEL[type]} registrada. Fazer o mesmo ${others === 1 ? "na outra planta" : `nas outras ${others} plantas`} de ${place.name}?`,
+        duration: 9000,
+        actions: [{ label: "Ver lote", run: () => setBatch({ place, action }) }],
+      });
+    },
   });
 
   const items = useMemo<Item[]>(() => {
@@ -104,9 +151,25 @@ export function PlantDetail() {
     if (!t) return [];
     return [
       ...t.photos.map((p): Item => ({ kind: "photo", at: p.takenAt, photo: p })),
-      ...t.events.map((e): Item => ({ kind: "event", at: e.occurredAt, id: e.id, type: e.type, notes: e.notes })),
+      ...t.events.map(
+        (e): Item => ({
+          kind: "event",
+          at: e.occurredAt,
+          id: e.id,
+          type: e.type,
+          notes: e.notes,
+          batch: e.batchId ? { size: e.batchSize ?? 1, placeName: placeNameAt(t.locations, e.occurredAt) } : null,
+        }),
+      ),
       ...t.readings.map(
-        (r): Item => ({ kind: "reading", at: r.measuredAt, id: r.id, temperature: r.temperature, humidity: r.humidity }),
+        (r): Item => ({
+          kind: "reading",
+          at: r.measuredAt,
+          id: r.id,
+          temperature: r.temperature,
+          humidity: r.humidity,
+          placeName: r.placeId ? (r.placeName ?? "lugar sem nome") : null,
+        }),
       ),
     ].sort((a, b) => b.at.localeCompare(a.at));
   }, [timeline.data]);
@@ -125,7 +188,6 @@ export function PlantDetail() {
 
   if (!timeline.data) return <p className="typed p-6">Abrindo a exsicata…</p>;
   const { plant, locations, weather } = timeline.data;
-  const current = locations.find((l) => l.validTo === null);
   const first = locations[0];
   const cover = coverPhoto(timeline.data);
   const plate = cover?.illustrationStatus === "ready" && cover.illustrationUpdatedAt ? cover.illustrationUpdatedAt : null;
@@ -278,20 +340,37 @@ export function PlantDetail() {
                           {STAMPED[it.type] && <span className={`selo ${stampTone(it.type)}`}>{STAMPED[it.type]}</span>}
                         </p>
                         {it.notes && <p className="mt-1 text-[0.85rem] leading-relaxed text-musgo">{it.notes}</p>}
+                        {it.batch && (
+                          <p className="typed mt-1 flex items-center gap-1.5 text-[0.7rem]">
+                            <Icon name="layers" className="size-3.5" />
+                            {it.batch.size > 1
+                              ? `com outras ${it.batch.size - 1 === 1 ? "planta" : `${it.batch.size - 1} plantas`}`
+                              : "registro em lote"}
+                            {it.batch.placeName ? ` · ${it.batch.placeName}` : ""}
+                          </p>
+                        )}
                       </div>
                     )}
                     {it.kind === "reading" && (
-                      <p className="font-serif text-[1.1rem]">
-                        Medição:{" "}
-                        <span className="typed text-[0.85rem]">
-                          {[
-                            it.temperature != null ? `${it.temperature} °C` : null,
-                            it.humidity != null ? `${it.humidity}%` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(", ")}
-                        </span>
-                      </p>
+                      <div>
+                        <p className="font-serif text-[1.1rem]">
+                          Medição:{" "}
+                          <span className="typed text-[0.85rem]">
+                            {[
+                              it.temperature != null ? `${it.temperature} °C` : null,
+                              it.humidity != null ? `${it.humidity}%` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </span>
+                        </p>
+                        {it.placeName && (
+                          <p className="typed mt-1 flex items-center gap-1.5 text-[0.7rem]">
+                            <Icon name="pin" className="size-3.5" />
+                            medição do local · {it.placeName}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </li>
@@ -310,6 +389,15 @@ export function PlantDetail() {
             setPendingMove(null);
             refresh();
           }}
+        />
+      )}
+
+      {batch && (
+        <PlaceBatchSheet
+          place={batch.place}
+          plants={neighbors}
+          initialAction={batch.action}
+          onClose={() => setBatch(null)}
         />
       )}
     </main>

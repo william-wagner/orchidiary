@@ -2,10 +2,11 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { placeInputSchema } from "@orchidiary/shared";
+import { BATCH_EVENT_TYPES, manualReadingSchema, placeBatchSchema, placeInputSchema } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { type AppEnv, requireUser } from "../auth/session.ts";
 import { zValidator } from "../lib/validate.ts";
+import { batchContext, createBatch, createPlaceReading, deletePlaceReading, undoBatch } from "../services/batches.ts";
 import { isForeignKeyViolation, isUniqueViolation } from "../services/places.ts";
 
 const { places, plantLocations } = schema;
@@ -13,6 +14,23 @@ const { places, plantLocations } = schema;
 const notFound = () => new HTTPException(404, { message: "Lugar não encontrado." });
 const idParam = (id: string) => {
   if (!z.string().uuid().safeParse(id).success) throw notFound();
+  return id;
+};
+
+/** Id do lugar da URL, conferindo que é do usuário. */
+async function ownedPlace(rawId: string, userId: string) {
+  const id = idParam(rawId);
+  const [place] = await db
+    .select({ id: places.id })
+    .from(places)
+    .where(and(eq(places.id, id), eq(places.userId, userId)))
+    .limit(1);
+  if (!place) throw notFound();
+  return id;
+}
+
+const uuidParam = (id: string, message: string) => {
+  if (!z.string().uuid().safeParse(id).success) throw new HTTPException(404, { message });
   return id;
 };
 
@@ -94,5 +112,45 @@ export const placeRoutes = new Hono<AppEnv>()
       if (isForeignKeyViolation(e)) throw inUse;
       throw e;
     }
+    return c.body(null, 204);
+  })
+
+  // ─── Registro em lote: a mesma ação para as plantas que estão no lugar ─────
+  // Eventos recentes da ação (para achar duplicados) e as exclusões lembradas do último lote
+  .get("/:id/batch-context", zValidator("query", z.object({ type: z.enum(BATCH_EVENT_TYPES) })), async (c) => {
+    const userId = c.get("user").id;
+    const id = await ownedPlace(c.req.param("id"), userId);
+    return c.json(await batchContext(id, userId, c.req.valid("query").type));
+  })
+
+  .post("/:id/batches", zValidator("json", placeBatchSchema), async (c) => {
+    const userId = c.get("user").id;
+    const id = await ownedPlace(c.req.param("id"), userId);
+    return c.json(await createBatch(id, userId, c.req.valid("json")), 201);
+  })
+
+  // "Desfazer" do toast: apaga os eventos do lote e devolve as exclusões lembradas de antes
+  .post(
+    "/:id/batches/:batchId/undo",
+    zValidator("json", z.object({ restoreExcluded: z.array(z.string().uuid()).max(500).default([]) })),
+    async (c) => {
+      const userId = c.get("user").id;
+      const id = await ownedPlace(c.req.param("id"), userId);
+      const batchId = uuidParam(c.req.param("batchId"), "Esse lote não existe mais.");
+      return c.json(await undoBatch(id, userId, batchId, c.req.valid("json").restoreExcluded));
+    },
+  )
+
+  // Medição do lugar: vale para as plantas que estão lá, sem copiar para cada uma
+  .post("/:id/readings", zValidator("json", manualReadingSchema), async (c) => {
+    const userId = c.get("user").id;
+    const id = await ownedPlace(c.req.param("id"), userId);
+    return c.json(await createPlaceReading(id, userId, c.req.valid("json")), 201);
+  })
+
+  .delete("/:id/readings/:readingId", async (c) => {
+    const userId = c.get("user").id;
+    const id = await ownedPlace(c.req.param("id"), userId);
+    await deletePlaceReading(id, userId, uuidParam(c.req.param("readingId"), "Essa medição não existe mais."));
     return c.body(null, 204);
   });

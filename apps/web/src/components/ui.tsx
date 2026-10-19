@@ -211,6 +211,26 @@ const ICONS = {
       <path d="M9 11h6M9 15h6" />
     </>
   ),
+  shield: (
+    <>
+      <path d="M12 3.5 19 6v5.5c0 4.3-3 7.6-7 9-4-1.4-7-4.7-7-9V6Z" />
+      <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  /** Registro em lote (várias plantas de uma vez) */
+  layers: (
+    <>
+      <path d="m12 4 8.5 4.5L12 13 3.5 8.5Z" />
+      <path d="m3.5 12.5 8.5 4.5 8.5-4.5" />
+    </>
+  ),
+  history: (
+    <>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v3.2h3.2" />
+      <path d="M12 8v4.3l2.8 1.7" />
+    </>
+  ),
+  close: <path d="M6 6l12 12M18 6 6 18" />,
 } as const;
 
 export type IconName = keyof typeof ICONS;
