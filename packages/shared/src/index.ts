@@ -9,3 +9,4 @@ export * from "./taxonomy.ts";
 export * from "./origin.ts";
 export * from "./locality.ts";
 export * from "./weatherPlan.ts";
+export * from "./batch.ts";

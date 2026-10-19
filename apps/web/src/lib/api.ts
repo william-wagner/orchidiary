@@ -145,6 +145,9 @@ export interface DiaryEvent {
   occurredAt: string;
   notes: string | null;
   data: Record<string, unknown>;
+  /** Registro em lote por local: id do lote e quantas plantas ele teve */
+  batchId: string | null;
+  batchSize: number | null;
 }
 
 export interface Reading {
@@ -153,6 +156,22 @@ export interface Reading {
   temperature: number | null;
   humidity: number | null;
   notes: string | null;
+  /** Medição do lugar (em lote), que vale para quem estava lá; null quando é da própria planta */
+  placeId: string | null;
+  placeName: string | null;
+}
+
+/** O que a folha de lote precisa para a seleção inicial */
+export interface BatchContext {
+  recent: Array<{ plantId: string; occurredAt: string }>;
+  remembered: string[];
+}
+
+export interface BatchCreated {
+  batchId: string;
+  count: number;
+  /** Exclusões lembradas antes deste lote, para o "Desfazer" */
+  previousExcluded: string[];
 }
 
 export interface WeatherDay {

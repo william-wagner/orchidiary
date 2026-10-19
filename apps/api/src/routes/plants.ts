@@ -8,6 +8,7 @@ import {
   manualReadingSchema,
   photoMetaSchema,
   plantCreateSchema,
+  placeReadingsForPlant,
   plantUpdateSchema,
   RetroactiveMoveError,
 } from "@orchidiary/shared";
@@ -271,5 +272,41 @@ export const plantRoutes = new Hono<AppEnv>()
         : Promise.resolve([]),
     ]);
 
-    return c.json({ plant: await withTaxon(plant), locations, photos: photoRows, events: eventRows, readings: readingRows, weather: weatherRows });
+    // Lotes: quantas plantas cada um teve ("com outras N"); o lugar sai do período da planta na data
+    const batchIds = [...new Set(eventRows.map((e) => e.batchId).filter((id): id is string => !!id))];
+    const batchSizes = batchIds.length
+      ? await db
+          .select({ batchId: events.batchId, size: sql<number>`count(*)::int` })
+          .from(events)
+          .where(inArray(events.batchId, batchIds))
+          .groupBy(events.batchId)
+      : [];
+    const sizeOf = new Map(batchSizes.map((b) => [b.batchId, b.size]));
+
+    // Medições dos lugares por onde a planta passou, só as feitas enquanto ela estava lá
+    const placeIds = [...new Set(locations.map((l) => l.placeId).filter((id): id is string => !!id))];
+    const placeReadingRows = placeIds.length
+      ? await db
+          .select()
+          .from(manualReadings)
+          .where(and(inArray(manualReadings.placeId, placeIds), ...between(manualReadings.measuredAt)))
+          .orderBy(desc(manualReadings.measuredAt))
+      : [];
+    const placeNameOfId = new Map(locations.map((l) => [l.placeId, l.placeName]));
+    const fromPlaces = placeReadingsForPlant(
+      placeReadingRows.filter((r): r is typeof r & { placeId: string } => r.placeId !== null),
+      locations,
+    ).map((r) => ({ ...r, placeName: placeNameOfId.get(r.placeId) ?? null }));
+    const readings = [...readingRows.map((r) => ({ ...r, placeName: null })), ...fromPlaces].sort(
+      (a, b) => b.measuredAt.getTime() - a.measuredAt.getTime(),
+    );
+
+    return c.json({
+      plant: await withTaxon(plant),
+      locations,
+      photos: photoRows,
+      events: eventRows.map((e) => ({ ...e, batchSize: e.batchId ? (sizeOf.get(e.batchId) ?? 1) : null })),
+      readings,
+      weather: weatherRows,
+    });
   });

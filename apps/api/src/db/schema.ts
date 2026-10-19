@@ -10,6 +10,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -270,9 +271,30 @@ export const events = pgTable(
     notes: text("notes"),
     data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
     photoId: uuid("photo_id").references(() => photos.id, { onDelete: "set null" }),
+    /** Registro em lote por local: os eventos do mesmo lote compartilham o id (desfazer, "com outras N") */
+    batchId: uuid("batch_id"),
     createdAt: createdAt(),
   },
-  (t) => [index("events_plant_idx").on(t.plantId, t.occurredAt)],
+  (t) => [index("events_plant_idx").on(t.plantId, t.occurredAt), index("events_batch_idx").on(t.batchId)],
+);
+
+/**
+ * Plantas que ficaram de fora, por escolha, do último lote de cada local e ação.
+ * Voltam desmarcadas no próximo lote; cada lote novo substitui a lista.
+ */
+export const placeBatchExclusions = pgTable(
+  "place_batch_exclusions",
+  {
+    placeId: uuid("place_id")
+      .notNull()
+      .references(() => places.id, { onDelete: "cascade" }),
+    type: eventType("type").notNull(),
+    plantId: uuid("plant_id")
+      .notNull()
+      .references(() => plants.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.placeId, t.type, t.plantId] })],
 );
 
 /** Clima externo diário (Open-Meteo), ligado ao PERÍODO de local — por isso nunca muda retroativamente. */
@@ -305,14 +327,17 @@ export const weatherDaily = pgTable(
   (t) => [uniqueIndex("weather_daily_location_date_idx").on(t.locationId, t.date)],
 );
 
-/** Termo-higrômetro do usuário — o microclima real (indoor ou outdoor). */
+/**
+ * Termo-higrômetro do usuário — o microclima real (indoor ou outdoor).
+ * Ou é de uma planta, ou é de um lugar (medição em lote). A do lugar vale para as
+ * plantas cujo período ali cobre a data da medição: nada é copiado nem retroativo.
+ */
 export const manualReadings = pgTable(
   "manual_readings",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    plantId: uuid("plant_id")
-      .notNull()
-      .references(() => plants.id, { onDelete: "cascade" }),
+    plantId: uuid("plant_id").references(() => plants.id, { onDelete: "cascade" }),
+    placeId: uuid("place_id").references(() => places.id, { onDelete: "restrict" }),
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -322,7 +347,11 @@ export const manualReadings = pgTable(
     notes: text("notes"),
     createdAt: createdAt(),
   },
-  (t) => [index("manual_readings_plant_idx").on(t.plantId, t.measuredAt)],
+  (t) => [
+    index("manual_readings_plant_idx").on(t.plantId, t.measuredAt),
+    index("manual_readings_place_idx").on(t.placeId, t.measuredAt),
+    check("manual_readings_owner_ck", sql`num_nonnulls(${t.plantId}, ${t.placeId}) = 1`),
+  ],
 );
 
 // ─── Integrações e operação (somente master) ─────────────────────────────────

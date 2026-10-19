@@ -9,6 +9,7 @@ import {
   TAXON_ORIGIN_KINDS,
   TAXON_RANKS,
 } from "./enums.ts";
+import { BATCH_EVENT_TYPES } from "./batch.ts";
 import { originError } from "./origin.ts";
 
 export const latLngSchema = z.object({
@@ -75,6 +76,20 @@ export const eventCreateSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
 });
 
+/**
+ * Registro em lote num lugar: um evento para cada planta marcada, todos com o mesmo batch_id.
+ * `rememberExcluded`: plantas desmarcadas por escolha, que voltam desmarcadas no próximo lote.
+ */
+export const placeBatchSchema = z
+  .object({
+    type: z.enum(BATCH_EVENT_TYPES),
+    occurredAt: z.coerce.date().optional(),
+    notes: z.string().trim().max(4000).nullish(),
+    plantIds: z.array(z.string().uuid()).min(1, "Marque ao menos uma planta.").max(500),
+    rememberExcluded: z.array(z.string().uuid()).max(500).default([]),
+  })
+  .refine((b) => b.type !== "note" || !!b.notes, { path: ["notes"], message: "Escreva a nota." });
+
 /** Metadados enviados junto com a foto (multipart). */
 export const photoMetaSchema = z.object({
   source: z.enum(PHOTO_SOURCES),
@@ -121,6 +136,7 @@ export type LocationInput = z.infer<typeof locationInputSchema>;
 export type PlaceInput = z.infer<typeof placeInputSchema>;
 export type ManualReadingInput = z.infer<typeof manualReadingSchema>;
 export type EventCreate = z.infer<typeof eventCreateSchema>;
+export type PlaceBatchInput = z.input<typeof placeBatchSchema>;
 export type PhotoMeta = z.infer<typeof photoMetaSchema>;
 export type TelegramSettings = z.infer<typeof telegramSettingsSchema>;
 export type GoogleDriveSettings = z.infer<typeof googleDriveSettingsSchema>;
