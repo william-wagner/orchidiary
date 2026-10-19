@@ -19,8 +19,13 @@ export function useMe() {
 export function useLogout() {
   const qc = useQueryClient();
   return async () => {
-    await api.post("/auth/logout");
-    qc.clear();
-    qc.setQueryData(["me"], null);
+    try {
+      await api.post("/auth/logout");
+    } finally {
+      // Não usar qc.clear(): ele descarta a query ["me"] que o App observa e a tela não volta ao login.
+      // Atualiza "me" no lugar e remove só o resto do cache (dados do usuário que saiu).
+      qc.setQueryData(["me"], null);
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
+    }
   };
 }

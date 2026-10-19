@@ -13,6 +13,18 @@
       href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,400;0,500;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Aplica o tema escolhido antes da primeira pintura, para não piscar (lógica em src/lib/theme.ts)
+      try {
+        var t = localStorage.getItem("orchidiary:theme");
+        if (t === "light" || t === "dark") {
+          document.documentElement.setAttribute("data-theme", t);
+          document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
+            m.content = t === "dark" ? "#161D19" : "#F7F5EC";
+          });
+        }
+      } catch (e) {}
+    </script>
     <title>Orchidiary</title>
   </head>
   <body>
