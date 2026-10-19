@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { Brand } from "../components/Logo.tsx";
+import { Brand, ClockMark } from "../components/Logo.tsx";
 import { Button, ErrorText, Field, Icon, Input } from "../components/ui.tsx";
 import { api, type User } from "../lib/api.ts";
 
@@ -94,7 +94,8 @@ function Journey({ className = "" }: { className?: string }) {
 
 /**
  * Texto e formulário de um lado, a ilustração do outro. No celular, a
- * ilustração fica entre o título e o formulário.
+ * ilustração fica entre a etiqueta e o formulário, e o céu da própria
+ * animação sobe por trás da etiqueta (ver .ceu em styles.css).
  *
  * - duas: título em duas linhas, grande.
  * - uma: título numa linha só.
@@ -107,11 +108,11 @@ function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
   const invertida = variant === "invertida";
 
   const title = umaLinha ? (
-    <h1 className="mt-5 text-[clamp(1.6rem,8.2vw,2.4rem)] leading-[1.04] tracking-[-0.04em] whitespace-nowrap md:mt-0 md:text-[clamp(1.9rem,min(2.9vw,6dvh),3.2rem)]">
+    <h1 className="mt-5 max-md:hidden text-[clamp(1.6rem,8.2vw,2.4rem)] leading-[1.04] tracking-[-0.04em] whitespace-nowrap md:mt-0 md:text-[clamp(1.9rem,min(2.9vw,6dvh),3.2rem)]">
       Cultive <em className="text-folhagem">o seu melhor.</em>
     </h1>
   ) : (
-    <h1 className="mt-5 text-[clamp(2.4rem,7.5dvh,3.3rem)] leading-[1.02] tracking-[-0.045em] md:mt-0 md:text-[clamp(3.4rem,min(5.4vw,9dvh),5rem)]">
+    <h1 className="mt-5 max-md:hidden text-[clamp(2.4rem,7.5dvh,3.3rem)] leading-[1.02] tracking-[-0.045em] md:mt-0 md:text-[clamp(3.4rem,min(5.4vw,9dvh),5rem)]">
       Cultive
       <br />
       <em className="text-folhagem">o seu melhor.</em>
@@ -120,12 +121,20 @@ function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
 
   return (
     <main
-      className={`flex h-dvh flex-col overflow-hidden bg-salvia md:grid ${
+      className={`relative flex h-dvh flex-col overflow-hidden bg-salvia md:grid ${
         invertida ? "md:grid-cols-[minmax(0,56%)_minmax(0,44%)]" : "md:grid-cols-[minmax(0,44%)_minmax(0,56%)]"
       } ${emCartao ? "md:bg-salvia-clara" : "md:bg-papel"}`}
     >
+      <div
+        className="ceu pointer-events-none absolute inset-x-0 top-0 h-[62dvh] [mask-image:linear-gradient(#000_50%,transparent)] md:hidden"
+        aria-hidden="true"
+      />
+
       <section className="relative z-[1] flex shrink-0 flex-col px-6 pt-6 md:h-dvh md:px-[clamp(2rem,5vw,5rem)] md:pt-10 md:pb-10">
-        <Brand size="lg" animated />
+        <SpecimenLabel className="md:hidden" />
+        <div className="max-md:hidden">
+          <Brand size="lg" animated />
+        </div>
         <div className="md:flex md:flex-1 md:flex-col md:justify-center">
           {emCartao ? (
             <div className="md:rounded-[10px] md:border md:border-linha md:bg-folha md:p-[clamp(1.5rem,3vw,2.5rem)] md:shadow-caderno">
@@ -141,8 +150,8 @@ function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
         </div>
       </section>
 
-      <div className={`relative -mt-4 min-h-0 flex-1 md:mt-0 md:h-dvh ${invertida ? "md:-order-1" : ""}`}>
-        <Journey className="absolute inset-0 [mask-image:linear-gradient(transparent,#000_22%)] md:[mask-image:none]" />
+      <div className={`relative -mt-7 min-h-0 flex-1 md:mt-0 md:h-dvh ${invertida ? "md:-order-1" : ""}`}>
+        <Journey className="absolute inset-0 [mask-image:linear-gradient(transparent,#000_14%)] md:[mask-image:none]" />
         <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-transparent to-salvia md:hidden" aria-hidden="true" />
       </div>
 
@@ -153,13 +162,38 @@ function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
   );
 }
 
-/** Seletor provisório das diagramações. */
+/**
+ * Celular: a etiqueta de herbário com a marca e o slogan, presa um pouco
+ * torta sobre a ilustração. O slogan vem como uma nota escrita à mão.
+ */
+function SpecimenLabel({ className = "" }: { className?: string }) {
+  return (
+    <div className={`-rotate-[1.2deg] border border-musgo/45 bg-folha p-[5px] shadow-caderno ${className}`}>
+      <div className="flex flex-col gap-2.5 border border-linha px-4 pt-3.5 pb-3">
+        <div className="flex items-center gap-3.5">
+          <ClockMark className="size-12 shrink-0" animated />
+          <div className="min-w-0">
+            <p className="eyebrow">Herbário pessoal · Nº 001</p>
+            <p className="font-serif text-[2.2rem] leading-none tracking-[-0.02em]">Orchidiary</p>
+          </div>
+        </div>
+        <div className="flex items-baseline gap-2.5 border-t border-dashed border-contorno pt-2">
+          <span className="eyebrow">Nota:</span>
+          {/* ! vence a regra base de h1 em styles.css, que fica fora das camadas */}
+          <h1 className="font-mao! text-[1.6rem] leading-[1.2]! text-tinta">Cultive o seu melhor.</h1>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Seletor provisório das diagramações (só muda algo a partir do tablet). */
 function LayoutPicker({ value, onChange }: { value: LayoutId; onChange: (id: LayoutId) => void }) {
   return (
     <div
       role="group"
       aria-label="Versão da tela de entrada"
-      className="fixed top-3 right-3 z-30 flex items-center gap-0.5 rounded-full border border-linha bg-folha/90 p-1 shadow-caderno backdrop-blur-sm"
+      className="fixed top-3 right-3 z-30 hidden items-center gap-0.5 rounded-full border border-linha bg-folha/90 p-1 shadow-caderno backdrop-blur-sm md:flex"
     >
       {LAYOUTS.map((l, i) => (
         <button

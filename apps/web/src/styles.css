@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Letra manuscrita do slogan do login (La Belle Aurore, OFL), servida daqui
+   e recortada só com os caracteres de "Cultive o seu melhor." (2 KB). */
+@font-face {
+  font-family: "La Belle Aurore";
+  src: url("/fonts/la-belle-aurore-slogan.woff2") format("woff2");
+  font-display: swap;
+}
+
 /*
  * Identidade "Caderno botânico": um caderno de campo em papel claro,
  * tinta verde-floresta, títulos em serifa, anotações em letra de máquina
@@ -112,6 +120,8 @@
   --font-serif: "Gelasio", Georgia, "Times New Roman", serif;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  /* anotação à mão: só no slogan do login */
+  --font-mao: "La Belle Aurore", "Segoe Script", cursive;
   --shadow-caderno: var(--sombra);
 }
 
@@ -311,6 +321,29 @@ h3 {
   to {
     transform: rotate(0deg);
   }
+}
+
+/* Céu do login no celular: a faixa de cima da própria animação da jornada,
+   esticada e desfocada, para o fundo atrás da etiqueta mudar de cor junto
+   com as estações. Usa o mesmo arquivo da ilustração, então os quadros andam
+   juntos. No tema escuro fica de fora (o fundo segue o caderno escuro). */
+.ceu {
+  background: url("/jornada-ciclo.webp") 50% 0 / 100% 2500% no-repeat;
+  filter: blur(18px);
+  transform: scale(1.15);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ceu {
+    background-image: url("/jornada.webp");
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ceu {
+    display: none;
+  }
+}
+:root[data-theme="dark"] .ceu {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

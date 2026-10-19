@@ -13,7 +13,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "jornada.webp", "jornada-ciclo.webp"],
+      includeAssets: ["icon.svg", "jornada.webp", "jornada-ciclo.webp", "fonts/la-belle-aurore-slogan.woff2"],
       manifest: {
         name: "Orchidiary",
         short_name: "Orchidiary",
