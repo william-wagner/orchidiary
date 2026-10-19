@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { Brand } from "../components/Logo.tsx";
+import { ClockMark } from "../components/Logo.tsx";
 import { Button, ErrorText, Field, Icon, Input } from "../components/ui.tsx";
 import { api, type User } from "../lib/api.ts";
 
@@ -54,24 +54,27 @@ function Journey({ className = "" }: { className?: string }) {
 }
 
 /**
- * Título (numa linha só) e formulário de um lado, a ilustração do outro. No
- * celular, a ilustração fica entre o título e o formulário.
+ * A etiqueta de herbário e o formulário de um lado, a ilustração do outro.
+ * No celular, a ilustração fica entre a etiqueta e o formulário, e o céu da
+ * própria animação sobe por trás da etiqueta (ver .ceu em styles.css).
  */
 function Lateral(form: FormProps) {
   return (
     <main className="fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-salvia md:grid md:grid-cols-[minmax(0,44%)_minmax(0,56%)] md:bg-papel">
-      <section className="relative z-[1] flex shrink-0 flex-col px-6 pt-6 md:h-full md:px-[clamp(2rem,5vw,5rem)] md:pt-10 md:pb-10">
-        <Brand size="lg" animated />
-        <div className="md:flex md:flex-1 md:flex-col md:justify-center">
-          <h1 className="mt-5 text-[clamp(1.6rem,8.2vw,2.4rem)] leading-[1.04] tracking-[-0.04em] whitespace-nowrap md:mt-0 md:text-[clamp(1.9rem,min(2.9vw,6dvh),3.2rem)]">
-            Cultive <em className="text-folhagem">o seu melhor.</em>
-          </h1>
-          <LoginForm {...form} className="mt-8 hidden max-w-sm md:block" />
+      <div
+        className="ceu pointer-events-none absolute inset-x-0 top-0 h-[62dvh] [mask-image:linear-gradient(#000_50%,transparent)] md:hidden"
+        aria-hidden="true"
+      />
+
+      <section className="relative z-[1] flex shrink-0 flex-col px-6 pt-6 md:h-full md:items-center md:justify-center md:px-[clamp(2rem,5vw,5rem)] md:py-10">
+        <div className="md:w-full md:max-w-[26rem]">
+          <SpecimenLabel />
+          <LoginForm {...form} className="mt-10 hidden md:block" />
         </div>
       </section>
 
-      <div className="relative -mt-4 min-h-0 flex-1 md:mt-0 md:h-full">
-        <Journey className="absolute inset-0 [mask-image:linear-gradient(transparent,#000_22%)] md:[mask-image:none]" />
+      <div className="relative -mt-7 min-h-0 flex-1 md:mt-0 md:h-full">
+        <Journey className="absolute inset-0 [mask-image:linear-gradient(transparent,#000_14%)] md:[mask-image:none]" />
         <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-transparent to-salvia md:hidden" aria-hidden="true" />
       </div>
 
@@ -79,6 +82,34 @@ function Lateral(form: FormProps) {
         <LoginForm {...form} compact />
       </section>
     </main>
+  );
+}
+
+/**
+ * A etiqueta de herbário com a marca e o slogan, presa um pouco torta. O
+ * slogan vem como uma nota escrita à mão.
+ */
+function SpecimenLabel({ className = "" }: { className?: string }) {
+  return (
+    <div className={`-rotate-[1.2deg] border border-musgo/45 bg-folha p-[5px] shadow-caderno ${className}`}>
+      <div className="flex flex-col gap-2.5 border border-linha px-4 pt-3.5 pb-3">
+        <div className="flex items-center gap-3.5">
+          <ClockMark className="size-12 shrink-0 md:size-[clamp(2.75rem,4vw,3.5rem)]" animated />
+          <div className="min-w-0">
+            {/* no tablet a coluna é estreita: a etiqueta fica só com o essencial */}
+            <p className="eyebrow whitespace-nowrap">
+              Herbário pessoal<span className="md:max-lg:hidden"> · Nº 001</span>
+            </p>
+            <p className="font-serif text-[2.2rem] leading-none tracking-[-0.02em] md:text-[clamp(1.7rem,2.7vw,2.6rem)]">Orchidiary</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-2.5 border-t border-dashed border-contorno pt-2">
+          <span className="eyebrow md:max-lg:hidden">Nota:</span>
+          {/* ! vence a regra base de h1 em styles.css, que fica fora das camadas */}
+          <h1 className="font-mao! text-[1.6rem] leading-[1.2]! text-tinta md:text-[clamp(1.3rem,1.95vw,1.9rem)]">Cultive o seu melhor.</h1>
+        </div>
+      </div>
+    </div>
   );
 }
 
