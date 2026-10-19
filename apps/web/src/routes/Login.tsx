@@ -34,7 +34,7 @@ export function Login() {
 type FormProps = { onSubmit: (e: FormEvent<HTMLFormElement>) => void; busy: boolean; error: unknown };
 
 /**
- * A jornada de quem cultiva, atravessando as quatro estações em 20 quadros (2 s, em loop).
+ * A jornada de quem cultiva, atravessando as quatro estações em 20 quadros (2,5 s, em loop).
  * O quadro 01 parado fica por baixo enquanto a animação carrega, e é o que aparece para quem pede menos movimento.
  */
 function Journey({ className = "" }: { className?: string }) {
