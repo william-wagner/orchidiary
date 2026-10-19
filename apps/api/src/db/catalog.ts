@@ -705,7 +705,7 @@ export const catalog: CatalogNode[] = [
               cornu-cervi mannii parishii lobbii appendiculata tetraspis hieroglyphica fasciata mariae pantherina
               philippinensis celebensis deliciosa wilsonii braceana honghenensis hainanensis venosa modesta
               amboinensis fimbriata javanica sumatrana speciosa corningiana micholitzii lindenii inscriptiosinensis
-              floresensis stobartiana lowii finleyi kunstleri pallens reichenbachiana viridis`),
+              floresensis stobartiana lowii finleyi kunstleri pallens reichenbachiana viridis bastianii`),
             ...grexes("Sogo Yukidian", "Golden Peoker"),
           ] }),
           genus("Papilionanthe", { care: { ...care.vandeae, light: "Sol pleno: as folhas roliças pedem muita luz." }, children: [

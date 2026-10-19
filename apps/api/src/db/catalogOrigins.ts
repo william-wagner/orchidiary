@@ -338,7 +338,7 @@ const byCountry: Partial<Record<OriginCountryCode, Record<string, string>>> = {
   PH: {
     Paphiopedilum: "philippinense haynaldianum",
     Phalaenopsis: `aphrodite schilleriana stuartiana sanderiana equestris lueddemanniana hieroglyphica fasciata mariae
-      philippinensis micholitzii lindenii pallens reichenbachiana deliciosa`,
+      philippinensis micholitzii lindenii pallens reichenbachiana deliciosa bastianii`,
     Vanda: "sanderiana luzonica merrillii roeblingiana javierae ustii lamellata",
     Aerides: "lawrenceae quinquevulnera",
     Renanthera: "monachica storiei philippinensis",
