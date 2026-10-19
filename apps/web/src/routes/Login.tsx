@@ -7,45 +7,11 @@ import { api, type User } from "../lib/api.ts";
 /**
  * Página inicial: a abertura do caderno. Cabe sempre na altura da tela, sem
  * barra de rolagem.
- *
- * Provisório: variações da diagramação lateral para escolher no seletor do
- * canto. Quando uma for definida, as outras e o seletor saem daqui.
  */
-const LAYOUTS = [
-  { id: "duas", label: "Duas linhas" },
-  { id: "uma", label: "Uma linha" },
-  { id: "cartao", label: "Em cartão" },
-  { id: "invertida", label: "Invertida" },
-] as const;
-type LayoutId = (typeof LAYOUTS)[number]["id"];
-
-const STORAGE_KEY = "orchidiary:login-layout";
-
-function readLayout(): LayoutId {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const found = LAYOUTS.find((l) => l.id === saved);
-    if (found) return found.id;
-  } catch {
-    // sem armazenamento: usa o padrão
-  }
-  return "duas";
-}
-
 export function Login() {
   const qc = useQueryClient();
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
-  const [layout, setLayout] = useState<LayoutId>(readLayout);
-
-  function chooseLayout(id: LayoutId) {
-    setLayout(id);
-    try {
-      localStorage.setItem(STORAGE_KEY, id);
-    } catch {
-      // sem armazenamento: vale só nesta visita
-    }
-  }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -62,12 +28,7 @@ export function Login() {
     }
   }
 
-  return (
-    <>
-      <Lateral variant={layout} onSubmit={onSubmit} busy={busy} error={error} />
-      <LayoutPicker value={layout} onChange={chooseLayout} />
-    </>
-  );
+  return <Lateral onSubmit={onSubmit} busy={busy} error={error} />;
 }
 
 type FormProps = { onSubmit: (e: FormEvent<HTMLFormElement>) => void; busy: boolean; error: unknown };
@@ -93,55 +54,23 @@ function Journey({ className = "" }: { className?: string }) {
 }
 
 /**
- * Texto e formulário de um lado, a ilustração do outro. No celular, a
- * ilustração fica entre o título e o formulário.
- *
- * - duas: título em duas linhas, grande.
- * - uma: título numa linha só.
- * - cartao: título numa linha, formulário num cartão de caderno.
- * - invertida: título numa linha, ilustração à esquerda.
+ * Título (numa linha só) e formulário de um lado, a ilustração do outro. No
+ * celular, a ilustração fica entre o título e o formulário.
  */
-function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
-  const umaLinha = variant !== "duas";
-  const emCartao = variant === "cartao";
-  const invertida = variant === "invertida";
-
-  const title = umaLinha ? (
-    <h1 className="mt-5 text-[clamp(1.6rem,8.2vw,2.4rem)] leading-[1.04] tracking-[-0.04em] whitespace-nowrap md:mt-0 md:text-[clamp(1.9rem,min(2.9vw,6dvh),3.2rem)]">
-      Cultive <em className="text-folhagem">o seu melhor.</em>
-    </h1>
-  ) : (
-    <h1 className="mt-5 text-[clamp(2.4rem,7.5dvh,3.3rem)] leading-[1.02] tracking-[-0.045em] md:mt-0 md:text-[clamp(3.4rem,min(5.4vw,9dvh),5rem)]">
-      Cultive
-      <br />
-      <em className="text-folhagem">o seu melhor.</em>
-    </h1>
-  );
-
+function Lateral(form: FormProps) {
   return (
-    <main
-      className={`flex h-dvh flex-col overflow-hidden bg-salvia md:grid ${
-        invertida ? "md:grid-cols-[minmax(0,56%)_minmax(0,44%)]" : "md:grid-cols-[minmax(0,44%)_minmax(0,56%)]"
-      } ${emCartao ? "md:bg-salvia-clara" : "md:bg-papel"}`}
-    >
-      <section className="relative z-[1] flex shrink-0 flex-col px-6 pt-6 md:h-dvh md:px-[clamp(2rem,5vw,5rem)] md:pt-10 md:pb-10">
+    <main className="fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-salvia md:grid md:grid-cols-[minmax(0,44%)_minmax(0,56%)] md:bg-papel">
+      <section className="relative z-[1] flex shrink-0 flex-col px-6 pt-6 md:h-full md:px-[clamp(2rem,5vw,5rem)] md:pt-10 md:pb-10">
         <Brand size="lg" animated />
         <div className="md:flex md:flex-1 md:flex-col md:justify-center">
-          {emCartao ? (
-            <div className="md:rounded-[10px] md:border md:border-linha md:bg-folha md:p-[clamp(1.5rem,3vw,2.5rem)] md:shadow-caderno">
-              {title}
-              <LoginForm {...form} className="mt-8 hidden md:block" />
-            </div>
-          ) : (
-            <>
-              {title}
-              <LoginForm {...form} className="mt-8 hidden max-w-sm md:block" />
-            </>
-          )}
+          <h1 className="mt-5 text-[clamp(1.6rem,8.2vw,2.4rem)] leading-[1.04] tracking-[-0.04em] whitespace-nowrap md:mt-0 md:text-[clamp(1.9rem,min(2.9vw,6dvh),3.2rem)]">
+            Cultive <em className="text-folhagem">o seu melhor.</em>
+          </h1>
+          <LoginForm {...form} className="mt-8 hidden max-w-sm md:block" />
         </div>
       </section>
 
-      <div className={`relative -mt-4 min-h-0 flex-1 md:mt-0 md:h-dvh ${invertida ? "md:-order-1" : ""}`}>
+      <div className="relative -mt-4 min-h-0 flex-1 md:mt-0 md:h-full">
         <Journey className="absolute inset-0 [mask-image:linear-gradient(transparent,#000_22%)] md:[mask-image:none]" />
         <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-transparent to-salvia md:hidden" aria-hidden="true" />
       </div>
@@ -150,32 +79,6 @@ function Lateral({ variant, ...form }: FormProps & { variant: LayoutId }) {
         <LoginForm {...form} compact />
       </section>
     </main>
-  );
-}
-
-/** Seletor provisório das diagramações. */
-function LayoutPicker({ value, onChange }: { value: LayoutId; onChange: (id: LayoutId) => void }) {
-  return (
-    <div
-      role="group"
-      aria-label="Versão da tela de entrada"
-      className="fixed top-3 right-3 z-30 flex items-center gap-0.5 rounded-full border border-linha bg-folha/90 p-1 shadow-caderno backdrop-blur-sm"
-    >
-      {LAYOUTS.map((l, i) => (
-        <button
-          key={l.id}
-          type="button"
-          onClick={() => onChange(l.id)}
-          aria-pressed={value === l.id}
-          className={`typed flex h-8 items-center gap-1.5 rounded-full px-3 text-[0.74rem] transition-colors ${
-            value === l.id ? "bg-tinta !text-folha" : "hover:bg-salvia-clara"
-          }`}
-        >
-          {i + 1}
-          <span className="hidden sm:inline">{l.label}</span>
-        </button>
-      ))}
-    </div>
   );
 }
 
