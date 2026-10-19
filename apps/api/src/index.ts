@@ -5,6 +5,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
+import { secureHeaders } from "hono/secure-headers";
 import { env, isProd } from "./env.ts";
 import { startScheduler } from "./jobs/scheduler.ts";
 import { flushLogs, logger } from "./logger.ts";
@@ -31,6 +32,8 @@ export type Api = typeof api;
 
 const app = new Hono<RequestEnv>();
 app.use(requestLogger);
+// HSTS só em produção, onde há HTTPS na frente
+app.use(secureHeaders({ strictTransportSecurity: isProd ? "max-age=31536000; includeSubDomains" : false }));
 app.use("/api/*", cors({ origin: env.WEB_ORIGIN, credentials: true, exposeHeaders: ["X-Request-Id"] }));
 app.route("/api", api);
 

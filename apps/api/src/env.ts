@@ -12,6 +12,8 @@ const schema = z.object({
   SECRETS_KEY: z.string().optional(),
   LOCATION_MISMATCH_METERS: z.coerce.number().positive().default(300),
   NODE_ENV: z.string().default("development"),
+  /** true quando a API fica atrás de um proxy (Caddy): o IP do visitante vem do X-Forwarded-For */
+  TRUST_PROXY: z.stringbool().default(false),
   /** Nível mínimo dos logs (a auditoria é gravada em info; não use nível acima de warn) */
   LOG_LEVEL: z.enum(["debug", "info", "warn"]).default("info"),
   /** Pasta dos arquivos de log (um por dia) */
