@@ -2,7 +2,7 @@
 
 ## Prioridades
 
-- [ ] Aplicar ações por local (rega, adubação etc.) de uma vez para todas as plantas daquele local
+- [x] Aplicar ações por local (rega, adubação etc.) de uma vez para todas as plantas daquele local
   - UI decidida (protótipo: https://claude.ai/artifact/VfMz5Wjuzmf3NAfZJf3kkE):
     - Entrada pela Coleção: chips de local acima da grade, que também filtram. Com um local escolhido, aparece o botão "Registrar no local". Atalho na ficha: depois de regar ou adubar uma planta, o toast oferece o lote para as outras do mesmo local.
     - Folha de lote: ação (rega, adubação, tratamento, nota, medição), quando, observação e a lista das plantas ativas do local, todas marcadas. Excluir é desmarcar. O botão é o resumo ("Registrar rega em 6 plantas"); não há tela de confirmação, e o toast oferece "Desfazer" (apaga o lote inteiro).
