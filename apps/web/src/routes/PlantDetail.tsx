@@ -99,10 +99,10 @@ function stampTone(type: string) {
   return "";
 }
 
-/** Capa: a foto escolhida ou, na falta dela, a mais recente. */
+/** Capa: a foto escolhida ou, na falta dela, a primeira (a timeline vem da mais recente para a mais antiga). */
 function coverPhoto(t: Timeline | undefined): Photo | undefined {
   if (!t) return undefined;
-  return (t.plant.coverPhotoId && t.photos.find((p) => p.id === t.plant.coverPhotoId)) || t.photos[0];
+  return (t.plant.coverPhotoId && t.photos.find((p) => p.id === t.plant.coverPhotoId)) || t.photos[t.photos.length - 1];
 }
 
 export function PlantDetail() {

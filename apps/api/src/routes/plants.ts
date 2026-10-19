@@ -70,7 +70,7 @@ export const plantRoutes = new Hono<AppEnv>()
         .selectDistinctOn([photos.plantId], { plantId: photos.plantId, id: photos.id })
         .from(photos)
         .where(eq(photos.userId, userId))
-        .orderBy(photos.plantId, desc(photos.takenAt)),
+        .orderBy(photos.plantId, asc(photos.takenAt)),
       db
         .selectDistinctOn([events.plantId], { plantId: events.plantId, type: events.type })
         .from(events)
@@ -208,7 +208,7 @@ export const plantRoutes = new Hono<AppEnv>()
     if (!meta.success) return c.json({ error: "Dados inválidos.", issues: meta.error.issues }, 400);
     // locationCheck.mismatch = true → o app pergunta "a planta mudou de lugar?"
     const saved = await savePhoto({ plantId: plant.id, userId: user.id, file, meta: meta.data });
-    // sem capa escolhida, a foto nova pode ter virado a capa
+    // sem capa escolhida, a capa é a primeira foto (planta recém-criada); fotos seguintes não trocam a capa
     if (!plant.coverPhotoId) requestCoverIllustration(plant.id);
     return c.json(saved, 201);
   })
