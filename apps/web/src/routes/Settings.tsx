@@ -1,9 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, type ReactNode, useState } from "react";
-import { useSearchParams } from "react-router";
-import { Button, ErrorText, Field, Input, PageHeader, Select, Toggle } from "../components/ui.tsx";
+import { Link, useSearchParams } from "react-router";
+import { BackLink, Button, ErrorText, Field, Input, PageHeader, Select, Toggle } from "../components/ui.tsx";
 import { api } from "../lib/api.ts";
-import { useLogout } from "../lib/auth.tsx";
 import { typedDate } from "../lib/format.ts";
 
 interface IntegrationView<C> {
@@ -39,12 +38,16 @@ const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "
 /** Tela exclusiva do usuário master. */
 export function Settings() {
   const data = useQuery({ queryKey: ["integrations"], queryFn: () => api.get<Integrations>("/settings/integrations") });
-  const logout = useLogout();
   const [params] = useSearchParams();
   const driveStatus = params.get("drive");
 
   return (
     <main className="pb-10">
+      <div className="px-5 pt-3">
+        <Link to="/conta">
+          <BackLink>Voltar à conta</BackLink>
+        </Link>
+      </div>
       <PageHeader kicker="Somente o usuário master" title="Ajustes" />
       <div className="space-y-5 px-5">
       {driveStatus === "ok" && <Notice tone="ok">Google Drive conectado. O backup semanal está ativo.</Notice>}
@@ -60,9 +63,6 @@ export function Settings() {
           <IllustrationCard view={data.data.openai} />
         </>
       )}
-      <Button variant="quiet" onClick={logout} className="w-full">
-        Sair
-      </Button>
       </div>
     </main>
   );

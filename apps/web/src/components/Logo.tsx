@@ -7,9 +7,20 @@ import { useId } from "react";
  * como o traço de um caderno botânico, contorna o mostrador.
  *
  * As cores vêm de variáveis de styles.css para funcionar nos dois temas.
+ * Com `animated`, os ponteiros giram ao aparecer e assentam na posição do logo.
  */
-export function ClockMark({ className = "", title }: { className?: string; title?: string }) {
+export function ClockMark({
+  className = "",
+  title,
+  animated = false,
+}: {
+  className?: string;
+  title?: string;
+  animated?: boolean;
+}) {
   const clip = useId();
+  const longo = animated ? "ponteiro ponteiro-longo" : undefined;
+  const curto = animated ? "ponteiro ponteiro-curto" : undefined;
   const leaf = "M0 0C13 -11 31 -11 44 0C31 11 13 11 0 0Z";
   const bud = "M0 0C7 -7 15 -7 22 0C15 7 7 7 0 0Z";
   return (
@@ -27,22 +38,28 @@ export function ClockMark({ className = "", title }: { className?: string; title
       </defs>
       <circle cx="50" cy="52" r="35.5" fill="none" stroke="var(--logo-aro)" strokeWidth="0.9" />
       <circle cx="50" cy="52" r="30" fill="var(--logo-mostrador)" />
-      <path transform="translate(50 52) rotate(-55)" d={leaf} fill="var(--logo-flor)" />
-      <g clipPath={`url(#${clip})`}>
-        <path transform="translate(50 52) rotate(-55)" d={leaf} fill="var(--logo-papel)" />
+      <g className={longo}>
+        <path transform="translate(50 52) rotate(-55)" d={leaf} fill="var(--logo-flor)" />
       </g>
-      <path transform="translate(50 52) rotate(200)" d={bud} fill="var(--logo-broto)" />
+      <g clipPath={`url(#${clip})`}>
+        <g className={longo}>
+          <path transform="translate(50 52) rotate(-55)" d={leaf} fill="var(--logo-papel)" />
+        </g>
+      </g>
+      <g className={curto}>
+        <path transform="translate(50 52) rotate(200)" d={bud} fill="var(--logo-broto)" />
+      </g>
       <circle cx="50" cy="52" r="2.6" fill="var(--logo-papel)" />
     </svg>
   );
 }
 
 /** Marca com o nome, para o topo das páginas. */
-export function Brand({ size = "md" }: { size?: "md" | "lg" }) {
+export function Brand({ size = "md", animated = false }: { size?: "md" | "lg"; animated?: boolean }) {
   const lg = size === "lg";
   return (
     <span className="flex items-center gap-2.5">
-      <ClockMark className={lg ? "size-11" : "size-9"} />
+      <ClockMark className={lg ? "size-11" : "size-9"} animated={animated} />
       <span className={`font-serif leading-none tracking-[-0.02em] ${lg ? "text-[1.85rem]" : "text-[1.6rem]"}`}>
         Orchidiary
       </span>

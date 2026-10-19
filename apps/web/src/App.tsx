@@ -1,7 +1,10 @@
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from "react-router";
 import { Brand } from "./components/Logo.tsx";
-import { Icon } from "./components/ui.tsx";
+import { AccountTab } from "./components/AccountTab.tsx";
+import { Icon, tabCls } from "./components/ui.tsx";
+import type { User } from "./lib/api.ts";
 import { useMe } from "./lib/auth.tsx";
+import { Account } from "./routes/Account.tsx";
 import { Collection } from "./routes/Collection.tsx";
 import { EditPlant } from "./routes/EditPlant.tsx";
 import { Guide, TaxonPage } from "./routes/Guide.tsx";
@@ -17,13 +20,14 @@ export function App() {
 
   return (
     <Routes>
-      <Route element={<Shell isMaster={me.data.role === "master"} />}>
+      <Route element={<Shell user={me.data} />}>
         <Route index element={<Collection />} />
         <Route path="plantas/nova" element={<NewPlant />} />
         <Route path="plantas/:id" element={<PlantDetail />} />
         <Route path="plantas/:id/editar" element={<EditPlant />} />
         <Route path="guia" element={<Guide />} />
         <Route path="guia/:id" element={<TaxonPage />} />
+        <Route path="conta" element={<Account user={me.data} />} />
         <Route path="configuracoes" element={me.data.role === "master" ? <Settings /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
@@ -31,16 +35,10 @@ export function App() {
   );
 }
 
-function Shell({ isMaster }: { isMaster: boolean }) {
-  const tab = ({ isActive }: { isActive: boolean }) =>
-    `relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-[0.72rem] transition-colors ${
-      isActive
-        ? "bg-salvia-clara/80 font-medium text-tinta after:absolute after:-bottom-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-folhagem"
-        : "text-musgo"
-    }`;
+function Shell({ user }: { user: User }) {
   return (
-    <div className="mx-auto min-h-dvh max-w-2xl pb-[calc(4.75rem+env(safe-area-inset-bottom))]">
-      <header className="flex h-[4.5rem] items-center justify-between border-b border-linha px-5">
+    <div className="mx-auto min-h-dvh max-w-2xl pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+      <header className="flex h-[4.5rem] items-center border-b border-linha px-5">
         <Link to="/" aria-label="Orchidiary, ir para a coleção">
           <Brand />
         </Link>
@@ -48,25 +46,21 @@ function Shell({ isMaster }: { isMaster: boolean }) {
       <div key={useLocation().pathname} className="pagina">
         <Outlet />
       </div>
+      {/* Barra flutuante: uma cápsula de papel solta do rodapé */}
       <nav
         aria-label="Navegação principal"
-        className="fixed inset-x-0 bottom-0 z-10 border-t border-linha bg-papel/95 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur-md"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
       >
-        <div className="mx-auto flex max-w-2xl gap-1">
-          <NavLink to="/" end className={tab}>
+        <div className="pointer-events-auto mx-auto flex max-w-md gap-1 rounded-full border border-linha bg-folha/90 p-1.5 shadow-caderno backdrop-blur-md">
+          <NavLink to="/" end className={tabCls}>
             <Icon name="collection" className="size-[1.2rem]" />
             Coleção
           </NavLink>
-          <NavLink to="/guia" className={tab}>
+          <NavLink to="/guia" className={tabCls}>
             <Icon name="guide" className="size-[1.2rem]" />
             Guia de Cultivo
           </NavLink>
-          {isMaster && (
-            <NavLink to="/configuracoes" className={tab}>
-              <Icon name="settings" className="size-[1.2rem]" />
-              Ajustes
-            </NavLink>
-          )}
+          <AccountTab user={user} />
         </div>
       </nav>
     </div>

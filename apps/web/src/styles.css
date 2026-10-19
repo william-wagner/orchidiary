@@ -31,10 +31,16 @@
   --logo-papel: #f7f5ec;
   --logo-broto: #bcd3a0;
   --logo-aro: #8aa286;
+  color-scheme: light;
 }
 
+/*
+ * Tema escuro: automático (segue o sistema) ou forçado pelo usuário via
+ * data-theme no <html> (ver lib/theme.ts). As duas listas abaixo são iguais.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --papel: #161d19;
     --folha: #1d2621;
     --tinta: #e2e9da;
@@ -58,6 +64,32 @@
     --logo-broto: #c9ddb0;
     --logo-aro: #5f7562;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --papel: #161d19;
+  --folha: #1d2621;
+  --tinta: #e2e9da;
+  --tinta-viva: #cbd8c1;
+  --musgo: #a0ab99;
+  --folhagem: #a9b991;
+  --salvia: #2a372f;
+  --salvia-clara: #233029;
+  --linha: #2f3b34;
+  --contorno: #43524a;
+  --lilas: #352c3a;
+  --orquidea: #c9aed6;
+  --ocre: #d1ac78;
+  --ocre-claro: #33301f;
+  --alerta: #e39a8c;
+  --fita: #6b654a99;
+  --sombra: 0 12px 40px #00000033;
+  --logo-mostrador: #4b8160;
+  --logo-flor: #d899b3;
+  --logo-papel: #161d19;
+  --logo-broto: #c9ddb0;
+  --logo-aro: #5f7562;
 }
 
 @theme inline {
@@ -247,6 +279,37 @@ h3 {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Relógio do login: os ponteiros giram e assentam na posição do logo.
+   O eixo (50 52) é o centro do mostrador no viewBox do ClockMark. */
+.ponteiro {
+  transform-box: view-box;
+  transform-origin: 50px 52px;
+}
+.ponteiro-longo {
+  animation: girar-longo 1.8s cubic-bezier(0.2, 0.75, 0.25, 1) 0.15s both;
+}
+.ponteiro-curto {
+  animation: girar-curto 1.8s cubic-bezier(0.25, 0.7, 0.3, 1) 0.15s both;
+}
+
+@keyframes girar-longo {
+  from {
+    transform: rotate(-720deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes girar-curto {
+  from {
+    transform: rotate(-360deg);
+  }
+  to {
+    transform: rotate(0deg);
   }
 }
 

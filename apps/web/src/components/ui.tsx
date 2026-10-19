@@ -28,6 +28,12 @@ export function buttonCls(variant: "primary" | "quiet" | "stamp" = "primary") {
   return `inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-[0.95rem] font-medium transition-colors disabled:opacity-45 ${look}`;
 }
 
+/** Item da barra flutuante de navegação (App e AccountTab). */
+export const tabCls = ({ isActive }: { isActive: boolean }) =>
+  `flex min-h-13 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[0.7rem] transition-colors ${
+    isActive ? "bg-salvia font-medium text-tinta" : "text-musgo active:bg-salvia-clara"
+  }`;
+
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block">
@@ -136,6 +142,27 @@ const ICONS = {
       <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" />
     </>
   ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
+    </>
+  ),
+  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" />,
+  monitor: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="12" rx="2" />
+      <path d="M9 20h6M12 16.5V20" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17M12 3.5c2.6 2.6 3.5 5.5 3.5 8.5s-.9 5.9-3.5 8.5c-2.6-2.6-3.5-5.5-3.5-8.5s.9-5.9 3.5-8.5Z" />
+    </>
+  ),
+  logout: <path d="M10 4.5H6.5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1H10M15 8l4 4-4 4M19 12H9.5" />,
+  download: <path d="M12 4v11M7 11l5 5 5-5M5 19.5h14" />,
   plus: <path d="M12 5v14M5 12h14" />,
   "arrow-left": <path d="M19 12H5M11 6l-6 6 6 6" />,
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
