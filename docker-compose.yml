@@ -4,10 +4,11 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: orchidiary
-      POSTGRES_PASSWORD: orchidiary
+      # Defina POSTGRES_PASSWORD no .env (no servidor, uma senha longa e aleatória)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
       POSTGRES_DB: orchidiary
-    ports:
-      - "5432:5432"
+    # Sem "ports": o banco só é visível na rede interna do Docker.
+    # Para desenvolver com pnpm dev, o docker-compose.dev.yml expõe a 5432 só em localhost.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -27,16 +28,38 @@ services:
     env_file: .env
     environment:
       # Sobrescreve o que no .env aponta para a máquina local
-      DATABASE_URL: postgres://orchidiary:orchidiary@db:5432/orchidiary
+      DATABASE_URL: postgres://orchidiary:${POSTGRES_PASSWORD}@db:5432/orchidiary
       NODE_ENV: production
       API_PORT: "8787"
       STORAGE_DIR: /app/apps/api/data/photos
       LOG_DIR: /app/apps/api/data/logs
-    ports:
-      - "8787:8787"
+      # O Caddy fica na frente e informa o IP do visitante
+      TRUST_PROXY: "true"
+    # Sem "ports": só o Caddy chega na API
+    expose:
+      - "8787"
     volumes:
-      # Fotos e logs ficam no disco do PC (mesma pasta usada em desenvolvimento)
+      # Fotos e logs ficam no disco do servidor
       - ./apps/api/data:/app/apps/api/data
+
+  # HTTPS automático (Let's Encrypt) para o domínio em APP_DOMAIN
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

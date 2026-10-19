@@ -12,7 +12,7 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "db:up": "docker compose up -d db",
+    "db:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db",
     "db:generate": "pnpm --filter @orchidiary/api db:generate",
     "db:migrate": "pnpm --filter @orchidiary/api db:migrate",
     "db:seed": "pnpm --filter @orchidiary/api db:seed"
