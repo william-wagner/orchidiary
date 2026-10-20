@@ -4,21 +4,24 @@ import { useState } from "react";
 import { api, type ComfortDimensionReport, type PlantComfort } from "../lib/api.ts";
 import { Icon } from "./ui.tsx";
 
-/** Seção encolhida ou aberta: lembrada no aparelho, vale para todas as plantas */
-const COLLAPSED_KEY = "orchidiary:conforto-encolhido";
+/**
+ * A seção vem recolhida; quem abre fica com ela aberta (lembrado no aparelho,
+ * vale para todas as plantas).
+ */
+const OPEN_KEY = "orchidiary:conforto-aberto";
 
 function readCollapsed() {
   try {
-    return localStorage.getItem(COLLAPSED_KEY) === "1";
+    return localStorage.getItem(OPEN_KEY) !== "1";
   } catch {
-    return false;
+    return true;
   }
 }
 
 function saveCollapsed(collapsed: boolean) {
   try {
-    if (collapsed) localStorage.setItem(COLLAPSED_KEY, "1");
-    else localStorage.removeItem(COLLAPSED_KEY);
+    if (collapsed) localStorage.removeItem(OPEN_KEY);
+    else localStorage.setItem(OPEN_KEY, "1");
   } catch {
     // sem armazenamento (aba anônima): só não lembra
   }
