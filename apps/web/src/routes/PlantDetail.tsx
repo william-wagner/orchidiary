@@ -4,6 +4,7 @@ import { type FormEvent, Fragment, type ReactNode, useMemo, useState } from "rea
 import { Link, useLocation, useParams } from "react-router";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
+import { PhotoViewer } from "../components/PhotoViewer.tsx";
 import { OriginFlag } from "../components/OriginFlag.tsx";
 import { type BatchAction, PlaceBatchSheet } from "../components/PlaceBatchSheet.tsx";
 import { ancestorsLabel, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
@@ -122,6 +123,15 @@ export function PlantDetail() {
   const [pendingMove, setPendingMove] = useState<{ check: LocationCheck; takenAt: string } | null>(null);
   const [showReading, setShowReading] = useState(false);
   const [batch, setBatch] = useState<{ place: { id: string; name: string }; action: BatchAction } | null>(null);
+  /** Foto ampliada: a capa ("capa") ou uma foto do livro (o id dela) */
+  const [viewing, setViewing] = useState<{
+    id: string;
+    source: HTMLImageElement;
+    thumbSrc: string;
+    fullSrc: string;
+    alt: string;
+    fit: "contain" | "cover";
+  } | null>(null);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["timeline", id] });
     qc.invalidateQueries({ queryKey: ["plants"] });
@@ -214,15 +224,32 @@ export function PlantDetail() {
       {/* A exsicata: a prancha presa na página e a etiqueta com os dados */}
       <section className="overflow-hidden rounded-xl border border-linha bg-folha shadow-caderno sm:grid sm:grid-cols-2" aria-label="Exsicata">
         <div className={`fixada flex h-72 items-center justify-center p-5 ${plate ? "bg-prancha" : "bg-salvia-clara/60"}`}>
-          {cover && plate ? (
-            // prancha inteira, sem corte: o fundo do container é o mesmo papel da ilustração
-            <img src={illustrationUrl(cover.id, plate)} alt={`Prancha botânica de ${plant.nickname}`} className="h-full w-full object-contain" />
-          ) : cover ? (
-            <img
-              src={photoUrl(cover.id)}
-              alt={`Foto mais recente de ${plant.nickname}`}
-              className="h-full w-full rounded-sm object-cover"
-            />
+          {cover ? (
+            <button
+              type="button"
+              aria-label={plate ? "Ampliar prancha botânica" : "Ampliar foto de capa"}
+              className="block h-full w-full cursor-zoom-in"
+              onClick={(e) => {
+                const img = e.currentTarget.querySelector("img");
+                const src = plate ? illustrationUrl(cover.id, plate) : photoUrl(cover.id);
+                if (img) setViewing({ id: "capa", source: img, thumbSrc: src, fullSrc: src, alt: img.alt, fit: plate ? "contain" : "cover" });
+              }}
+            >
+              {plate ? (
+                // prancha inteira, sem corte: o fundo do container é o mesmo papel da ilustração
+                <img
+                  src={illustrationUrl(cover.id, plate)}
+                  alt={`Prancha botânica de ${plant.nickname}`}
+                  className={`h-full w-full object-contain ${viewing?.id === "capa" ? "invisible" : ""}`}
+                />
+              ) : (
+                <img
+                  src={photoUrl(cover.id)}
+                  alt={`Foto mais recente de ${plant.nickname}`}
+                  className={`h-full w-full rounded-sm object-cover ${viewing?.id === "capa" ? "invisible" : ""}`}
+                />
+              )}
+            </button>
           ) : (
             <PressedOrchid className="h-40 w-24" />
           )}
@@ -331,7 +358,32 @@ export function PlantDetail() {
                       <>
                         <p className="font-serif text-[1.1rem]">Fotografia{it.photo.caption ? `: ${it.photo.caption}` : ""}</p>
                         <div className="fixada mt-3 max-w-[15rem] -rotate-1 border border-linha bg-folha p-2 pb-3 shadow-sm">
-                          <img src={photoUrl(it.photo.id, "thumb")} alt="" loading="lazy" className="w-full" />
+                          <button
+                            type="button"
+                            aria-label="Ampliar fotografia"
+                            className="block w-full cursor-zoom-in"
+                            onClick={(e) => {
+                              const img = e.currentTarget.querySelector("img");
+                              const { id: photoId, caption, takenAt } = it.photo;
+                              if (img)
+                                setViewing({
+                                  id: photoId,
+                                  source: img,
+                                  thumbSrc: photoUrl(photoId, "thumb"),
+                                  fullSrc: photoUrl(photoId),
+                                  alt: `Fotografia de ${plant.nickname}${caption ? `: ${caption}` : ""}, ${typedDate(takenAt)}`,
+                                  fit: "contain",
+                                });
+                            }}
+                          >
+                            {/* enquanto ampliada, a foto "sai" do porta-retrato e só a moldura fica na página */}
+                            <img
+                              src={photoUrl(it.photo.id, "thumb")}
+                              alt=""
+                              loading="lazy"
+                              className={`w-full ${viewing?.id === it.photo.id ? "invisible" : ""}`}
+                            />
+                          </button>
                         </div>
                       </>
                     )}
@@ -392,6 +444,17 @@ export function PlantDetail() {
             setPendingMove(null);
             refresh();
           }}
+        />
+      )}
+
+      {viewing && (
+        <PhotoViewer
+          source={viewing.source}
+          thumbSrc={viewing.thumbSrc}
+          fullSrc={viewing.fullSrc}
+          alt={viewing.alt}
+          fit={viewing.fit}
+          onClose={() => setViewing(null)}
         />
       )}
 
