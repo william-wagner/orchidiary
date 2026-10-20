@@ -27,3 +27,10 @@ test("prompt cita o táxon quando conhecido", () => {
   assert.ok(illustrationPrompt("Vanda (híbridos)").includes("Vanda (híbridos)"));
   assert.ok(illustrationPrompt(null).includes("a orquídea da foto"));
 });
+
+test("prompt preserva o vaso/suporte em vez de mandar removê-lo", () => {
+  const prompt = illustrationPrompt(null);
+  assert.ok(prompt.includes("desenhe a planta NO vaso"));
+  assert.ok(!/Remova tudo que não é essa planta/.test(prompt));
+  assert.ok(!/vasos de plástico/.test(prompt));
+});

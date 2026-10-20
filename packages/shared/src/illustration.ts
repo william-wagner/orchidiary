@@ -28,8 +28,10 @@ export function illustrationPrompt(taxon: string | null): string {
     "Outras plantas, folhas, raízes ou flores que aparecem nas laterais ou ao fundo pertencem a outras plantas e NÃO devem ser desenhadas, nem parcialmente.",
     "Técnica: aquarela delicada sobre traço fino de nanquim, cores naturais e suaves, como nas pranchas científicas do século XIX.",
     "Seja fiel à planta central: mesmo número e formato de folhas, raízes, hastes e flores (se houver), na mesma pose.",
-    "Remova tudo que não é essa planta: outras plantas, mãos, tela, paredes, vasos de plástico, fundo e sombras.",
-    "Planta inteira, sozinha, centralizada, com margem generosa em volta.",
+    "O modo de cultivo faz parte da planta e deve ser preservado: se ela está em um vaso, desenhe a planta NO vaso, com o substrato (musgo, casca, bolas de argila etc.) visível como na foto; se está em cesto, tronco, placa ou xaxim, desenhe o suporte; só mostre as raízes expostas, sem recipiente, se na foto não há nada em volta delas.",
+    "Nunca tire a planta do vaso nem deixe as raízes soltas no ar quando a foto a mostra plantada. Redesenhe o vaso (e o pratinho, se houver) com o mesmo formato e a mesma cor, no mesmo estilo de aquarela e nanquim, sem logotipos nem etiquetas.",
+    "Remova só o que não faz parte do cultivo: outras plantas, mãos, tela, paredes, mesa, piso, objetos, fundo e sombras projetadas.",
+    "Conjunto inteiro (planta com vaso ou suporte, quando houver), sozinho, centralizado, com margem generosa em volta.",
     "Fundo de papel liso, cor creme muito clara e uniforme (#FBFBF7), sem textura, sem moldura, sem bordas.",
     "Sem texto, sem legendas, sem números, sem assinatura.",
   ].join(" ");
