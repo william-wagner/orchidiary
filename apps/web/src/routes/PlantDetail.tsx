@@ -2,6 +2,7 @@ import { formatLocality, joinsBatch } from "@orchidiary/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, Fragment, type ReactNode, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
+import { ComfortPanel } from "../components/ComfortPanel.tsx";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
 import { PhotoViewer } from "../components/PhotoViewer.tsx";
@@ -135,6 +136,7 @@ export function PlantDetail() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["timeline", id] });
     qc.invalidateQueries({ queryKey: ["plants"] });
+    qc.invalidateQueries({ queryKey: ["comfort", id] });
   };
 
   const current = timeline.data?.locations.find((l) => l.validTo === null);
@@ -294,6 +296,8 @@ export function PlantDetail() {
           </p>
         )}
       </section>
+
+      <ComfortPanel plantId={plant.id} />
 
       <section className="mt-6 space-y-3" aria-label="Registrar">
         {photoError && !cover && (

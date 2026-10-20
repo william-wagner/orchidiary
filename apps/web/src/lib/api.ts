@@ -1,4 +1,14 @@
-import type { Care, CareField, TaxonOrigin, TaxonRank } from "@orchidiary/shared";
+import type {
+  Care,
+  CareField,
+  ComfortAttention,
+  ComfortDay,
+  ComfortDimension,
+  ComfortFlag,
+  ComfortRange,
+  TaxonOrigin,
+  TaxonRank,
+} from "@orchidiary/shared";
 
 export class ApiError extends Error {
   constructor(
@@ -92,6 +102,8 @@ export interface CollectionPlant extends Plant {
   /** Quando a prancha botânica da capa ficou pronta; null enquanto não existe */
   coverIllustratedAt: string | null;
   inBloom: boolean;
+  /** Selos do índice de conforto (últimos 7 dias, a pior primeiro); null quando a planta não tem índice */
+  comfort: ComfortFlag[] | null;
 }
 
 export interface TaxonRef {
@@ -193,6 +205,35 @@ export interface Timeline {
   readings: Reading[];
   weather: WeatherDay[];
 }
+
+export interface ComfortDimensionReport {
+  dimension: ComfortDimension;
+  range: ComfortRange;
+  /** Táxon de onde a faixa foi herdada; null quando é do próprio táxon da planta */
+  inheritedFrom: { rank: TaxonRank; rankLabel: string; fullName: string } | null;
+  days: ComfortDay[];
+  counts: { inside: number; near: number; outside: number };
+  worst: ComfortDay | null;
+  /** Últimos 7 dias (o que o selo do card mostra) */
+  attention: ComfortAttention;
+  silenced: boolean;
+}
+
+/** Seção Conforto da ficha */
+export type PlantComfort =
+  | { status: "no_location" }
+  | { status: "no_ranges"; placeName: string | null }
+  | {
+      status: "ok";
+      placeName: string | null;
+      /** Dentro de casa, o clima de fora é só referência */
+      environment: "indoor" | "outdoor";
+      /** Desde quando a planta está no local atual */
+      since: string;
+      from: string;
+      to: string;
+      dimensions: ComfortDimensionReport[];
+    };
 
 export interface LocationCheck {
   mismatch: boolean;

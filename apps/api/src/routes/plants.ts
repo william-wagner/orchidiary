@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import {
+  COMFORT_DIMENSIONS,
   eventCreateSchema,
   locationInputSchema,
   manualReadingSchema,
@@ -21,6 +22,7 @@ import { placeNameOf } from "../services/places.ts";
 import { requestCoverIllustration } from "../services/illustration.ts";
 import { savePhoto } from "../services/photos.ts";
 import { summariesOf } from "../services/taxonomy.ts";
+import { collectionComfort, plantComfort, setComfortSilence } from "../services/comfort.ts";
 
 const { plants, plantLocations, places, photos, events, manualReadings, weatherDaily, taxa } = schema;
 
@@ -88,7 +90,12 @@ export const plantRoutes = new Hono<AppEnv>()
           .where(and(inArray(photos.id, coverIds), eq(photos.illustrationStatus, "ready")))
       : [];
     const illustratedAt = new Map(illustrated.map((p) => [p.id, p.updatedAt]));
-    const taxonBy = await summariesOf(rows.map((r) => r.plant.taxonId));
+    const [taxonBy, comfortBy] = await Promise.all([
+      summariesOf(rows.map((r) => r.plant.taxonId)),
+      collectionComfort(
+        rows.map((r) => ({ plantId: r.plant.id, status: r.plant.status, taxonId: r.plant.taxonId, location: r.location })),
+      ),
+    ]);
     return c.json(
       rows.map((r) => {
         const cover = coverOf(r.plant);
@@ -100,6 +107,8 @@ export const plantRoutes = new Hono<AppEnv>()
           /** Quando a prancha botânica da capa ficou pronta (versiona a URL da imagem) */
           coverIllustratedAt: (cover && illustratedAt.get(cover)) || null,
           inBloom: bloomBy.get(r.plant.id) ?? false,
+          /** Selos do índice de conforto (últimos 7 dias); null quando a planta não tem índice */
+          comfort: comfortBy.get(r.plant.id) ?? null,
         };
       }),
     );
@@ -176,6 +185,31 @@ export const plantRoutes = new Hono<AppEnv>()
     });
     if (input.coverPhotoId !== undefined) requestCoverIllustration(plant.id);
     return c.json(updated);
+  })
+
+  // ─── Índice de conforto ────────────────────────────────────────────────────
+  .get("/:id/comfort", async (c) => {
+    const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
+    return c.json(await plantComfort(plant));
+  })
+
+  // "Já sei, não avisar" (PUT) e "Voltar a avisar" (DELETE), por dimensão
+  .put("/:id/comfort/silences/:dimension", async (c) => {
+    const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
+    const dimension = z.enum(COMFORT_DIMENSIONS).safeParse(c.req.param("dimension"));
+    if (!dimension.success) throw new HTTPException(404, { message: "Dimensão desconhecida." });
+    if (!(await setComfortSilence(plant.id, dimension.data, true))) {
+      return c.json({ error: "A planta não tem local atual." }, 409);
+    }
+    return c.body(null, 204);
+  })
+
+  .delete("/:id/comfort/silences/:dimension", async (c) => {
+    const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
+    const dimension = z.enum(COMFORT_DIMENSIONS).safeParse(c.req.param("dimension"));
+    if (!dimension.success) throw new HTTPException(404, { message: "Dimensão desconhecida." });
+    await setComfortSilence(plant.id, dimension.data, false);
+    return c.body(null, 204);
   })
 
   // ─── Local (histórico não retroativo) ──────────────────────────────────────

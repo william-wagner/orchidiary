@@ -32,9 +32,18 @@ export function Collection() {
   const [batchOpen, setBatchOpen] = useState(false);
   const places = useMemo(() => placesOf(plants.data ?? []), [plants.data]);
   const place = places.find((p) => p.id === params.get("local")) ?? null;
-  const shown = place ? (plants.data ?? []).filter((p) => p.currentLocation?.placeId === place.id) : plants.data;
+  // índice de conforto: o chip só aparece se alguma planta tem índice (com faixa na ficha)
+  const hasComfort = (plants.data ?? []).some((p) => p.comfort !== null);
+  const outOfRange = (plants.data ?? []).filter((p) => p.comfort?.length);
+  const comfortFilter = !place && hasComfort && params.get("conforto") === "fora";
+  const shown = place
+    ? (plants.data ?? []).filter((p) => p.currentLocation?.placeId === place.id)
+    : comfortFilter
+      ? outOfRange
+      : plants.data;
   const batchable = shown?.filter((p) => joinsBatch(p.status)).length ?? 0;
   const choose = (id: string | null) => setParams(id ? { local: id } : {}, { replace: true });
+  const chooseOutOfRange = () => setParams({ conforto: "fora" }, { replace: true });
 
   return (
     <main className="pb-8">
@@ -65,12 +74,22 @@ export function Collection() {
         <div className="mb-5 px-5">
           <div role="toolbar" aria-label="Filtrar por lugar" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
             <button
-              aria-pressed={!place}
+              aria-pressed={!place && !comfortFilter}
               onClick={() => choose(null)}
-              className={`${placeChip} ${!place ? "border-tinta bg-tinta text-folha" : "border-contorno bg-folha text-folhagem active:bg-salvia-clara"}`}
+              className={`${placeChip} ${!place && !comfortFilter ? "border-tinta bg-tinta text-folha" : "border-contorno bg-folha text-folhagem active:bg-salvia-clara"}`}
             >
-              Todas <span className={`typed text-[0.72rem] ${!place ? "text-salvia" : ""}`}>{count}</span>
+              Todas <span className={`typed text-[0.72rem] ${!place && !comfortFilter ? "text-salvia" : ""}`}>{count}</span>
             </button>
+            {hasComfort && (
+              <button
+                aria-pressed={comfortFilter}
+                onClick={chooseOutOfRange}
+                className={`${placeChip} ${comfortFilter ? "border-ocre bg-ocre text-folha" : "border-dashed border-ocre bg-folha text-ocre active:bg-ocre-claro"}`}
+              >
+                <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+                Fora da faixa <span className={`typed text-[0.72rem] ${comfortFilter ? "text-ocre-claro" : "text-ocre"}`}>{outOfRange.length}</span>
+              </button>
+            )}
             {places.map((pl) => {
               const on = pl.id === place?.id;
               return (
@@ -86,6 +105,13 @@ export function Collection() {
               );
             })}
           </div>
+
+          {comfortFilter && (
+            <p className="mt-3 text-[0.82rem] text-musgo">
+              Plantas com 3 ou mais dias fora da faixa da ficha na última semana. Para as que estão dentro de casa, o clima comparado é o de fora,
+              só como referência. Avisos silenciados não entram.
+            </p>
+          )}
 
           {place && (
             <div className="mt-3.5 flex items-center justify-between gap-3 rounded-lg border border-linha bg-salvia-clara py-3 pr-3 pl-4">
@@ -106,6 +132,10 @@ export function Collection() {
             </div>
           )}
         </div>
+      )}
+
+      {comfortFilter && shown?.length === 0 && (
+        <p className="mx-5 rounded-lg border border-dashed border-contorno px-5 py-8 text-center text-musgo">Nenhuma planta fora da faixa nesta semana.</p>
       )}
 
       <ul className="grid grid-cols-2 gap-x-3 gap-y-4 px-5 sm:grid-cols-3">
@@ -142,6 +172,12 @@ export function Collection() {
                 <p className="mt-1 truncate text-[0.8rem] text-musgo">{p.nickname}</p>
                 <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3">
                   {p.inBloom && <span className="selo selo-flor">em flor</span>}
+                  {p.comfort?.[0] && (
+                    <span className="selo selo-ocre" title={`${p.comfort[0].count} de 7 dias fora da faixa da ficha${p.currentLocation?.environment === "indoor" ? " (clima de fora, só referência)" : ""}`}>
+                      {p.comfort[0].label}
+                      {p.comfort.length > 1 && ` +${p.comfort.length - 1}`}
+                    </span>
+                  )}
                   <span className="flex min-w-0 items-center gap-1 text-[0.7rem] text-musgo">
                     <Icon name="pin" className="size-3" />
                     <span className="truncate">

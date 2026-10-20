@@ -6,6 +6,7 @@ import { sourceLogger } from "../logger.ts";
 import { purgeOldLogs } from "../logging/retention.ts";
 import { runForecastAlerts } from "../services/alerts.ts";
 import { runBackup } from "../services/backup.ts";
+import { runComfortDigest } from "../services/comfort.ts";
 import { illustrateCovers } from "../services/illustration.ts";
 import { loadIntegration } from "../services/integrations.ts";
 import { collectWeather } from "../services/weather/collect.ts";
@@ -63,6 +64,8 @@ export function startScheduler() {
   new Cron("10 6 * * *", opts, safe("clima", weatherJob));
   // Previsão de frio/calor para amanhã → Telegram
   new Cron("0 18 * * *", opts, safe("alertas", () => runForecastAlerts()));
+  // Resumo quinzenal do índice de conforto → Telegram (só no fechamento da quinzena e só se algo mudou)
+  new Cron("0 8 * * *", opts, safe("conforto", () => runComfortDigest()));
   // Backup semanal: checa toda hora (recupera se o PC estava desligado)
   new Cron("25 * * * *", opts, safe("backup", backupCheck));
   // Limpeza de app_logs vencidos
@@ -74,6 +77,8 @@ export function startScheduler() {
   setTimeout(safe("clima", weatherJob), 5_000);
   setTimeout(safe("backup", backupCheck), 60_000);
   setTimeout(safe("logs", purgeOldLogs), 120_000);
+  // depois da coleta de clima, para o resumo atrasado (PC desligado no dia) usar a quinzena completa
+  setTimeout(safe("conforto", () => runComfortDigest()), 180_000);
   setTimeout(safe("ilustracao", () => illustrateCovers()), 90_000);
   sourceLogger("scheduler").info({ timezone: tz }, `rotinas ativas no fuso ${tz}`);
 }
