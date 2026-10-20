@@ -1,10 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { CoverSheet } from "../components/CoverSheet.tsx";
 import { PlacePicker, type PlaceRef } from "../components/PlacePicker.tsx";
 import { TaxonPicker } from "../components/TaxonPicker.tsx";
-import { BackLink, Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
-import { api, type Photo, type Plant, type PlantLocation, photoUrl, type TaxonSummary, type Timeline } from "../lib/api.ts";
+import { BackLink, Button, ErrorText, Field, Icon, Input, PageHeader, PressedOrchid, Select } from "../components/ui.tsx";
+import {
+  api,
+  illustrationUrl,
+  type Photo,
+  type Plant,
+  type PlantLocation,
+  photoUrl,
+  type TaxonSummary,
+  type Timeline,
+} from "../lib/api.ts";
+import { coverOf, plateOf } from "../lib/cover.ts";
 import { accession, typedDate } from "../lib/format.ts";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -28,7 +39,9 @@ export function EditPlant() {
 
 function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; current: PlantLocation | null }) {
   const navigate = useNavigate();
-  const [cover, setCover] = useState<string | null>(plant.coverPhotoId);
+  const [changingCover, setChangingCover] = useState(false);
+  const cover = coverOf(plant, photos);
+  const plate = plateOf(cover);
   const qc = useQueryClient();
   const [taxon, setTaxon] = useState<TaxonSummary | null>(plant.taxon);
   const initialPlaceId = current?.placeId ?? null;
@@ -64,7 +77,6 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
       substrate: text("substrate"),
       potNotes: text("potNotes"),
       notes: text("notes"),
-      coverPhotoId: cover,
       // só reenvia se mudou (limpar o campo envia null)
       ...((place?.id ?? null) !== initialPlaceId && { placeId: place?.id ?? null }),
     });
@@ -132,40 +144,31 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
           />
         </Field>
 
-        <fieldset>
-          <legend className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">Foto de capa</legend>
-          {photos.length === 0 ? (
-            <p className="text-[0.85rem] text-musgo">Ainda não há fotos. Fotografe a planta para escolher a capa.</p>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setCover(null)}
-                aria-pressed={cover === null}
-                className={`flex aspect-square items-center justify-center rounded-lg border p-2 text-center text-[0.85rem] ${
-                  cover === null ? "border-tinta bg-salvia-clara text-tinta ring-2 ring-tinta" : "border-linha"
-                }`}
-              >
-                A mais recente
-              </button>
-              {photos.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setCover(p.id)}
-                  aria-pressed={cover === p.id}
-                  aria-label={`Usar a foto de ${typedDate(p.takenAt)} como capa`}
-                  className={`relative aspect-square overflow-hidden rounded-lg border ${cover === p.id ? "border-tinta ring-2 ring-tinta" : "border-linha"}`}
-                >
-                  <img src={photoUrl(p.id, "thumb")} alt="" loading="lazy" className="h-full w-full object-cover" />
-                  <span className="typed absolute inset-x-0 bottom-0 bg-folha/85 py-0.5 text-[0.62rem]">
-                    {typedDate(p.takenAt)}
-                  </span>
-                </button>
-              ))}
+        <div>
+          <span className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">Foto de capa</span>
+          <div className="flex items-center gap-3.5 rounded-lg border border-contorno bg-folha p-2.5">
+            <div className={`aspect-[3/2] w-24 shrink-0 overflow-hidden rounded-md border border-linha ${plate ? "bg-prancha" : "bg-salvia-clara/60"}`}>
+              {cover ? (
+                <img
+                  src={plate ? illustrationUrl(cover.id, plate, "thumb") : photoUrl(cover.id, "thumb")}
+                  alt=""
+                  className={`h-full w-full ${plate ? "object-contain" : "object-cover"}`}
+                />
+              ) : (
+                <span className="grid h-full place-items-center">
+                  <PressedOrchid className="h-9 w-6" />
+                </span>
+              )}
             </div>
-          )}
-        </fieldset>
+            <div className="min-w-0">
+              {cover && <p className="typed mb-1 text-[0.72rem]">{plate ? "Prancha de" : "Foto de"} {typedDate(cover.takenAt)}</p>}
+              <Button type="button" variant="quiet" onClick={() => setChangingCover(true)} className="min-h-11 px-4 text-[0.9rem]">
+                <Icon name="image" className="size-4" />
+                Trocar capa
+              </Button>
+            </div>
+          </div>
+        </div>
 
         <p className="text-[0.85rem] text-musgo">
           O nome do lugar corrige o local atual. Para registrar que a planta mudou de lugar, tire uma foto no novo local: o histórico de lugares e de clima é preservado.
@@ -181,6 +184,7 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
           </Button>
         </div>
       </form>
+      {changingCover && <CoverSheet plant={plant} photos={photos} onClose={() => setChangingCover(false)} />}
     </main>
   );
 }
