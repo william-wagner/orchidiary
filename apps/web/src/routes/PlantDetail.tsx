@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, Fragment, type ReactNode, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import { ComfortPanel } from "../components/ComfortPanel.tsx";
+import { CoverSheet } from "../components/CoverSheet.tsx";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
 import { PhotoViewer } from "../components/PhotoViewer.tsx";
@@ -22,6 +23,7 @@ import {
   type PlantLocation,
   type Timeline,
 } from "../lib/api.ts";
+import { coverOf } from "../lib/cover.ts";
 import { accession, coords, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
 
 const EVENT_LABEL: Record<string, string> = {
@@ -103,8 +105,7 @@ function stampTone(type: string) {
 
 /** Capa: a foto escolhida ou, na falta dela, a primeira (a timeline vem da mais recente para a mais antiga). */
 function coverPhoto(t: Timeline | undefined): Photo | undefined {
-  if (!t) return undefined;
-  return (t.plant.coverPhotoId && t.photos.find((p) => p.id === t.plant.coverPhotoId)) || t.photos[t.photos.length - 1];
+  return t && coverOf(t.plant, t.photos);
 }
 
 export function PlantDetail() {
@@ -123,6 +124,7 @@ export function PlantDetail() {
   const toast = useToast();
   const [pendingMove, setPendingMove] = useState<{ check: LocationCheck; takenAt: string } | null>(null);
   const [showReading, setShowReading] = useState(false);
+  const [changingCover, setChangingCover] = useState(false);
   const [batch, setBatch] = useState<{ place: { id: string; name: string }; action: BatchAction } | null>(null);
   /** Foto ampliada: a capa ("capa") ou uma foto do livro (o id dela) */
   const [viewing, setViewing] = useState<{
@@ -255,6 +257,17 @@ export function PlantDetail() {
           ) : (
             <PressedOrchid className="h-40 w-24" />
           )}
+          {cover?.illustrationStatus === "pending" && !plate && (
+            <span className="selo selo-ocre absolute bottom-3 left-3 z-[2]">Desenhando a prancha…</span>
+          )}
+          <button
+            type="button"
+            onClick={() => setChangingCover(true)}
+            className="absolute right-3 bottom-3 z-[2] inline-flex min-h-11 items-center gap-2 rounded-full border border-contorno bg-folha px-3.5 text-[0.85rem] font-medium text-tinta shadow-sm active:bg-salvia-clara"
+          >
+            <Icon name="image" className="size-4" />
+            Trocar capa
+          </button>
         </div>
         <div className="border-t border-linha px-5 py-5 sm:border-t-0 sm:border-l">
           <div className="typed mb-3 flex justify-between gap-2 border-b border-contorno pb-2.5 text-[0.68rem] tracking-[0.06em] uppercase">
@@ -459,6 +472,17 @@ export function PlantDetail() {
           alt={viewing.alt}
           fit={viewing.fit}
           onClose={() => setViewing(null)}
+        />
+      )}
+
+      {changingCover && (
+        <CoverSheet
+          plant={plant}
+          photos={timeline.data.photos}
+          onClose={() => setChangingCover(false)}
+          onUploaded={({ photo, locationCheck }) => {
+            if (locationCheck?.mismatch) setPendingMove({ check: locationCheck, takenAt: photo.takenAt });
+          }}
         />
       )}
 

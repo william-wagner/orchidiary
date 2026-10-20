@@ -231,6 +231,14 @@ const ICONS = {
     </>
   ),
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  /** Folha: a foto já tem prancha botânica pronta */
+  leaf: (
+    <>
+      <path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14" />
+      <path d="M5 19c3-4 6-6 9-8" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof ICONS;
