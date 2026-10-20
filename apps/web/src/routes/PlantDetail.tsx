@@ -1,6 +1,6 @@
 import { formatLocality, joinsBatch } from "@orchidiary/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, type ReactNode, useMemo, useState } from "react";
+import { type FormEvent, Fragment, type ReactNode, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
@@ -99,10 +99,10 @@ function stampTone(type: string) {
   return "";
 }
 
-/** Capa: a foto escolhida ou, na falta dela, a mais recente. */
+/** Capa: a foto escolhida ou, na falta dela, a primeira (a timeline vem da mais recente para a mais antiga). */
 function coverPhoto(t: Timeline | undefined): Photo | undefined {
   if (!t) return undefined;
-  return (t.plant.coverPhotoId && t.photos.find((p) => p.id === t.plant.coverPhotoId)) || t.photos[0];
+  return (t.plant.coverPhotoId && t.photos.find((p) => p.id === t.plant.coverPhotoId)) || t.photos[t.photos.length - 1];
 }
 
 export function PlantDetail() {
@@ -314,11 +314,13 @@ export function PlantDetail() {
           <div key={g.month}>
             <h3 className="mt-6 mb-4 font-serif text-[1.05rem] text-musgo italic first-letter:uppercase">{g.month}</h3>
             <ol>
-              {g.items.map((it) => (
-                <li
-                  key={`${it.kind}-${it.kind === "photo" ? it.photo.id : it.id}`}
-                  className="group grid grid-cols-[4.6rem_1.25rem_minmax(0,1fr)] gap-x-2"
-                >
+              {g.items.map((it, i) => (
+                <Fragment key={`${it.kind}-${it.kind === "photo" ? it.photo.id : it.id}`}>
+                {/* separador entre um dia e o seguinte (mesma data de etiqueta que aparece na linha) */}
+                {i > 0 && typedDate(g.items[i - 1]?.at ?? it.at) !== typedDate(it.at) && (
+                  <li role="separator" className="mb-5 border-t-[1.5px] border-dotted border-contorno" />
+                )}
+                <li className="group grid grid-cols-[4.6rem_1.25rem_minmax(0,1fr)] gap-x-2">
                   <span className="typed pt-1 text-[0.68rem]">{typedDate(it.at)}</span>
                   <span className="relative flex justify-center pt-0.5 text-folhagem">
                     <Icon name={itemIcon(it)} className="size-4" />
@@ -374,6 +376,7 @@ export function PlantDetail() {
                     )}
                   </div>
                 </li>
+                </Fragment>
               ))}
             </ol>
           </div>

@@ -1,4 +1,4 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { illustrationPrompt, needsIllustration } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
@@ -26,7 +26,7 @@ let draining = false;
 
 /**
  * Garante a ilustração da capa atual das plantas indicadas (ou de todas).
- * A capa é a foto escolhida em cover_photo_id ou, na falta dela, a mais recente.
+ * A capa é a foto escolhida em cover_photo_id ou, na falta dela, a primeira da planta.
  */
 export async function illustrateCovers(plantIds?: string[]): Promise<void> {
   const ai = await loadIntegration("openai");
@@ -44,14 +44,14 @@ export async function illustrateCovers(plantIds?: string[]): Promise<void> {
   if (!plantRows.length) return;
   const ids = plantRows.map((p) => p.id);
 
-  const latest = await db
+  const first = await db
     .selectDistinctOn([photos.plantId], { plantId: photos.plantId, id: photos.id })
     .from(photos)
     .where(inArray(photos.plantId, ids))
-    .orderBy(photos.plantId, desc(photos.takenAt));
-  const latestBy = new Map(latest.map((p) => [p.plantId, p.id]));
+    .orderBy(photos.plantId, asc(photos.takenAt));
+  const firstBy = new Map(first.map((p) => [p.plantId, p.id]));
 
-  const coverIds = plantRows.map((p) => p.coverPhotoId ?? latestBy.get(p.id)).filter((id): id is string => !!id);
+  const coverIds = plantRows.map((p) => p.coverPhotoId ?? firstBy.get(p.id)).filter((id): id is string => !!id);
   if (!coverIds.length) return;
   const covers = await db.select().from(photos).where(inArray(photos.id, coverIds));
   const taxonBy = new Map(plantRows.map((p) => [p.id, p.taxon]));
