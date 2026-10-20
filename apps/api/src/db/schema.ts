@@ -19,6 +19,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import {
+  COMFORT_DIMENSIONS,
   ENVIRONMENTS,
   EVENT_TYPES,
   ILLUSTRATION_STATUSES,
@@ -73,6 +74,7 @@ export const sessions = pgTable(
 
 export const taxonRank = pgEnum("taxon_rank", TAXON_RANKS);
 export const taxonOriginKind = pgEnum("taxon_origin_kind", TAXON_ORIGIN_KINDS);
+export const comfortDimension = pgEnum("comfort_dimension", COMFORT_DIMENSIONS);
 
 /**
  * Catálogo de táxons em árvore (família → … → gênero → espécie → variedade;
@@ -401,6 +403,25 @@ export const appLogs = pgTable(
     index("app_logs_level_idx").on(t.level, t.createdAt.desc()),
     index("app_logs_source_idx").on(t.source, t.createdAt.desc()),
   ],
+);
+
+/**
+ * "Já sei, não avisar": a dimensão do índice de conforto que o usuário silenciou para a planta.
+ * Vale só enquanto a planta estiver no período de local em que foi silenciada; mudou de local, volta a avisar.
+ */
+export const comfortSilences = pgTable(
+  "comfort_silences",
+  {
+    plantId: uuid("plant_id")
+      .notNull()
+      .references(() => plants.id, { onDelete: "cascade" }),
+    dimension: comfortDimension("dimension").notNull(),
+    locationId: uuid("location_id")
+      .notNull()
+      .references(() => plantLocations.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.plantId, t.dimension] })],
 );
 
 /** Registro de alertas enviados; dedupe_key evita repetir o mesmo alerta. */

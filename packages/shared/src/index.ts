@@ -10,3 +10,4 @@ export * from "./origin.ts";
 export * from "./locality.ts";
 export * from "./weatherPlan.ts";
 export * from "./batch.ts";
+export * from "./comfort.ts";

@@ -31,7 +31,16 @@
 - [ ] Gráficos de umidade e chuva entre os cards
 - [ ] Time-lapse das fotos e comparação antes/depois
 - [ ] Calendário de floração ano a ano
-- [ ] Índice de conforto: clima real x faixas da ficha
+- [x] Índice de conforto: clima real x faixas da ficha
+  - Decidido (estudo de 19.X.2026, protótipo: https://claude.ai/artifact/2F78Zhf8dvGSJZkb3bYbGV):
+    - Por dimensão, não nota única: noites (`tempMin` x `tempNightMin/Max`), dias (`tempMax` x `tempDayMin/Max`) e umidade. Cada dia fica dentro, perto (margem) ou fora.
+    - Base diária do `weather_daily`; nunca a temperatura do momento.
+    - Card da Coleção: calado quando está tudo bem; selo só com estresse nos últimos 7 dias, dizendo o quê ("noites frias"). Filtro "Fora da faixa" nos chips da Coleção.
+    - Ficha da planta: seção "Conforto" com os últimos 30 dias e o resumo por dimensão. Faixa herdada aparece como "faixa do gênero".
+    - Sem notificação diária: resumo no Telegram a cada 14 dias, só com o que mudou de uma quinzena para a outra (3 ou mais dias fora em 14 = em atenção). Nada mudou, nenhuma mensagem.
+    - "Já sei, não avisar" por planta e dimensão: tira o selo, o filtro e o resumo até a planta mudar de local.
+    - Indoor usa o clima de fora como referência, com aviso na ficha e no resumo, até existirem sensores (ver Zigbee no Backlog).
+  - Depois: comparar períodos de local, cruzar com o calendário de floração e um "Já sei" nos alertas de previsão do Telegram.
 - [ ] Mapa da coleção e do histórico de locais
 
 ## Fase 3 — Coleção
@@ -40,6 +49,7 @@
 - [ ] Genealogia (keikis, divisões, parentais de híbridos)
 - [ ] Lembretes de rega/adubação que consideram a chuva
 - [ ] Editar ficha do Guia pelo app
+- [ ] Faixa própria da planta: o usuário ajusta temperatura e umidade só para aquela planta, sobrescrevendo a ficha ("a minha vive bem a 10°C"). O índice de conforto e os alertas passam a usar a faixa da planta.
 - [ ] Importar fotos antigas em lote (data e local pelo EXIF)
 
 ## Fase 4 — Público
@@ -72,3 +82,4 @@ Nenhuma registrada por enquanto.
 Funcionalidades novas ainda sem fase definida.
 
 - [ ] Integração com interface de automação Zigbee (sensores e dispositivos da casa)
+  - Sensores de temperatura e umidade por local viram a fonte do microclima indoor. O índice de conforto indoor passa a ser calculado sempre a partir deles, e as plantas indoor entram também nos alertas.
