@@ -27,6 +27,9 @@
 
 ## Fase 2 — Linha do tempo de verdade
 
+- [x] Indoor/outdoor e localização como atributos do lugar
+  - O lugar passa a ser dono da localização e do ambiente; planta sem lugar guarda os seus. Histórico de localização também para o lugar, clima por lugar (uma série para todas as plantas dele, coletada mesmo sem planta) e tela de Lugares com o clima de cada um. Protótipo: https://claude.ai/artifact/56VzThFUqovHsUA4iNWEFf
+
 - [ ] Linha do tempo com zoom (semana, mês, ano) e a faixa de temperatura ao fundo
 - [ ] Gráficos de umidade e chuva entre os cards
 - [ ] Time-lapse das fotos e comparação antes/depois
@@ -39,7 +42,7 @@
     - Ficha da planta: seção "Conforto" com os últimos 30 dias e o resumo por dimensão. Faixa herdada aparece como "faixa do gênero".
     - Sem notificação diária: resumo no Telegram a cada 14 dias, só com o que mudou de uma quinzena para a outra (3 ou mais dias fora em 14 = em atenção). Nada mudou, nenhuma mensagem.
     - "Já sei, não avisar" por planta e dimensão: tira o selo, o filtro e o resumo até a planta mudar de local.
-    - Indoor usa o clima de fora como referência, com aviso na ficha e no resumo, até existirem sensores (ver Zigbee no Backlog).
+    - Indoor usa o clima de fora como referência, com aviso na ficha e no resumo, até existirem sensores (ver Zigbee no Backlog). O ambiente agora vem do lugar.
   - Depois: comparar períodos de local, cruzar com o calendário de floração e um "Já sei" nos alertas de previsão do Telegram.
 - [ ] Mapa da coleção e do histórico de locais
 
@@ -82,4 +85,4 @@ Nenhuma registrada por enquanto.
 Funcionalidades novas ainda sem fase definida.
 
 - [ ] Integração com interface de automação Zigbee (sensores e dispositivos da casa)
-  - Sensores de temperatura e umidade por local viram a fonte do microclima indoor. O índice de conforto indoor passa a ser calculado sempre a partir deles, e as plantas indoor entram também nos alertas.
+  - Sensores de temperatura e umidade por lugar viram a fonte do microclima indoor — entram como mais uma fonte do período de localização do lugar, do lado da Open-Meteo. O índice de conforto indoor passa a ser calculado sempre a partir deles, e as plantas indoor entram também nos alertas.

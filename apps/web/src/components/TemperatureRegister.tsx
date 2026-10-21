@@ -46,7 +46,7 @@ export function TemperatureRegister({ days }: { days: WeatherDay[] }) {
       >
         {days.map((d) => (
           <div
-            key={`${d.locationId}-${d.date}`}
+            key={`${d.sourceId}-${d.date}`}
             className="h-6 rounded-[3px]"
             style={{ background: tempColor(d.tempMean) }}
             title={`${d.date}: ${d.tempMin ?? "?"}–${d.tempMax ?? "?"} °C, umidade ${d.humidityMean ?? "?"}%`}

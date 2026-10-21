@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, lte, notInArray } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lte, notInArray, sql } from "drizzle-orm";
 import {
   addDays,
   attentionOf,
@@ -10,6 +10,8 @@ import {
   comfortFlags,
   type ComfortDimension,
   type ComfortFlag,
+  climateSegments,
+  climateWindows,
   comfortRanges,
   type ComfortRanges,
   type ComfortWeatherDay,
@@ -26,8 +28,9 @@ import { env } from "../env.ts";
 import { formatComfortDigest, type DigestPlant } from "./alertRules.ts";
 import { sendAlert } from "./telegram.ts";
 import { effectiveCareOf } from "./taxonomy.ts";
+import { listLocations } from "./locations.ts";
 
-const { weatherDaily, comfortSilences, plants, plantLocations, places, taxa } = schema;
+const { weatherDaily, comfortSilences, plants, plantLocations, placeLocations, places, taxa } = schema;
 
 /** Plantas que saíram da coleção não entram no índice */
 const GONE = ["dead", "given_away"] as const;
@@ -42,23 +45,70 @@ const RANGE_FIELDS: Record<ComfortDimension, [CareField, CareField]> = {
 /** Último dia com clima coletado: ontem, no fuso do app (a coleta das 06:10 fecha o dia anterior). */
 export const comfortEnd = (now = new Date()) => addDays(toLocalDate(now, env.APP_TIMEZONE), -1);
 
-async function weatherOf(locationIds: string[], from: string, to: string) {
+/**
+ * Série de clima de cada planta no intervalo, já resolvida por fonte: enquanto a planta
+ * esteve num lugar, os dias vêm da série do lugar; fora dele, da série dela mesma.
+ * Uma janela que atravessa uma mudança junta as duas pontas, sem nada retroativo.
+ */
+async function weatherByPlant(plantIds: string[], from: string, to: string) {
   const out = new Map<string, ComfortWeatherDay[]>();
-  if (!locationIds.length) return out;
-  const rows = await db
-    .select({
-      locationId: weatherDaily.locationId,
-      date: weatherDaily.date,
-      tempMin: weatherDaily.tempMin,
-      tempMax: weatherDaily.tempMax,
-      humidityMean: weatherDaily.humidityMean,
-    })
-    .from(weatherDaily)
-    .where(and(inArray(weatherDaily.locationId, [...new Set(locationIds)]), gte(weatherDaily.date, from), lte(weatherDaily.date, to)));
-  for (const { locationId, ...day } of rows) {
-    const list = out.get(locationId) ?? [];
+  const ids = [...new Set(plantIds)];
+  if (!ids.length) return out;
+
+  const periods = await db.select().from(plantLocations).where(inArray(plantLocations.plantId, ids));
+  const placeIds = [...new Set(periods.map((p) => p.placeId).filter((id): id is string => !!id))];
+  const placePeriods = placeIds.length
+    ? await db.select().from(placeLocations).where(inArray(placeLocations.placeId, placeIds))
+    : [];
+
+  const windowsBy = new Map<string, ReturnType<typeof climateWindows>>();
+  const placeSources = new Set<string>();
+  const plantSources = new Set<string>();
+  for (const plantId of ids) {
+    const segments = climateSegments(
+      periods.filter((p) => p.plantId === plantId),
+      placePeriods as Array<(typeof placePeriods)[number] & { placeId: string }>,
+    );
+    const windows = climateWindows(segments, env.APP_TIMEZONE, from, to);
+    if (!windows.length) continue;
+    windowsBy.set(plantId, windows);
+    for (const w of windows) (w.source.kind === "place" ? placeSources : plantSources).add(w.source.id);
+  }
+  if (!windowsBy.size) return out;
+
+  const columns = {
+    date: weatherDaily.date,
+    tempMin: weatherDaily.tempMin,
+    tempMax: weatherDaily.tempMax,
+    humidityMean: weatherDaily.humidityMean,
+  };
+  const [placeRows, plantRows] = await Promise.all([
+    placeSources.size
+      ? db
+          .select({ ...columns, sourceId: weatherDaily.placeLocationId })
+          .from(weatherDaily)
+          .where(and(inArray(weatherDaily.placeLocationId, [...placeSources]), gte(weatherDaily.date, from), lte(weatherDaily.date, to)))
+      : Promise.resolve([]),
+    plantSources.size
+      ? db
+          .select({ ...columns, sourceId: weatherDaily.locationId })
+          .from(weatherDaily)
+          .where(and(inArray(weatherDaily.locationId, [...plantSources]), gte(weatherDaily.date, from), lte(weatherDaily.date, to)))
+      : Promise.resolve([]),
+  ]);
+  const bySource = new Map<string, ComfortWeatherDay[]>();
+  for (const { sourceId, ...day } of [...placeRows, ...plantRows]) {
+    if (!sourceId) continue;
+    const list = bySource.get(sourceId) ?? [];
     list.push(day);
-    out.set(locationId, list);
+    bySource.set(sourceId, list);
+  }
+
+  for (const [plantId, windows] of windowsBy) {
+    const days = windows
+      .flatMap((w) => (bySource.get(w.source.id) ?? []).filter((d) => d.date >= w.from && d.date <= w.to))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    out.set(plantId, days);
   }
   return out;
 }
@@ -103,8 +153,8 @@ export async function collectionComfort(
   const end = comfortEnd(now);
   const [ranges, weather, silenced] = await Promise.all([
     rangesOf(eligible.map((r) => r.taxonId)),
-    weatherOf(
-      eligible.map((r) => r.location.id),
+    weatherByPlant(
+      eligible.map((r) => r.plantId),
       addDays(end, -(COMFORT_CARD_DAYS - 1)),
       end,
     ),
@@ -113,19 +163,15 @@ export async function collectionComfort(
   for (const r of eligible) {
     const rr = ranges.get(r.taxonId)?.ranges;
     if (!rr || !hasComfortRanges(rr)) continue;
-    out.set(r.plantId, comfortFlags(rr, weather.get(r.location.id) ?? [], end, silenced.get(r.plantId)));
+    out.set(r.plantId, comfortFlags(rr, weather.get(r.plantId) ?? [], end, silenced.get(r.plantId)));
   }
   return out;
 }
 
+/** Período atual da planta, com lugar, coordenadas e ambiente resolvidos. */
 async function currentLocation(plantId: string) {
-  const [row] = await db
-    .select({ location: plantLocations, placeName: places.name })
-    .from(plantLocations)
-    .leftJoin(places, eq(places.id, plantLocations.placeId))
-    .where(and(eq(plantLocations.plantId, plantId), isNull(plantLocations.validTo)))
-    .limit(1);
-  return row ?? null;
+  const period = (await listLocations(plantId)).find((p) => p.validTo === null);
+  return period ? { location: period, placeName: period.placeName } : null;
 }
 
 /** Seção Conforto da ficha: os últimos 30 dias no local atual, dimensão por dimensão. */
@@ -140,10 +186,10 @@ export async function plantComfort(plant: { id: string; taxonId: string | null }
   const end = comfortEnd(now);
   const from = addDays(end, -(COMFORT_DETAIL_DAYS - 1));
   const [weather, silenced] = await Promise.all([
-    weatherOf([cur.location.id], from, end),
+    weatherByPlant([plant.id], from, end),
     silencesOf([{ plantId: plant.id, locationId: cur.location.id }]),
   ]);
-  const days = weather.get(cur.location.id) ?? [];
+  const days = weather.get(plant.id) ?? [];
   const off = silenced.get(plant.id) ?? new Set<ComfortDimension>();
 
   // de qual táxon veio cada faixa, para dizer "faixa do gênero Vanda" quando é herdada
@@ -224,16 +270,18 @@ export async function runComfortDigest(now = new Date()) {
       nickname: plants.nickname,
       taxonId: plants.taxonId,
       locationId: plantLocations.id,
-      environment: plantLocations.environment,
+      // o ambiente é do lugar quando a planta está num; sem lugar, é dela
+      environment: sql<"indoor" | "outdoor">`coalesce(${places.environment}, ${plantLocations.environment})`,
     })
     .from(plants)
     .innerJoin(plantLocations, and(eq(plantLocations.plantId, plants.id), isNull(plantLocations.validTo)))
+    .leftJoin(places, eq(places.id, plantLocations.placeId))
     .where(notInArray(plants.status, [...GONE]));
   const withTaxon = rows.filter((r): r is typeof r & { taxonId: string } => !!r.taxonId);
   const [ranges, weather, silenced, names] = await Promise.all([
     rangesOf(withTaxon.map((r) => r.taxonId)),
-    weatherOf(
-      withTaxon.map((r) => r.locationId),
+    weatherByPlant(
+      withTaxon.map((r) => r.plantId),
       w.previous.from,
       w.current.to,
     ),
@@ -249,7 +297,7 @@ export async function runComfortDigest(now = new Date()) {
     const rr: ComfortRanges | undefined = ranges.get(r.taxonId)?.ranges;
     if (!rr || !hasComfortRanges(rr)) continue;
     const off = silenced.get(r.plantId) ?? new Set<ComfortDimension>();
-    const days = weather.get(r.locationId) ?? [];
+    const days = weather.get(r.plantId) ?? [];
     const changes = comfortChanges(rr, days, boundary, off);
     const acc = byUser.get(r.userId) ?? { plants: [], unchanged: 0, silenced: 0 };
     // silenciados que ainda estão fora da faixa: só contados no rodapé

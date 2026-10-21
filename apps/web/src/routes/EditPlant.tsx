@@ -45,14 +45,31 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
   const qc = useQueryClient();
   const [taxon, setTaxon] = useState<TaxonSummary | null>(plant.taxon);
   const initialPlaceId = current?.placeId ?? null;
+  // o período atual já traz ambiente e coordenadas resolvidos (do lugar, quando há um)
   const [place, setPlace] = useState<PlaceRef | null>(
-    current?.placeId && current.placeName ? { id: current.placeId, name: current.placeName } : null,
+    current?.placeId && current.placeName
+      ? { id: current.placeId, name: current.placeName, environment: current.environment, location: current }
+      : null,
   );
   const back = `/plantas/${plant.id}`;
   const initialDate = dateValue(plant.acquiredAt);
 
+  /**
+   * Mudar de lugar é uma MUDANÇA, não uma correção: abre um período novo a partir de agora
+   * e o histórico anterior (com o clima dele) fica como está. Tirar o lugar mantém a planta
+   * onde ela está, agora com localização própria.
+   */
   const save = useMutation({
-    mutationFn: (body: unknown) => api.patch<Plant>(`/plants/${plant.id}`, body),
+    mutationFn: async (body: unknown) => {
+      if ((place?.id ?? null) !== initialPlaceId) {
+        await api.post(`/plants/${plant.id}/locations`,
+          place
+            ? { placeId: place.id }
+            : { lat: current!.lat, lng: current!.lng, environment: current!.environment },
+        );
+      }
+      return api.patch<Plant>(`/plants/${plant.id}`, body);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["timeline", plant.id] });
       qc.invalidateQueries({ queryKey: ["plants"] });
@@ -77,8 +94,6 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
       substrate: text("substrate"),
       potNotes: text("potNotes"),
       notes: text("notes"),
-      // só reenvia se mudou (limpar o campo envia null)
-      ...((place?.id ?? null) !== initialPlaceId && { placeId: place?.id ?? null }),
     });
   }
 
@@ -118,7 +133,18 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
             <Input name="acquiredAt" type="date" defaultValue={initialDate} />
           </Field>
         </div>
-        {current && <PlacePicker value={place} onChange={setPlace} />}
+        {current && (
+          <div className="space-y-2">
+            <PlacePicker value={place} onChange={setPlace} newPlace={{ environment: current.environment, position: { lat: current.lat, lng: current.lng, accuracy: 0 } }} />
+            {(place?.id ?? null) !== initialPlaceId && (
+              <p className="text-[0.84rem] text-ocre">
+                {place
+                  ? `A planta passa a usar a localização e o ambiente de “${place.name}”, a partir de agora. O histórico anterior fica como está.`
+                  : "A planta sai do lugar e passa a ter localização própria, a partir de agora."}
+              </p>
+            )}
+          </div>
+        )}
         <Field label="Situação">
           <Select name="status" defaultValue={plant.status}>
             {Object.entries(STATUS_LABEL).map(([value, label]) => (

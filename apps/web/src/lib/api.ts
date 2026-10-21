@@ -51,16 +51,68 @@ export interface User {
   role: "master" | "user";
 }
 
-/** Lugar nomeado do usuário ("Orquidário quarto"). */
+/** Localização do lugar; o histórico dele guarda uma linha por período. */
+export interface PlaceLocation {
+  id: string;
+  placeId: string;
+  lat: number;
+  lng: number;
+  city: string | null;
+  state: string | null;
+  stateCode: string | null;
+  country: string | null;
+  countryCode: string | null;
+  validFrom: string;
+  validTo: string | null;
+}
+
+/**
+ * Lugar do usuário ("Orquidário quarto"). O lugar é dono da localização e do ambiente:
+ * as plantas registradas nele usam os dois, e o clima é coletado por lugar.
+ */
 export interface Place {
   id: string;
   name: string;
+  environment: "indoor" | "outdoor";
+  /** Localização atual; null em lugar antigo que ainda não teve uma definida */
+  location: PlaceLocation | null;
   /** Plantas que estão lá agora */
   plantCount: number;
-  /** Períodos de local que o usam, contando o histórico; só some se for 0 */
+  /** Períodos de permanência que o usam, contando o histórico; só some se for 0 */
   usedCount: number;
+  /** Clima dos últimos 30 dias (lista) */
+  weather?: PlaceWeatherDay[];
 }
 
+export interface PlaceWeatherDay {
+  date: string;
+  tempMin: number | null;
+  tempMax: number | null;
+  tempMean: number | null;
+  humidityMean: number | null;
+  humidityMin: number | null;
+  humidityMax: number | null;
+  precipitation: number | null;
+}
+
+/** Ficha do lugar: localização, histórico, clima e quem está lá. */
+export interface PlaceDetail extends Omit<Place, "weather" | "usedCount"> {
+  history: PlaceLocation[];
+  weather: { from: string; to: string; days: PlaceWeatherDay[] };
+  plants: Array<{
+    id: string;
+    nickname: string;
+    taxonId: string | null;
+    status: string;
+    coverPhotoId: string | null;
+    since: string;
+  }>;
+}
+
+/**
+ * Período de permanência da planta, com localização e ambiente JÁ RESOLVIDOS:
+ * num lugar, são os dele; sem lugar, os dela.
+ */
 export interface PlantLocation {
   id: string;
   lat: number;
@@ -187,7 +239,8 @@ export interface BatchCreated {
 }
 
 export interface WeatherDay {
-  locationId: string;
+  /** Período de localização do lugar ou da planta de onde veio o dia */
+  sourceId: string;
   date: string;
   tempMin: number | null;
   tempMax: number | null;

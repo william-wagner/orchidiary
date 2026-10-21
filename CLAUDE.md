@@ -4,7 +4,8 @@
 - Monorepo pnpm: `apps/api` (Hono + Drizzle + Postgres), `apps/web` (React + Vite + Tailwind 4, PWA), `packages/shared` (Zod e regras puras).
 - Imports locais com extensão `.ts`/`.tsx` (rodamos com tsx e `allowImportingTsExtensions`).
 - Regras de negócio puras vão para `packages/shared` e ganham teste (`node:test` via `tsx --test`).
-- **Nunca** altere coordenadas de `plant_locations` existentes nem apague clima de períodos passados: mudança de local fecha o período atual e cria outro (ver docs/ARCHITECTURE.md).
+- **Nunca** altere coordenadas de um período existente (`place_locations` ou `plant_locations`) nem apague clima de períodos passados: mudar de lugar — ou mudar a localização do lugar — fecha o período atual e cria outro (ver docs/ARCHITECTURE.md).
+- Localização e ambiente são do **lugar**; só planta sem lugar guarda os seus (um check no banco garante que nunca há os dois). O clima é coletado por lugar, mesmo sem planta nenhuma ali, e a série de uma planta é montada por trechos (`climateSegments`/`climateWindows`, no shared). A API devolve os períodos já resolvidos: o app nunca decide de onde vem a coordenada.
 - Espécies vivem em `taxa` (árvore autorrelacionada por `parent_id`); a planta pode apontar para qualquer nível. Regras de nível, nome e herança de ficha em `packages/shared/src/taxonomy.ts`. Novos táxons do catálogo inicial vão em `apps/api/src/db/catalog.ts` (o teste valida a árvore); os países de origem das espécies vão em `catalogOrigins.ts` (principal em `byCountry`, demais em `alsoIn`). Países novos: acrescentar em `ORIGIN_COUNTRIES` (shared) e na lista do glob de `OriginFlag.tsx` (um teste confere).
 - Rotas de integração e backup (`/api/settings/*`) são exclusivas do usuário master.
 - Segredos de integrações só via `saveIntegration` (criptografados com `SECRETS_KEY`); nunca devolva segredos para o front.

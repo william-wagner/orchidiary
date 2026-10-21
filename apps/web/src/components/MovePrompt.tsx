@@ -30,11 +30,9 @@ export function MovePrompt({
   async function confirmMove() {
     setBusy(true);
     try {
+      // Num lugar, a localização e o ambiente são os dele; sem lugar, valem os da foto.
       await api.post(`/plants/${plantId}/locations`, {
-        lat: check.photoLocation.lat,
-        lng: check.photoLocation.lng,
-        placeId: place?.id ?? null,
-        environment,
+        ...(place ? { placeId: place.id } : { lat: check.photoLocation.lat, lng: check.photoLocation.lng, environment }),
         validFrom: takenAt,
       });
       onDone(true);
@@ -61,8 +59,19 @@ export function MovePrompt({
             <p className="text-musgo">
               Se mudou, o novo local vale a partir desta foto. O histórico anterior continua ligado ao local antigo.
             </p>
-            <PlacePicker value={place} onChange={setPlace} label="Nome do novo lugar" />
-            <EnvironmentPicker value={environment} onChange={setEnvironment} />
+            <PlacePicker
+              value={place}
+              onChange={setPlace}
+              label="Nome do novo lugar"
+              newPlace={{ environment, position: { ...check.photoLocation, accuracy: 0 } }}
+            />
+            {place ? (
+              <p className="text-[0.85rem] text-musgo">
+                A planta passa a usar a localização e o ambiente de “{place.name}”.
+              </p>
+            ) : (
+              <EnvironmentPicker value={environment} onChange={setEnvironment} />
+            )}
             <ErrorText error={error} />
             <div className="grid grid-cols-2 gap-2">
               <Button variant="quiet" onClick={() => onDone(false)}>
