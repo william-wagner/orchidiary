@@ -39,7 +39,7 @@
     - Ficha da planta: seção "Conforto" com os últimos 30 dias e o resumo por dimensão. Faixa herdada aparece como "faixa do gênero".
     - Sem notificação diária: resumo no Telegram a cada 14 dias, só com o que mudou de uma quinzena para a outra (3 ou mais dias fora em 14 = em atenção). Nada mudou, nenhuma mensagem.
     - "Já sei, não avisar" por planta e dimensão: tira o selo, o filtro e o resumo até a planta mudar de local.
-    - Indoor usa o clima de fora como referência, com aviso na ficha e no resumo, até existirem sensores (ver Zigbee no Backlog).
+    - Indoor usa o clima de fora como referência, com aviso na ficha e no resumo, até existirem sensores (ver Sensores de ambiente no Backlog).
   - Depois: comparar períodos de local, cruzar com o calendário de floração e um "Já sei" nos alertas de previsão do Telegram.
 - [ ] Mapa da coleção e do histórico de locais
 
@@ -76,12 +76,16 @@ Nenhum registrado por enquanto.
 Ajustes em algo que já existe (usabilidade, desempenho, visual, textos).
 
 - [ ] Ambiente (indoor/outdoor) passa a ser do lugar, não da planta (alta)
-  - Hoje `environment` fica em `plant_locations` (período da planta). Com sensores associados a lugares (ver Zigbee em Ideias), indoor/outdoor vira atributo de `places`, e a planta herda o ambiente do lugar em que está. Pré-requisito da integração Zigbee.
+  - Hoje `environment` fica em `plant_locations` (período da planta). Com sensores associados a lugares (ver Sensores de ambiente em Ideias), indoor/outdoor vira atributo de `places`, e a planta herda o ambiente do lugar em que está. Pré-requisito da integração com sensores.
   - A definir: migração dos períodos existentes (lugar com plantas em ambientes diferentes) e como preservar a regra de nada retroativo se o ambiente de um lugar mudar.
 
 ## Ideias
 
 Funcionalidades novas ainda sem fase definida.
 
-- [ ] Integração com interface de automação Zigbee (sensores e dispositivos da casa)
-  - Sensores de temperatura e umidade por local viram a fonte do microclima indoor. O índice de conforto indoor passa a ser calculado sempre a partir deles, e as plantas indoor entram também nos alertas.
+- [ ] Sensores de ambiente por lugar, com adaptadores por fonte (alta)
+  - Sensores de temperatura e umidade associados aos lugares viram a fonte do microclima. O índice de conforto indoor passa a ser calculado sempre a partir deles, e as plantas indoor entram também nos alertas.
+  - O app tem um conceito próprio de leitura de ambiente do lugar, e cada fonte vira um adaptador (a medição manual já é uma fonte). Primeiro adaptador: Home Assistant, que dá acesso a várias marcas e protocolos (Zigbee, Wi-Fi, Matter) de uma vez. Outros depois (webhook genérico, marcas com API própria).
+  - Estudo de viabilidade de 21.X.2026: Zigbee só chega à nuvem por uma ponte em casa; APIs de nuvem dos fabricantes (eWeLink, Tuya) dependem de parceria comercial.
+- [ ] Medição de luz por lugar (baixa)
+  - Sensor de luz (lux) entra pelo mesmo adaptador dos sensores de ambiente. Luz pesa na floração; cruzar com as fichas quando houver dados.
