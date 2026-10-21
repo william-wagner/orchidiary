@@ -75,7 +75,9 @@ Nenhum registrado por enquanto.
 
 Ajustes em algo que já existe (usabilidade, desempenho, visual, textos).
 
-Nenhuma registrada por enquanto.
+- [ ] Ambiente (indoor/outdoor) passa a ser do lugar, não da planta (alta)
+  - Hoje `environment` fica em `plant_locations` (período da planta). Com sensores associados a lugares (ver Zigbee em Ideias), indoor/outdoor vira atributo de `places`, e a planta herda o ambiente do lugar em que está. Pré-requisito da integração Zigbee.
+  - A definir: migração dos períodos existentes (lugar com plantas em ambientes diferentes) e como preservar a regra de nada retroativo se o ambiente de um lugar mudar.
 
 ## Ideias
 
