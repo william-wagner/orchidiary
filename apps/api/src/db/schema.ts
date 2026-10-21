@@ -170,8 +170,9 @@ export const plants = pgTable(
 
 /**
  * Lugares nomeados do usuário ("Orquidário quarto", "Varanda dos fundos").
- * Cadastrados e mantidos direto no campo "Nome do lugar"; os períodos de local
- * das plantas apontam para cá. O nome é único por usuário, sem diferenciar maiúsculas.
+ * O lugar é dono da localização e do ambiente: toda planta registrada nele usa os dois,
+ * e o clima é coletado por lugar, mesmo quando não há nenhuma planta ali.
+ * O nome é único por usuário, sem diferenciar maiúsculas.
  */
 export const places = pgTable(
   "places",
@@ -181,15 +182,49 @@ export const places = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** Dentro de casa ou ao ar livre: atributo do lugar, não da planta. */
+    environment: environment("environment").notNull(),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("places_user_name_uq").on(t.userId, sql`lower(${t.name})`)],
 );
 
 /**
- * Histórico de locais. Linhas existentes nunca têm coordenadas alteradas:
- * mudar de lugar fecha o período atual (valid_to) e cria um novo.
- * O ambiente (indoor/outdoor) faz parte do período, pois também muda com o tempo.
+ * Histórico de localização do LUGAR. Mesma regra do histórico da planta: corrigir
+ * ou mudar a coordenada fecha o período atual e abre outro, nunca reescreve o passado,
+ * porque o clima coletado fica pendurado no período.
+ */
+export const placeLocations = pgTable(
+  "place_locations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    placeId: uuid("place_id")
+      .notNull()
+      .references(() => places.id, { onDelete: "cascade" }),
+    lat: doublePrecision("lat").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    /** Cidade/estado/país das coordenadas (geocodificação reversa) */
+    city: text("city"),
+    state: text("state"),
+    stateCode: text("state_code"),
+    country: text("country"),
+    countryCode: text("country_code"),
+    validFrom: ts("valid_from").notNull(),
+    validTo: ts("valid_to"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("place_locations_place_idx").on(t.placeId, t.validFrom),
+    // no máximo uma localização "atual" por lugar
+    uniqueIndex("place_locations_one_open_idx").on(t.placeId).where(sql`${t.validTo} is null`),
+  ],
+);
+
+/**
+ * Histórico de permanência da planta: ou ela está num lugar (`place_id`, e então a
+ * localização e o ambiente são os do lugar), ou tem localização própria (`lat`/`lng`/
+ * `environment`). Nunca os dois — o check garante que não há duas verdades.
+ * Mudar de lugar fecha o período atual (valid_to) e cria um novo; o passado fica.
  */
 export const plantLocations = pgTable(
   "plant_locations",
@@ -198,17 +233,19 @@ export const plantLocations = pgTable(
     plantId: uuid("plant_id")
       .notNull()
       .references(() => plants.id, { onDelete: "cascade" }),
-    lat: doublePrecision("lat").notNull(),
-    lng: doublePrecision("lng").notNull(),
-    /** Lugar nomeado deste período. Só dá para apagar um lugar que nenhum período usa. */
+    /** Só quando a planta NÃO está num lugar; com lugar, a coordenada é a dele. */
+    lat: doublePrecision("lat"),
+    lng: doublePrecision("lng"),
+    /** Lugar deste período. Só dá para apagar um lugar que nenhum período usa. */
     placeId: uuid("place_id").references(() => places.id, { onDelete: "restrict" }),
-    /** Cidade/estado/país das coordenadas (geocodificação reversa); só complementa lat/lng, que seguem como fonte da verdade. */
+    /** Cidade/estado/país das coordenadas próprias (geocodificação reversa) */
     city: text("city"),
     state: text("state"),
     stateCode: text("state_code"),
     country: text("country"),
     countryCode: text("country_code"),
-    environment: environment("environment").notNull(),
+    /** Só quando a planta NÃO está num lugar; com lugar, o ambiente é o dele. */
+    environment: environment("environment"),
     validFrom: ts("valid_from").notNull(),
     validTo: ts("valid_to"),
     createdAt: createdAt(),
@@ -217,6 +254,12 @@ export const plantLocations = pgTable(
     index("plant_locations_plant_idx").on(t.plantId, t.validFrom),
     // no máximo um local "atual" por planta
     uniqueIndex("plant_locations_one_open_idx").on(t.plantId).where(sql`${t.validTo} is null`),
+    // ou o lugar manda, ou a planta tem localização própria — nunca os dois
+    check(
+      "plant_locations_source_ck",
+      sql`(${t.placeId} is not null and ${t.lat} is null and ${t.lng} is null and ${t.environment} is null)
+        or (${t.placeId} is null and ${t.lat} is not null and ${t.lng} is not null and ${t.environment} is not null)`,
+    ),
   ],
 );
 
@@ -299,14 +342,17 @@ export const placeBatchExclusions = pgTable(
   (t) => [primaryKey({ columns: [t.placeId, t.type, t.plantId] })],
 );
 
-/** Clima externo diário (Open-Meteo), ligado ao PERÍODO de local — por isso nunca muda retroativamente. */
+/**
+ * Clima externo diário (Open-Meteo), ligado ao PERÍODO da fonte — por isso nunca muda
+ * retroativamente. A fonte é o período do LUGAR (uma série para todas as plantas dele,
+ * coletada mesmo sem planta nenhuma) ou o período da planta sem lugar. Exatamente uma das duas.
+ */
 export const weatherDaily = pgTable(
   "weather_daily",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    locationId: uuid("location_id")
-      .notNull()
-      .references(() => plantLocations.id, { onDelete: "cascade" }),
+    placeLocationId: uuid("place_location_id").references(() => placeLocations.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id").references(() => plantLocations.id, { onDelete: "cascade" }),
     date: date("date", { mode: "string" }).notNull(),
     tempMin: real("temp_min"),
     tempMax: real("temp_max"),
@@ -326,7 +372,11 @@ export const weatherDaily = pgTable(
     source: text("source").notNull().default("open-meteo"),
     fetchedAt: ts("fetched_at").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("weather_daily_location_date_idx").on(t.locationId, t.date)],
+  (t) => [
+    uniqueIndex("weather_daily_location_date_idx").on(t.locationId, t.date),
+    uniqueIndex("weather_daily_place_location_date_idx").on(t.placeLocationId, t.date),
+    check("weather_daily_source_ck", sql`num_nonnulls(${t.placeLocationId}, ${t.locationId}) = 1`),
+  ],
 );
 
 /**

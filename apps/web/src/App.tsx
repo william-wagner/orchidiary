@@ -10,7 +10,10 @@ import { Collection } from "./routes/Collection.tsx";
 import { EditPlant } from "./routes/EditPlant.tsx";
 import { Guide, TaxonPage } from "./routes/Guide.tsx";
 import { Login } from "./routes/Login.tsx";
+import { NewPlace } from "./routes/NewPlace.tsx";
 import { NewPlant } from "./routes/NewPlant.tsx";
+import { PlaceDetailPage } from "./routes/PlaceDetail.tsx";
+import { Places } from "./routes/Places.tsx";
 import { PlantDetail } from "./routes/PlantDetail.tsx";
 import { Settings } from "./routes/Settings.tsx";
 
@@ -26,6 +29,9 @@ export function App() {
         <Route path="plantas/nova" element={<NewPlant />} />
         <Route path="plantas/:id" element={<PlantDetail />} />
         <Route path="plantas/:id/editar" element={<EditPlant />} />
+        <Route path="lugares" element={<Places />} />
+        <Route path="lugares/novo" element={<NewPlace />} />
+        <Route path="lugares/:id" element={<PlaceDetailPage />} />
         <Route path="guia" element={<Guide />} />
         <Route path="guia/:id" element={<TaxonPage />} />
         <Route path="conta" element={<Account user={me.data} />} />
@@ -58,9 +64,13 @@ function Shell({ user }: { user: User }) {
               <Icon name="collection" className="size-[1.2rem]" />
               Coleção
             </NavLink>
+            <NavLink to="/lugares" className={tabCls}>
+              <Icon name="pin" className="size-[1.2rem]" />
+              Lugares
+            </NavLink>
             <NavLink to="/guia" className={tabCls}>
               <Icon name="guide" className="size-[1.2rem]" />
-              Guia de Cultivo
+              Guia
             </NavLink>
             <AccountTab user={user} />
           </div>

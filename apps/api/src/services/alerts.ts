@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { addDays, coordKey, toLocalDate } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
@@ -28,19 +28,31 @@ async function fetchTomorrow(lat: number, lng: number, tomorrow: string, fetchIm
 /** Roda após a coleta diária: alerta de frio/calor previsto para amanhã. */
 export async function runForecastAlerts(now = new Date(), fetchImpl: typeof fetch = fetch) {
   const tomorrow = addDays(toLocalDate(now, env.APP_TIMEZONE), 1);
+  // Coordenada e ambiente vêm do lugar quando a planta está num; sem lugar, são dela.
   const rows = await db
-    .select({ plant: schema.plants, location: schema.plantLocations })
+    .select({
+      plant: schema.plants,
+      location: {
+        lat: sql<number>`coalesce(${schema.placeLocations.lat}, ${schema.plantLocations.lat})`,
+        lng: sql<number>`coalesce(${schema.placeLocations.lng}, ${schema.plantLocations.lng})`,
+      },
+    })
     .from(schema.plants)
     .innerJoin(
       schema.plantLocations,
       and(eq(schema.plantLocations.plantId, schema.plants.id), isNull(schema.plantLocations.validTo)),
+    )
+    .leftJoin(schema.places, eq(schema.places.id, schema.plantLocations.placeId))
+    .leftJoin(
+      schema.placeLocations,
+      and(eq(schema.placeLocations.placeId, schema.places.id), isNull(schema.placeLocations.validTo)),
     )
     .where(
       and(
         isNotNull(schema.plants.taxonId),
         ne(schema.plants.status, "dead"),
         ne(schema.plants.status, "given_away"),
-        eq(schema.plantLocations.environment, "outdoor"),
+        eq(sql`coalesce(${schema.places.environment}, ${schema.plantLocations.environment})`, "outdoor"),
       ),
     );
   // faixas herdadas: uma Vanda coerulea sem faixa própria usa a do gênero Vanda

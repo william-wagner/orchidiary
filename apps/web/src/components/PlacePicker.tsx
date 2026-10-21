@@ -1,27 +1,36 @@
-import { normalizeSearch } from "@orchidiary/shared";
+import { type Environment, normalizeSearch } from "@orchidiary/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 import { api, type Place } from "../lib/api.ts";
+import { environmentLabel } from "../lib/format.ts";
+import type { Position } from "../lib/geo.ts";
 import { ErrorText } from "./ui.tsx";
 
-export type PlaceRef = Pick<Place, "id" | "name">;
+export type PlaceRef = Pick<Place, "id" | "name" | "environment"> & {
+  /** Onde o lugar fica; null em lugar antigo que ainda não teve localização definida */
+  location: { lat: number; lng: number } | null;
+};
 
 const plantsLabel = (n: number) => (n === 1 ? "1 planta" : `${n} plantas`);
 
 /**
  * Campo "Nome do lugar". Tudo acontece no próprio campo:
  *  - digitar filtra os lugares já cadastrados;
- *  - um nome que ainda não existe aparece como "Cadastrar “…”";
+ *  - um nome que ainda não existe é cadastrado aqui, com o ambiente e a posição informados
+ *    (o lugar é dono dos dois, e as plantas dele herdam);
  *  - cada lugar da lista pode ser renomeado ou apagado (só se nenhuma planta o usou).
  */
 export function PlacePicker({
   value,
   onChange,
   label = "Nome do lugar",
+  newPlace,
 }: {
   value: PlaceRef | null;
   onChange: (place: PlaceRef | null) => void;
   label?: string;
+  /** Ambiente e posição usados ao cadastrar um lugar novo daqui; sem posição, não dá para cadastrar. */
+  newPlace?: { environment: Environment; position: Position | null };
 }) {
   const id = useId();
   const qc = useQueryClient();
@@ -50,7 +59,7 @@ export function PlacePicker({
   };
 
   function choose(p: PlaceRef) {
-    onChange({ id: p.id, name: p.name });
+    onChange({ id: p.id, name: p.name, environment: p.environment, location: p.location });
     setText("");
     setOpen(false);
     setEditing(null);
@@ -58,7 +67,17 @@ export function PlacePicker({
   }
 
   const create = useMutation({
-    mutationFn: (name: string) => api.post<Place>("/places", { name }),
+    mutationFn: (name: string) => {
+      if (!newPlace?.position) {
+        throw new Error("Marque a localização antes de cadastrar o lugar: ela passa a valer para as plantas dele.");
+      }
+      return api.post<Place>("/places", {
+        name,
+        environment: newPlace.environment,
+        lat: newPlace.position.lat,
+        lng: newPlace.position.lng,
+      });
+    },
     onSuccess: (p) => {
       refresh();
       choose(p);
@@ -118,7 +137,10 @@ export function PlacePicker({
       <div>
         <span className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">{label}</span>
         <div className="cartao flex items-center justify-between gap-3 px-3 py-2">
-          <span className="min-w-0 truncate font-serif text-[1.2rem] leading-tight">{value.name}</span>
+          <span className="min-w-0">
+            <span className="block truncate font-serif text-[1.2rem] leading-tight">{value.name}</span>
+            <span className="typed block text-[0.75rem]">{environmentLabel(value.environment)}</span>
+          </span>
           <button
             type="button"
             className="min-h-11 shrink-0 px-2 text-orquidea"
@@ -171,7 +193,7 @@ export function PlacePicker({
         className="w-full min-h-12 rounded-md border border-contorno bg-folha px-3 text-[0.95rem] text-tinta placeholder:text-musgo/70 focus:border-tinta focus:outline-none"
       />
       <span className="mt-1.5 block text-[0.82rem] text-musgo">
-        Opcional. Digite para buscar; um nome novo é cadastrado aqui mesmo.
+        Opcional. Num lugar, a planta usa a localização e o ambiente dele.
       </span>
       <ErrorText error={error} />
       {showList && (
@@ -249,7 +271,10 @@ export function PlacePicker({
                 <div className="flex items-center gap-1 pl-3">
                   <button type="button" onClick={() => choose(p)} className="min-h-12 min-w-0 flex-1 py-1.5 text-left">
                     <span className="block truncate font-serif text-[1.1rem] leading-tight">{p.name}</span>
-                    {p.plantCount > 0 && <span className="typed block text-[0.75rem]">{plantsLabel(p.plantCount)} aqui</span>}
+                    <span className="typed block text-[0.75rem]">
+                      {environmentLabel(p.environment)}
+                      {p.plantCount > 0 && ` · ${plantsLabel(p.plantCount)} aqui`}
+                    </span>
                   </button>
                   <button
                     type="button"

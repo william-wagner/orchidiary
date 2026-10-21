@@ -33,32 +33,36 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 - Origem: `taxa.origin_kind` (`country` ou `cross`) + `origin_country_codes` (países de ocorrência, ISO alfa-2, o principal primeiro; lista em `ORIGIN_COUNTRIES`). Vazio herda do ancestral mais próximo que informou (`resolveOrigin`); sem ninguém, é desconhecida. Híbrido e gênero híbrido são `cross` (`normalizeOrigin`). O front mostra a bandeira do principal com "+N" (os outros países no title), "?" ou o ícone de cruzamento logo depois do nome (`OriginFlag`). Países do catálogo inicial: `apps/api/src/db/catalogOrigins.ts` (principal em `byCountry`, os demais em `alsoIn`).
 - Itálico: gênero e abaixo; acima do gênero, grex e cultivar ficam em redondo ("*Vanda* Sansai Blue 'Azul Real'"), via `taxonNameParts`.
 
-## Localização da planta (regra central)
+## Lugares, localização e ambiente (regra central)
 
-- Cada planta tem um **histórico de locais** (`plant_locations`), com `valid_from` e `valid_to`. O local atual é o que tem `valid_to` nulo (garantido por índice único parcial).
-- O **nome do lugar** ("Orquidário quarto") vive na tabela `places` (por usuário, nome único sem diferenciar maiúsculas) e cada período aponta para ela por `plant_locations.place_id`. Os lugares são cadastrados, renomeados e apagados no próprio campo "Nome do lugar" (`PlacePicker`, rotas `/api/places`). Renomear vale para o histórico; só se apaga lugar que nenhum período usa.
-- **Mudar de lugar nunca altera o passado.** Uma mudança fecha o período atual e abre outro a partir da data informada. Coordenadas antigas não são editadas. A planta pode ter ido de Belo Horizonte para São Paulo, e o diário de BH continua com o clima de BH.
-- A nova data precisa ser posterior ao início do local atual e não pode estar no futuro (`planMove`, em `packages/shared/src/locations.ts`). Não se insere período no meio do histórico.
-- O **ambiente** (`indoor` / `outdoor`) faz parte do período: levar a planta da varanda para dentro de casa também é uma mudança registrada.
-- Cada mudança gera um evento `moved` na linha do tempo.
-- **Cidade/estado/país**: cada período guarda também `city`, `state`, `state_code`, `country` e `country_code`, obtidos por geocodificação reversa (Nominatim/OpenStreetMap, `services/geocode.ts`: 1 requisição/s, cache em memória, nunca bloqueia o salvamento). É só um complemento legível: `lat`/`lng` seguem como fonte da verdade e continuam visíveis. Períodos antigos sem localidade são completados ao abrir a planta (`ensureLocality`), mexendo apenas nessas colunas. Formatação ("Belo Horizonte, MG, Brasil") em `formatLocality`, no `packages/shared`.
+- O **lugar** (`places`) é dono da localização e do ambiente. Uma planta registrada num lugar usa os dois; só quem não está em lugar nenhum guarda localização e ambiente próprios. O check `plant_locations_source_ck` garante que nunca há duas verdades: ou `place_id`, ou `lat`/`lng`/`environment`.
+- O lugar tem **histórico de localização** (`place_locations`, com `valid_from`/`valid_to`, um aberto por vez): mudar ou corrigir a coordenada fecha o período atual e abre outro, porque o clima coletado fica pendurado no período.
+- Cada planta tem um **histórico de permanência** (`plant_locations`), também com `valid_from`/`valid_to` e um aberto por vez. O nome do lugar vive em `places` (por usuário, nome único sem diferenciar maiúsculas); renomear vale para o histórico, e só se apaga lugar que nenhum período usa.
+- **Mudar de lugar nunca altera o passado.** Uma mudança fecha o período atual e abre outro a partir da data informada. A planta pode ter ido de Belo Horizonte para São Paulo, e o diário de BH continua com o clima de BH.
+- A nova data precisa ser posterior ao início do período atual e não pode estar no futuro (`planMove`, em `packages/shared/src/locations.ts`). Vale para a planta e para o lugar. Não se insere período no meio do histórico.
+- O **ambiente** (`indoor` / `outdoor`) é do lugar. Levar a planta da varanda para dentro de casa é mudar de lugar. Para planta sem lugar, o ambiente é dela e muda com um novo período.
+- Cada mudança de lugar gera um evento `moved` na linha do tempo, com os nomes por extenso.
+- A API devolve os períodos da planta já **resolvidos** (`resolvePeriod`, em `services/locations.ts`): `lat`, `lng`, `environment` e `placeName` vêm do lugar quando há um. O app não decide nada disso.
+- **Cidade/estado/país**: obtidos por geocodificação reversa (Nominatim/OpenStreetMap, `services/geocode.ts`: 1 requisição/s, cache em memória, nunca bloqueia o salvamento) e guardados ao lado das coordenadas — no período do lugar ou no da planta sem lugar. É só um complemento legível: `lat`/`lng` seguem como fonte da verdade. Formatação ("Belo Horizonte, MG, Brasil") em `formatLocality`, no `packages/shared`.
 
 ### Foto tirada em outro lugar
 
 1. Ao tirar foto pela câmera, o app envia o GPS do aparelho; no upload da galeria, a API lê o GPS e a data do EXIF.
-2. A API compara com o local da ficha **vigente no momento da foto**. Se a distância passar de `LOCATION_MISMATCH_METERS` (padrão 300 m, somada à imprecisão do GPS), a resposta traz `locationCheck.mismatch = true`.
+2. A API compara com o local **vigente no momento da foto** (resolvido: a coordenada do lugar, quando a planta está num). Se a distância passar de `LOCATION_MISMATCH_METERS` (padrão 300 m, somada à imprecisão do GPS), a resposta traz `locationCheck.mismatch = true`.
 3. O app pergunta se a planta mudou de lugar. Se sim, registra um novo local a partir do horário da foto.
 4. Se a foto for anterior ao local atual (`canMoveFromPhoto = false`), o app só informa: uma foto antiga não pode mudar o local de hoje.
 
 ## Clima
 
 - Fonte: Open-Meteo (gratuita, sem chave). Últimos ~85 dias pela API de previsão; períodos mais antigos pela API histórica.
-- Guardado por **período de local** e por dia (`weather_daily`, único por `location_id + date`). Por isso o clima também nunca muda retroativamente.
-- A consulta é agrupada por **coordenada** (4 casas decimais, `coordKey`), sem filtro de usuário: períodos no mesmo ponto, de qualquer usuário, dividem a mesma requisição, e cada dia retornado é gravado só nos períodos que precisavam dele (`planWeatherFetches` em `packages/shared`). O mesmo vale para a previsão dos alertas.
+- O clima é guardado por **período da fonte** e por dia (`weather_daily`), e a fonte é o período de localização do **lugar** (`place_location_id`) ou o período da **planta sem lugar** (`location_id`) — exatamente uma das duas (`weather_daily_source_ck`). Por isso o clima também nunca muda retroativamente.
+- **Uma série por lugar**, não por planta: dez plantas no mesmo lugar dividem a mesma série. E **todo lugar coleta, mesmo sem planta nenhuma** — quando a primeira chegar, o histórico dela já começa preenchido, e o lugar tem gráfico próprio na tela de Lugares.
+- A série de uma planta é montada por **trechos** (`climateSegments` + `climateWindows`, em `packages/shared`): enquanto esteve num lugar, os dias vêm da série dele; fora, da série dela. Se o lugar mudou de coordenada no meio, o trecho se parte em dois — nada é copiado nem reescrito.
+- A consulta é agrupada por **coordenada** (4 casas decimais, `coordKey`), sem filtro de usuário: fontes no mesmo ponto, de qualquer usuário, dividem a mesma requisição, e cada dia retornado é gravado só em quem precisava dele (`planWeatherFetches`). O mesmo vale para a previsão dos alertas.
 - Dias no fuso `APP_TIMEZONE`. O dia da mudança pertence ao local novo.
 - Métricas: mínima, máxima e média, umidade (média, mínima e máxima), ponto de orvalho, VPD (calculado a partir de temperatura e umidade horárias), chuva, radiação, horas de sol, evapotranspiração e vento máximo.
-- **Backfill**: a coleta calcula os dias que faltam no banco e busca só esses. Se o PC ficar desligado, os dias perdidos são preenchidos quando ele voltar.
-- O clima da API é sempre o **externo**. Para plantas `indoor`, o app mostra o clima como referência e oferece medições manuais (`manual_readings`) de temperatura e umidade.
+- **Backfill**: a coleta calcula os dias que faltam no banco e busca só esses. Se o servidor ficar fora do ar, os dias perdidos são preenchidos quando ele voltar.
+- O clima da API é sempre o **externo**. Para lugares `indoor`, o app mostra o clima como referência e oferece medições manuais (`manual_readings`) de temperatura e umidade, da planta ou do lugar.
 
 ## Rotinas agendadas (fuso `APP_TIMEZONE`)
 

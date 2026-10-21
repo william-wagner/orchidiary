@@ -17,19 +17,42 @@ export const latLngSchema = z.object({
   lng: z.number().min(-180).max(180),
 });
 
-/** Nome de um lugar cadastrado pelo usuário (campo "Nome do lugar"). */
-export const placeInputSchema = z.object({
-  name: z.string().trim().min(1, "Escreva o nome do lugar.").max(120),
+const placeName = z.string().trim().min(1, "Escreva o nome do lugar.").max(120);
+
+/** Cadastro de um lugar: nome, ambiente e onde ele fica. */
+export const placeCreateSchema = latLngSchema.extend({
+  name: placeName,
+  environment: z.enum(ENVIRONMENTS),
 });
 
-/** Novo local da planta (também usado no cadastro). */
-export const locationInputSchema = latLngSchema.extend({
-  /** Lugar nomeado (tabela `places`); opcional */
-  placeId: z.string().uuid().nullish(),
-  environment: z.enum(ENVIRONMENTS),
-  /** Quando a planta passou a estar neste local. Default: agora. */
+/** Edição do lugar: nome e ambiente (a localização muda por `placeLocationInputSchema`). */
+export const placeInputSchema = z.object({
+  name: placeName.optional(),
+  environment: z.enum(ENVIRONMENTS).optional(),
+});
+
+/** Nova localização do lugar: fecha o período atual e abre outro. */
+export const placeLocationInputSchema = latLngSchema.extend({
+  /** A partir de quando vale. Default: agora. */
   validFrom: z.coerce.date().optional(),
 });
+
+/**
+ * Novo local da planta (também usado no cadastro): ou um lugar cadastrado, que manda na
+ * localização e no ambiente, ou a localização própria dela. Nunca os dois.
+ */
+export const locationInputSchema = z
+  .object({
+    placeId: z.string().uuid().nullish(),
+    lat: latLngSchema.shape.lat.nullish(),
+    lng: latLngSchema.shape.lng.nullish(),
+    environment: z.enum(ENVIRONMENTS).nullish(),
+    /** Quando a planta passou a estar neste local. Default: agora. */
+    validFrom: z.coerce.date().optional(),
+  })
+  .refine((l) => (l.placeId ? true : l.lat != null && l.lng != null && l.environment != null), {
+    message: "Escolha um lugar ou informe a localização e o ambiente da planta.",
+  });
 
 export const plantCreateSchema = z.object({
   nickname: z.string().trim().min(1).max(80),
@@ -52,8 +75,6 @@ export const plantUpdateSchema = plantCreateSchema
     status: z.enum(PLANT_STATUSES).optional(),
     /** Foto de capa escolhida; null volta para a mais recente */
     coverPhotoId: z.string().uuid().nullish(),
-    /** Corrige o lugar nomeado do período atual (null limpa); não cria período novo */
-    placeId: z.string().uuid().nullish(),
   });
 
 /** Leitura manual de termo-higrômetro (opcional, complementa o clima externo). */
@@ -134,6 +155,8 @@ export type PlantCreate = z.infer<typeof plantCreateSchema>;
 export type PlantUpdate = z.infer<typeof plantUpdateSchema>;
 export type LocationInput = z.infer<typeof locationInputSchema>;
 export type PlaceInput = z.infer<typeof placeInputSchema>;
+export type PlaceCreate = z.infer<typeof placeCreateSchema>;
+export type PlaceLocationInput = z.infer<typeof placeLocationInputSchema>;
 export type ManualReadingInput = z.infer<typeof manualReadingSchema>;
 export type EventCreate = z.infer<typeof eventCreateSchema>;
 export type PlaceBatchInput = z.input<typeof placeBatchSchema>;

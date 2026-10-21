@@ -8,7 +8,7 @@ import { PlacePicker, type PlaceRef } from "../components/PlacePicker.tsx";
 import { TaxonPicker } from "../components/TaxonPicker.tsx";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
 import { api, type Plant, type TaxonSummary } from "../lib/api.ts";
-import { coords } from "../lib/format.ts";
+import { coords, environmentLabel } from "../lib/format.ts";
 import { getPosition, type Position } from "../lib/geo.ts";
 
 export function NewPlant() {
@@ -66,7 +66,7 @@ export function NewPlant() {
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!position) return setGeoError("Marque onde a planta está.");
+    if (!place && !position) return setGeoError("Escolha um lugar ou marque onde a planta está.");
     const f = new FormData(e.currentTarget);
     create.mutate({
       nickname: f.get("nickname"),
@@ -74,7 +74,8 @@ export function NewPlant() {
       taxonText: taxon ? null : String(f.get("taxonText") ?? "").trim() || null,
       origin: f.get("origin") || null,
       acquiredAt: f.get("acquiredAt") || null,
-      location: { lat: position.lat, lng: position.lng, placeId: place?.id ?? null, environment },
+      // Num lugar, a localização e o ambiente são os dele; sem lugar, são os da planta.
+      location: place ? { placeId: place.id } : { lat: position!.lat, lng: position!.lng, environment },
     });
   }
 
@@ -115,22 +116,45 @@ export function NewPlant() {
           </Field>
         </div>
 
-        <EnvironmentPicker value={environment} onChange={setEnvironment} />
+        <div className="space-y-3">
+          <PlacePicker value={place} onChange={setPlace} newPlace={{ environment, position }} />
 
-        <div className="space-y-2">
-          <PlacePicker value={place} onChange={setPlace} />
-          <Button type="button" variant="quiet" onClick={locate} disabled={locating} className="w-full">
-            {locating ? "Localizando…" : position ? "Marcar de novo" : "Marcar minha localização atual"}
-          </Button>
-          {position && (
-            <div className="typed text-[0.85rem]">
-              {locality.data?.label && <p>{locality.data.label}</p>}
-              <p>
-                {coords(position)} (precisão de {Math.round(position.accuracy)} m)
+          {place ? (
+            <div className="cartao px-4 py-3">
+              <p className="eyebrow">Vem do lugar</p>
+              <dl className="mt-2 space-y-1.5 text-[0.92rem]">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt>Ambiente</dt>
+                  <dd className={`selo ${place.environment === "indoor" ? "selo-flor" : ""}`}>
+                    {environmentLabel(place.environment)}
+                  </dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt>Localização</dt>
+                  <dd className="typed text-[0.8rem]">{place.location ? coords(place.location) : "a definir"}</dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-[0.82rem] text-musgo">
+                Para mudar qualquer um dos dois, mude no lugar: vale para todas as plantas de lá.
               </p>
             </div>
+          ) : (
+            <>
+              <EnvironmentPicker value={environment} onChange={setEnvironment} />
+              <Button type="button" variant="quiet" onClick={locate} disabled={locating} className="w-full">
+                {locating ? "Localizando…" : position ? "Marcar de novo" : "Marcar minha localização atual"}
+              </Button>
+              {position && (
+                <div className="typed text-[0.85rem]">
+                  {locality.data?.label && <p>{locality.data.label}</p>}
+                  <p>
+                    {coords(position)} (precisão de {Math.round(position.accuracy)} m)
+                  </p>
+                </div>
+              )}
+              {geoError && <p className="text-alerta">{geoError}</p>}
+            </>
           )}
-          {geoError && <p className="text-alerta">{geoError}</p>}
         </div>
 
         <ErrorText error={create.error} />

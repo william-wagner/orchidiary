@@ -17,10 +17,11 @@ import { db, schema } from "../db/client.ts";
 import { type AppEnv, requireUser } from "../auth/session.ts";
 import { zValidator } from "../lib/validate.ts";
 import { reverseGeocode } from "../services/geocode.ts";
-import { ensureLocality, listLocations, localityColumns, movePlant } from "../services/locations.ts";
-import { placeNameOf } from "../services/places.ts";
+import { climateSegmentsOf, ensureLocality, listLocations, localityColumns, movePlant } from "../services/locations.ts";
+import { placeOf } from "../services/places.ts";
 import { requestCoverIllustration } from "../services/illustration.ts";
 import { savePhoto } from "../services/photos.ts";
+import { weatherOfSegments } from "../services/weather/collect.ts";
 import { summariesOf } from "../services/taxonomy.ts";
 import { collectionComfort, plantComfort, setComfortSilence } from "../services/comfort.ts";
 
@@ -118,8 +119,9 @@ export const plantRoutes = new Hono<AppEnv>()
     const { location, ...data } = c.req.valid("json");
     const userId = c.get("user").id;
     await assertTaxon(data.taxonId);
-    const placeName = await placeNameOf(userId, location.placeId);
-    const locality = await reverseGeocode(location.lat, location.lng);
+    await placeOf(userId, location.placeId); // confere que o lugar é do usuário
+    // sem lugar, a planta guarda a localização dela; com lugar, nenhuma das duas colunas
+    const locality = location.placeId ? null : await reverseGeocode(location.lat!, location.lng!);
     const created = await db.transaction(async (tx) => {
       // Próximo número de tombo (nunca reaproveitado; o índice único protege contra corrida)
       const [{ next } = { next: 1 }] = await tx
@@ -130,21 +132,19 @@ export const plantRoutes = new Hono<AppEnv>()
         .insert(plants)
         .values({ ...data, userId, accessionNumber: Number(next) })
         .returning();
-      const [loc] = await tx
-        .insert(plantLocations)
-        .values({
-          plantId: plant!.id,
-          lat: location.lat,
-          lng: location.lng,
-          ...localityColumns(locality),
-          placeId: location.placeId ?? null,
-          environment: location.environment,
-          validFrom: location.validFrom ?? data.acquiredAt ?? new Date(),
-        })
-        .returning();
-      return { ...plant!, currentLocation: { ...loc!, placeName } };
+      await tx.insert(plantLocations).values({
+        plantId: plant!.id,
+        placeId: location.placeId ?? null,
+        lat: location.placeId ? null : location.lat!,
+        lng: location.placeId ? null : location.lng!,
+        environment: location.placeId ? null : location.environment!,
+        ...localityColumns(locality),
+        validFrom: location.validFrom ?? data.acquiredAt ?? new Date(),
+      });
+      return plant!;
     });
-    return c.json(created, 201);
+    const periods = await listLocations(created.id);
+    return c.json({ ...created, currentLocation: periods.find((p) => p.validTo === null) ?? null }, 201);
   })
 
   .get("/:id", async (c) => {
@@ -156,9 +156,8 @@ export const plantRoutes = new Hono<AppEnv>()
   .patch("/:id", zValidator("json", plantUpdateSchema), async (c) => {
     const userId = c.get("user").id;
     const plant = await ownedPlant(c.req.param("id"), userId);
-    const { placeId, ...input } = c.req.valid("json");
+    const input = c.req.valid("json");
     await assertTaxon(input.taxonId);
-    await placeNameOf(userId, placeId);
     if (input.coverPhotoId) {
       const [photo] = await db
         .select({ id: photos.id })
@@ -173,14 +172,6 @@ export const plantRoutes = new Hono<AppEnv>()
         .set({ ...input, updatedAt: new Date() })
         .where(eq(plants.id, plant.id))
         .returning();
-      // Corrige o nome do lugar do período atual. Coordenadas e histórico não mudam;
-      // mudar de lugar de fato continua sendo um novo período (POST /:id/locations).
-      if (placeId !== undefined) {
-        await tx
-          .update(plantLocations)
-          .set({ placeId })
-          .where(and(eq(plantLocations.plantId, plant.id), isNull(plantLocations.validTo)));
-      }
       return row!;
     });
     if (input.coverPhotoId !== undefined) requestCoverIllustration(plant.id);
@@ -291,19 +282,7 @@ export const plantRoutes = new Hono<AppEnv>()
         .from(manualReadings)
         .where(and(eq(manualReadings.plantId, plant.id), ...between(manualReadings.measuredAt)))
         .orderBy(desc(manualReadings.measuredAt)),
-      locationIds.length
-        ? db
-            .select()
-            .from(weatherDaily)
-            .where(
-              and(
-                inArray(weatherDaily.locationId, locationIds),
-                from ? gte(weatherDaily.date, from.toISOString().slice(0, 10)) : undefined,
-                to ? lte(weatherDaily.date, to.toISOString().slice(0, 10)) : undefined,
-              ),
-            )
-            .orderBy(asc(weatherDaily.date))
-        : Promise.resolve([]),
+      weatherOfSegments(await climateSegmentsOf(plant.id), from, to),
     ]);
 
     // Lotes: quantas plantas cada um teve ("com outras N"); o lugar sai do período da planta na data

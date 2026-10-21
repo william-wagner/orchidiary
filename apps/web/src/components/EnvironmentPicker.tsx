@@ -1,14 +1,22 @@
 import type { Environment } from "@orchidiary/shared";
 
 const OPTIONS: Array<{ value: Environment; title: string; hint: string }> = [
-  { value: "outdoor", title: "Ao ar livre", hint: "Varanda, quintal, jardim. O clima registrado vale para ela." },
+  { value: "outdoor", title: "Ao ar livre", hint: "Varanda, quintal, jardim. O clima registrado vale para o que está aqui." },
   { value: "indoor", title: "Dentro de casa", hint: "O clima de fora fica só como referência; registre temperatura e umidade quando quiser." },
 ];
 
-export function EnvironmentPicker({ value, onChange }: { value: Environment; onChange: (v: Environment) => void }) {
+export function EnvironmentPicker({
+  value,
+  onChange,
+  label = "Onde ela vive",
+}: {
+  value: Environment;
+  onChange: (v: Environment) => void;
+  label?: string;
+}) {
   return (
     <fieldset className="grid grid-cols-2 gap-2">
-      <legend className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">Onde ela vive</legend>
+      <legend className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">{label}</legend>
       {OPTIONS.map((o) => {
         const active = value === o.value;
         return (
