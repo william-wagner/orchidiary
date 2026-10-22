@@ -2,6 +2,24 @@
 
 ## Prioridades
 
+Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
+
+- [ ] **Próximo:** Gráfico da planta no tempo com ocorrências e janela de período ajustável
+  - Hoje o gráfico térmico da ficha mostra só os últimos 30 dias, e sem marcar o que aconteceu com a planta.
+  - **Decidido** (estudo de 21.X.2026). Especificação completa em `docs/estudos/clima-e-ocorrencias.md`; protótipo navegável em `docs/estudos/clima-e-ocorrencias.html` (e online: https://claude.ai/artifact/VANUozTHmVT34qUFUW1Tyn):
+    - A seção Conforto vira **"Clima e ocorrências"**: três painéis empilhados (noites, dias, umidade) num eixo de tempo só, faixa da ficha ao fundo, e uma fita de ocorrências embaixo valendo para os três.
+    - Janela de 30, 90, 180, 360 dias e "tudo"; padrão 90, lembrada no aparelho. Acima de 120 dias a linha agrega por semana; as contas continuam contando dias.
+    - Na fita: marcos, fotos e saúde ligados; manejo e notas desligados. Evento com `batch_id` nunca vira ponto. Mudança de lugar é linha vertical nos três painéis; medição manual é marca sobre a linha, não ponto da fita.
+    - Agrupamento por proximidade de 17 px (primeiro por dia, depois por distância no eixo), com o número dentro do ponto.
+    - Tocar num ponto abre a folha em tela cheia, crescendo do ponto tocado: clima daquele dia no alto e o feed das ocorrências com rolagem, **fotos primeiro**; as setas andam entre pontos da fita.
+    - Sai da interface o "Já sei, não avisar" (volta na Fase 3). Card da Coleção e livro de registro não mudam.
+    - API: `?days=` no `/comfort` e o endpoint novo `GET /plants/:id/occurrences?from&to`.
+    - Seed de desenvolvimento: planta **FAKE** com as 20 fotos de `.local/seed-fotos-1-ano/`, eventos de um ano e clima real do Open-Meteo.
+  - Tarefas, nessa ordem (uma por commit):
+    - [ ] 1. Seed FAKE: `seedDemo.ts`, `pnpm db:seed:demo`, clima pelo `collectWeather` existente
+    - [ ] 2. API: `?days=` no `/comfort`, constantes e teste no `packages/shared`, endpoint `/occurrences`
+    - [ ] 3. Gráfico: `ComfortPanel.tsx` vira a seção "Clima e ocorrências" (painéis, fita, contas, janela e camadas lembradas no aparelho)
+    - [ ] 4. Folha expandida: feed com fotos primeiro, abertura a partir do ponto, navegação entre pontos, foto abrindo no `PhotoViewer`
 - [x] Aplicar ações por local (rega, adubação etc.) de uma vez para todas as plantas daquele local
   - UI decidida (protótipo: https://claude.ai/artifact/VfMz5Wjuzmf3NAfZJf3kkE):
     - Entrada pela Coleção: chips de local acima da grade, que também filtram. Com um local escolhido, aparece o botão "Registrar no local". Atalho na ficha: depois de regar ou adubar uma planta, o toast oferece o lote para as outras do mesmo local.
@@ -44,6 +62,7 @@
     - "Já sei, não avisar" por planta e dimensão: tira o selo, o filtro e o resumo até a planta mudar de local.
     - Indoor usa o clima de fora como referência, com aviso na ficha e no resumo, até existirem sensores (ver Zigbee no Backlog). O ambiente agora vem do lugar.
   - Depois: comparar períodos de local, cruzar com o calendário de floração e um "Já sei" nos alertas de previsão do Telegram.
+  - Em 21.X.2026 o "Já sei, não avisar" saiu da interface junto com a seção nova (ver o item Próximo); a tabela `comfort_silences` e as rotas ficaram no lugar.
 - [ ] Mapa da coleção e do histórico de locais
 
 ## Fase 3 — Coleção
@@ -53,6 +72,7 @@
 - [ ] Lembretes de rega/adubação que consideram a chuva
 - [ ] Editar ficha do Guia pelo app
 - [ ] Faixa própria da planta: o usuário ajusta temperatura e umidade só para aquela planta, sobrescrevendo a ficha ("a minha vive bem a 10°C"). O índice de conforto e os alertas passam a usar a faixa da planta.
+- [ ] Silenciar aviso por dimensão ("Já sei, não avisar"): tira selo, filtro e resumo até a planta mudar de local. Saiu da interface em 21.X.2026; a tabela `comfort_silences` continua no banco.
 - [ ] Importar fotos antigas em lote (data e local pelo EXIF)
 
 ## Fase 4 — Público
