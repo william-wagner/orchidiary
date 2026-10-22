@@ -115,7 +115,7 @@ const occurrenceLabel = (o: Occurrence) => (o.kind === "photo" ? "Fotografia" : 
  * Janela, camadas e aberto/fechado ficam lembrados no aparelho.
  */
 export function ClimatePanel({ plantId, plantName, locations }: { plantId: string; plantName: string; locations: PlantLocation[] }) {
-  const [open, setOpen] = useState(() => readPref(OPEN_KEY, (r) => r !== "0"));
+  const [open, setOpen] = useState(() => readPref(OPEN_KEY, (r) => r === "1"));
   const [window, setWindow] = useState<ChartWindow>(() => readPref(WINDOW_KEY, (r) => parseChartWindow(r) ?? CHART_DEFAULT_WINDOW));
   const [view, setView] = useState<View>(() => readPref(VIEW_KEY, parseView));
   const [selected, setSelected] = useState<Selection | null>(null);
@@ -130,7 +130,8 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
   const occurrences = useQuery({
     queryKey: ["occurrences", plantId, range?.from, range?.to],
     queryFn: () => api.get<{ items: Occurrence[] }>(`/plants/${plantId}/occurrences?from=${range!.from}&to=${range!.to}`),
-    enabled: !!range,
+    // fechada, a seção só mostra o clima: a fita de ocorrências não é buscada
+    enabled: !!range && open,
     placeholderData: keepPreviousData,
   });
 
@@ -163,6 +164,8 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
   // o que o selo do card mostra (últimos 7 dias, sem os silenciados), para o resumo da seção fechada
   const problems = c.dimensions.filter((d) => d.attention.direction && !d.silenced);
   const items = occurrences.data?.items ?? [];
+  // fechada, o resumo cobre os últimos 30 dias, qualquer que seja a janela escolhida
+  const compactFrom = open ? c.from : (c.dimensions[0]?.days.at(-COMPACT_DAYS)?.date ?? c.from);
 
   return (
     <section className="cartao mt-5 px-4 py-4" aria-label="Clima e ocorrências">
@@ -179,13 +182,15 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
             Clima e ocorrências
           </span>
           <span className="typed text-[0.7rem] whitespace-nowrap">
-            {shortDate(c.from)} – {herbariumDate(c.to, "UTC")}
+            {shortDate(compactFrom)} – {herbariumDate(c.to, "UTC")}
           </span>
         </button>
       </h2>
 
       {!open ? (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[0.8rem] text-musgo">
+        <div id={`clima-${plantId}`}>
+          <CompactStrips report={c} />
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[0.8rem] text-musgo">
           {problems.length ? (
             problems.map((d) => (
               <span key={d.dimension} className="selo selo-ocre">
@@ -196,6 +201,7 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
             <span>Tudo dentro da faixa na última semana.</span>
           )}
           {c.environment === "indoor" && <span>Clima de fora, só referência.</span>}
+          </div>
         </div>
       ) : (
         <div id={`clima-${plantId}`}>
@@ -228,6 +234,58 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
         </div>
       )}
     </section>
+  );
+}
+
+// ─── Resumo da seção fechada ─────────────────────────────────────────────────
+
+/** Últimos dias que a seção fechada resume: um quadradinho por dia */
+const COMPACT_DAYS = 30;
+const TICK: Record<ComfortState | "none", string> = {
+  inside: "bg-salvia",
+  near: "bg-ocre-claro shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--ocre)_45%,transparent)]",
+  outside: "bg-ocre",
+  none: "bg-transparent shadow-[inset_0_0_0_1px_var(--linha)]",
+};
+const STATE_NAME: Record<ComfortState, string> = { inside: "dentro da faixa", near: "perto", outside: "fora" };
+
+/** Uma fileira por dimensão, um quadradinho por dia dos últimos 30: dentro, perto ou fora da faixa. */
+function CompactStrips({ report }: { report: Report }) {
+  return (
+    <div className="mt-2.5">
+      <div className="flex flex-col gap-1.5">
+        {report.dimensions.map((d) => {
+          const days = d.days.slice(-COMPACT_DAYS);
+          return (
+            <div key={d.dimension} className="flex items-center gap-2.5">
+              <span className="eyebrow w-[4.6rem] shrink-0">{DIMENSION_NAME[d.dimension]}</span>
+              <div
+                className="grid h-4 flex-1 gap-[2px]"
+                style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+                role="img"
+                aria-label={`${DIMENSION_NAME[d.dimension]} dos últimos ${days.length} dias: ${days.filter((x) => x.state === "outside").length} fora da faixa`}
+              >
+                {days.map((day) => (
+                  <span
+                    key={day.date}
+                    title={`${shortDate(day.date)}: ${day.state ? STATE_NAME[day.state] : "sem dado"}`}
+                    className={`rounded-[2px] ${TICK[day.state ?? "none"]}`}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.7rem] text-musgo" aria-hidden="true">
+        {(["inside", "near", "outside"] as const).map((st) => (
+          <li key={st} className="flex items-center gap-1.5">
+            <span className={`inline-block size-2.5 rounded-[2px] ${TICK[st]}`} />
+            {st === "inside" ? "dentro" : STATE_NAME[st]}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

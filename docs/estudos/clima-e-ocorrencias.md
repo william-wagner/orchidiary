@@ -10,8 +10,8 @@ O protótipo é a referência de desenho: escalas, alturas, formas dos pontos, a
 ## 1. A seção na ficha da planta
 
 - A seção **Conforto** vira **"Clima e ocorrências"**, no mesmo lugar: entre o cabeçalho da ficha e o livro de registro.
-- Vem **aberta** por padrão. O estado aberto/fechado continua lembrado no aparelho e vale para todas as plantas (hoje: `orchidiary:conforto-aberto`; passa a `orchidiary:clima-aberto`, com o padrão invertido).
-- Fechada, mostra o mesmo resumo de hoje: selos das dimensões em atenção, ou "Tudo dentro da faixa na última semana".
+- Vem **fechada** por padrão (decidido depois do primeiro teste no app). O estado aberto/fechado fica lembrado no aparelho e vale para todas as plantas (`orchidiary:clima-aberto`, que só guarda `1` quando aberta).
+- Fechada, mostra um gráfico simples dos **últimos 30 dias**, no estilo do Conforto antigo: uma fileira por dimensão (noites, dias, umidade), um quadradinho por dia (dentro, perto, fora), mais os selos das dimensões em atenção ou "Tudo dentro da faixa na última semana". A janela escolhida não muda esse resumo, e as ocorrências só são buscadas quando a seção abre.
 
 ## 2. O gráfico (proposta "Pauta")
 
