@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
       POSTGRES_DB: orchidiary
     # Sem "ports": o banco só é visível na rede interna do Docker.
-    # Para desenvolver com pnpm dev, o docker-compose.dev.yml expõe a 5432 só em localhost.
+    # Para desenvolver com pnpm dev, o docker-compose.dev.yml expõe a 5440 só em localhost (a 5432 costuma ficar presa por outros programas).
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
