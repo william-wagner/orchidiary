@@ -15,6 +15,7 @@ import { NewPlant } from "./routes/NewPlant.tsx";
 import { PlaceDetailPage } from "./routes/PlaceDetail.tsx";
 import { Places } from "./routes/Places.tsx";
 import { PlantDetail } from "./routes/PlantDetail.tsx";
+import { Roadmap } from "./routes/Roadmap.tsx";
 import { Settings } from "./routes/Settings.tsx";
 
 export function App() {
@@ -34,6 +35,7 @@ export function App() {
         <Route path="lugares/:id" element={<PlaceDetailPage />} />
         <Route path="guia" element={<Guide />} />
         <Route path="guia/:id" element={<TaxonPage />} />
+        <Route path="roadmap" element={<Roadmap />} />
         <Route path="conta" element={<Account user={me.data} />} />
         <Route path="configuracoes" element={me.data.role === "master" ? <Settings /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />

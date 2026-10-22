@@ -67,6 +67,11 @@ export function Account({ user }: { user: User }) {
             <span className="flex-1">Idioma</span>
             <span className="typed text-[0.78rem]">Português (Brasil)</span>
           </button>
+          <Link to="/roadmap" className={itemCls}>
+            <Icon name="history" className="size-[1.15rem] text-folhagem" />
+            <span className="flex-1">Roadmap</span>
+            <Icon name="chevron" className="size-4 text-musgo" />
+          </Link>
           {user.role === "master" && (
             <Link to="/configuracoes" className={itemCls}>
               <Icon name="settings" className="size-[1.15rem] text-folhagem" />
