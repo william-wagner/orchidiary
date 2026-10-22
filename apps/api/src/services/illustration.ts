@@ -2,6 +2,8 @@ import { asc, eq, inArray, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { illustrationPrompt, needsIllustration } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
+import { http } from "../http/clients.ts";
+import { currentContext, type CallContext, runWithContext } from "../http/context.ts";
 import { sourceLogger } from "../logger.ts";
 import { loadIntegration, type OpenaiConfig } from "./integrations.ts";
 import { storage } from "./storage.ts";
@@ -18,6 +20,8 @@ type Photo = typeof photos.$inferSelect;
 interface Job {
   photo: Photo;
   taxon: string | null;
+  /** Contexto de quem pediu: as chamadas à OpenAI feitas depois, em segundo plano, ainda apontam para a origem */
+  ctx?: CallContext;
 }
 
 // Uma geração por vez: cada chamada custa dinheiro e leva de 20 s a alguns minutos.
@@ -60,7 +64,7 @@ export async function illustrateCovers(plantIds?: string[]): Promise<void> {
   for (const photo of covers) {
     if (queue.has(photo.id)) continue;
     if (!needsIllustration({ status: photo.illustrationStatus, updatedAt: photo.illustrationUpdatedAt }, now)) continue;
-    queue.set(photo.id, { photo, taxon: taxonBy.get(photo.plantId) ?? null });
+    queue.set(photo.id, { photo, taxon: taxonBy.get(photo.plantId) ?? null, ctx: currentContext() });
     // marca já, para o app mostrar que a prancha está a caminho e a varredura não enfileirar de novo
     await setStatus(photo.id, "pending");
   }
@@ -78,7 +82,7 @@ async function drain(config: OpenaiConfig, apiKey: string) {
   try {
     for (const [id, job] of queue) {
       try {
-        await illustrate(job, config, apiKey);
+        await (job.ctx ? runWithContext(job.ctx, () => illustrate(job, config, apiKey)) : illustrate(job, config, apiKey));
       } catch (err) {
         await setStatus(id, "error");
         log.warn({ err, photoId: id, plantId: job.photo.plantId }, "falha ao gerar a ilustração da capa");
@@ -103,18 +107,27 @@ async function illustrate({ photo, taxon }: Job, config: OpenaiConfig, apiKey: s
   form.set("output_format", "webp");
   form.set("image", new Blob([new Uint8Array(original)], { type: photo.mimeType }), `${photo.id}.webp`);
 
-  const res = await fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST",
-    headers: { authorization: `Bearer ${apiKey}` },
-    body: form,
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  const body = (await res.json().catch(() => ({}))) as {
-    data?: Array<{ b64_json?: string }>;
-    error?: { message?: string };
-  };
-  const b64 = body.data?.[0]?.b64_json;
-  if (!res.ok || !b64) throw new Error(`OpenAI ${res.status}: ${body.error?.message ?? "resposta sem imagem"}`);
+  const model = String(form.get("model"));
+  const quality = String(form.get("quality"));
+  const b64 = await http.openai.call(
+    {
+      operation: "images.edits",
+      url: "https://api.openai.com/v1/images/edits",
+      init: { method: "POST", headers: { authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(TIMEOUT_MS) },
+      meta: { model, quality, size: SIZE, photoId: photo.id, plantId: photo.plantId },
+    },
+    async (res, scope) => {
+      const body = (await res.json().catch(() => ({}))) as {
+        data?: Array<{ b64_json?: string }>;
+        error?: { message?: string };
+        usage?: unknown;
+      };
+      if (body.usage) scope.annotate({ usage: body.usage }); // base para estimar o custo das pranchas
+      const image = body.data?.[0]?.b64_json;
+      if (!res.ok || !image) throw new Error(`OpenAI ${res.status}: ${body.error?.message ?? "resposta sem imagem"}`);
+      return image;
+    },
+  );
 
   const generated = sharp(Buffer.from(b64, "base64"));
   const full = await generated.clone().webp({ quality: 85 }).toBuffer();

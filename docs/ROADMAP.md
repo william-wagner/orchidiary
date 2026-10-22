@@ -78,7 +78,9 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
 ## Fase 4 — Público
 
 - [ ] Cadastro de usuários e perfis
-- [ ] Armazenamento de fotos em S3/R2
+- [ ] Armazenamento de fotos no Amazon S3
+  - Decidido em 22.X.2026: S3 (`sa-east-1`), implementado junto com a Fase 4. Hoje não há necessidade: o disco da VM comporta as fotos por anos e o custo não se justifica para um usuário só.
+  - Estudo: `docs/estudos/armazenamento-de-fotos.md` (comparação com o bucket do Lightsail e o R2, proposta técnica, migração e tarefas).
 - [ ] App nas lojas com Capacitor
 - [ ] Identificação de espécie e diagnóstico por foto com IA
 
@@ -104,9 +106,8 @@ Nenhuma registrada por enquanto.
 
 Funcionalidades novas ainda sem fase definida.
 
-- [ ] Registro das chamadas a APIs externas no banco (média)
-  - Hoje só vão para `app_logs` os warn/error e a auditoria; chamada que dá certo some (fica no arquivo, e o clima só deixa um resumo por rodada). Não há URL, status HTTP, latência nem payload por requisição.
-  - Proposta: tabela `external_calls` (serviço, endpoint, status, duração em ms, erro, `requestId`, quando) e um wrapper de `fetch` que os serviços passam a usar: Open-Meteo (`openMeteo.ts` e `alerts.ts`), Nominatim (`geocode.ts`), OpenAI (`illustration.ts`), Telegram (`telegram.ts`) e Google Drive (`googleDrive.ts`).
-  - Cuidados: nunca gravar segredos (o token do Telegram vai na URL; redigir), retenção própria na limpeza de `retention.ts`, e migração via `pnpm db:generate`. Possível tela de consulta para o master em `/api/settings/*`.
+- [x] Registro das chamadas a APIs externas no banco (média)
+  - Feito: tabela `external_calls` e cliente instrumentado (`apps/api/src/http/`) usado por Open-Meteo (clima e alertas), Nominatim, OpenAI, Telegram e Google (OAuth e Drive). Registra serviço, operação, URL redigida, status, resultado, duração (e tempo até os headers), bytes, `requestId`/origem e, na OpenAI, o uso de tokens. Retenção própria (30 dias; falhas 90). Detalhes em `docs/ARCHITECTURE.md`.
+  - Fora do escopo por decisão: rota e tela de consulta para o master (por ora só pelo banco).
 - [ ] Integração com interface de automação Zigbee (sensores e dispositivos da casa)
   - Sensores de temperatura e umidade por lugar viram a fonte do microclima indoor — entram como mais uma fonte do período de localização do lugar, do lado da Open-Meteo. O índice de conforto indoor passa a ser calculado sempre a partir deles, e as plantas indoor entram também nos alertas.

@@ -21,6 +21,8 @@ import {
 import {
   COMFORT_DIMENSIONS,
   ENVIRONMENTS,
+  type ExternalOutcome,
+  type ExternalService,
   EVENT_TYPES,
   ILLUSTRATION_STATUSES,
   INTEGRATIONS,
@@ -452,6 +454,55 @@ export const appLogs = pgTable(
     index("app_logs_created_idx").on(t.createdAt.desc()),
     index("app_logs_level_idx").on(t.level, t.createdAt.desc()),
     index("app_logs_source_idx").on(t.source, t.createdAt.desc()),
+  ],
+);
+
+/**
+ * Cada tentativa de chamada a um serviço externo (Open-Meteo, Nominatim, OpenAI, Telegram, Google).
+ * Tudo já chega redigido (ver redactUrl em @orchidiary/shared): sem segredos, sem corpo de requisição,
+ * coordenadas arredondadas. Não entra no backup do Drive; a retenção está em logging/retention.ts.
+ */
+export const externalCalls = pgTable(
+  "external_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    startedAt: ts("started_at").notNull(),
+    service: text("service").$type<ExternalService>().notNull(),
+    /** Nome lógico: "forecast.daily", "reverse", "images.edits", "files.upload"... */
+    operation: text("operation").notNull(),
+    method: text("method").notNull(),
+    host: text("host").notNull(),
+    path: text("path").notNull(),
+    query: text("query"),
+    outcome: text("outcome").$type<ExternalOutcome>().notNull(),
+    /** Null quando não houve resposta (timeout, rede) */
+    status: integer("status"),
+    /** Início → fim do tratamento da resposta */
+    durationMs: integer("duration_ms").notNull(),
+    /** Início → headers da resposta */
+    ttfbMs: integer("ttfb_ms"),
+    requestBytes: integer("request_bytes"),
+    responseBytes: integer("response_bytes"),
+    /** 1 para a primeira tentativa (reservado para retentativas futuras) */
+    attempt: integer("attempt").notNull().default(1),
+    errorCode: text("error_code"),
+    errorExcerpt: text("error_excerpt"),
+    /** Mesmo id do header X-Request-Id; nas rotinas, o id da rodada */
+    requestId: text("request_id"),
+    /** "http", "scheduler:clima"... */
+    origin: text("origin"),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** Detalhes da operação (modelo e uso no OpenAI, intervalo no clima...). Já sem segredos. */
+    meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => [
+    index("external_calls_started_idx").on(t.startedAt.desc()),
+    index("external_calls_service_idx").on(t.service, t.startedAt.desc()),
+    index("external_calls_request_idx").on(t.requestId),
+    // consultas de falhas: o índice parcial fica pequeno
+    index("external_calls_failed_idx")
+      .on(t.startedAt.desc())
+      .where(sql`${t.outcome} <> 'ok'`),
   ],
 );
 

@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client.ts";
+import { http } from "../http/clients.ts";
+import type { HttpClient } from "../http/client.ts";
 import { loadIntegration } from "./integrations.ts";
 
 /** Envia uma mensagem pelo Bot API do Telegram (HTML simples). */
@@ -7,16 +9,24 @@ export async function sendTelegram(
   botToken: string,
   chatId: string,
   text: string,
-  fetchImpl: typeof fetch = fetch,
+  client: HttpClient = http.telegram,
 ): Promise<void> {
-  const res = await fetchImpl(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
-  if (!res.ok || !body.ok) throw new Error(`Telegram: ${body.description ?? res.status}`);
+  await client.call(
+    {
+      operation: "sendMessage",
+      url: `https://api.telegram.org/bot${botToken}/sendMessage`,
+      init: {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
+        signal: AbortSignal.timeout(15_000),
+      },
+    },
+    async (res) => {
+      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+      if (!res.ok || !body.ok) throw new Error(`Telegram: ${body.description ?? res.status}`);
+    },
+  );
 }
 
 /**

@@ -12,6 +12,7 @@ import {
 } from "@orchidiary/shared";
 import { db, schema } from "../../db/client.ts";
 import { env } from "../../env.ts";
+import type { HttpClient } from "../../http/client.ts";
 import { fetchDaily } from "./openMeteo.ts";
 
 const { placeLocations, plantLocations, plants, weatherDaily } = schema;
@@ -76,7 +77,7 @@ async function sites(): Promise<Site[]> {
  * Fontes na mesma coordenada (mesmo de usuários diferentes) dividem a mesma
  * requisição; o resultado é gravado em cada uma que precisa daquele dia.
  */
-export async function collectWeather(now = new Date(), fetchImpl: typeof fetch = fetch): Promise<CollectResult> {
+export async function collectWeather(now = new Date(), client?: HttpClient): Promise<CollectResult> {
   const tz = env.APP_TIMEZONE;
   const today = toLocalDate(now, tz);
   const yesterday = addDays(today, -1);
@@ -111,7 +112,7 @@ export async function collectWeather(now = new Date(), fetchImpl: typeof fetch =
   for (const req of plan) {
     try {
       result.requests++;
-      const days = await fetchDaily({ lat: req.lat, lng: req.lng, from: req.from, to: req.to, timeZone: tz, today }, fetchImpl);
+      const days = await fetchDaily({ lat: req.lat, lng: req.lng, from: req.from, to: req.to, timeZone: tz, today }, client);
       const values = [...req.targets].flatMap(([id, wanted]) =>
         days.filter((d) => wanted.has(d.date)).map((d) => ({ ...d, ...sourceValues(sourceOf.get(id)!) })),
       );

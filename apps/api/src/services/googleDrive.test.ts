@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHttpClient } from "../http/client.ts";
 import { buildAuthUrl, buildMultipart, DriveClient, emailFromIdToken } from "./googleDrive.ts";
 
 test("URL de autorização pede acesso offline e escopo drive.file", () => {
@@ -34,7 +35,12 @@ test("cliente renova o token uma vez e reaproveita", async () => {
     if (u.includes("/files?q=")) return Response.json({ files: [] });
     return Response.json({ id: "folder1" });
   }) as unknown as typeof fetch;
-  const c = new DriveClient({ clientId: "c", clientSecret: "s", refreshToken: "r" }, fake);
+  const sink = { record: () => {} };
+  const clients = {
+    oauth: createHttpClient({ service: "google_oauth", sink, baseFetch: fake }),
+    drive: createHttpClient({ service: "google_drive", sink, baseFetch: fake }),
+  };
+  const c = new DriveClient({ clientId: "c", clientSecret: "s", refreshToken: "r" }, clients);
   assert.equal(await c.ensureFolder("Orchidiary"), "folder1");
   assert.equal(await c.ensureFolder("backups", "folder1"), "folder1");
   assert.equal(calls.filter((u) => u.includes("/token")).length, 1);

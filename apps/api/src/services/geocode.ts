@@ -1,4 +1,5 @@
 import type { Locality } from "@orchidiary/shared";
+import { http } from "../http/clients.ts";
 import { sourceLogger } from "../logger.ts";
 import { type NominatimResponse, parseNominatim } from "./nominatim.ts";
 
@@ -41,11 +42,15 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Locality
   if (cache.has(key)) return cache.get(key)!;
   if (Date.now() - failedAt < FAILURE_COOLDOWN_MS) return null;
   try {
-    const body = await throttled(async () => {
+    const body = await throttled(() => {
       const url = `${URL_BASE}?format=jsonv2&zoom=10&addressdetails=1&accept-language=pt-BR&lat=${lat}&lon=${lng}`;
-      const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-      if (!res.ok) throw new Error(`Nominatim respondeu ${res.status}`);
-      return (await res.json()) as NominatimResponse;
+      return http.nominatim.call(
+        { operation: "reverse", url, init: { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(TIMEOUT_MS) } },
+        async (res) => {
+          if (!res.ok) throw new Error(`Nominatim respondeu ${res.status}`);
+          return (await res.json()) as NominatimResponse;
+        },
+      );
     });
     const locality = parseNominatim(body);
     cache.set(key, locality); // só guarda respostas válidas, inclusive "sem endereço" (oceano)

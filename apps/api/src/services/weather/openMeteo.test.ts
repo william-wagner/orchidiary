@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { ExternalCallRecord } from "@orchidiary/shared";
+import { createHttpClient } from "../../http/client.ts";
 import { buildUrl, fetchDaily, parseResponse, splitRange } from "./openMeteo.ts";
 
 const hours = (day: string, temps: number[], rh: number[], dew: number[]) => ({
@@ -63,16 +65,40 @@ test("intervalos antigos vão para a API histórica e os recentes para a de prev
 test("fetchDaily descarta dias ainda sem dado e propaga erro HTTP", async () => {
   const withGap = structuredClone(fixture);
   (withGap.daily.temperature_2m_min as Array<number | null>)[1] = null;
-  const ok = (async () => new Response(JSON.stringify(withGap))) as unknown as typeof fetch;
+  const rows: ExternalCallRecord[] = [];
+  const clientWith = (baseFetch: typeof fetch) => createHttpClient({ service: "open_meteo", sink: { record: (r) => void rows.push(r) }, baseFetch });
+  const ok = clientWith((async () => new Response(JSON.stringify(withGap))) as unknown as typeof fetch);
   const days = await fetchDaily(
     { lat: -19.9, lng: -43.9, from: "2026-10-13", to: "2026-10-14", timeZone: "America/Sao_Paulo", today: "2026-10-15" },
     ok,
   );
   assert.deepEqual(days.map((d) => d.date), ["2026-10-13"]);
 
-  const fail = (async () => new Response("limite", { status: 429 })) as unknown as typeof fetch;
+  const fail = clientWith((async () => new Response("limite", { status: 429 })) as unknown as typeof fetch);
   await assert.rejects(
     fetchDaily({ lat: 0, lng: 0, from: "2026-10-13", to: "2026-10-14", timeZone: "UTC", today: "2026-10-15" }, fail),
     /429/,
   );
+
+  // as duas chamadas ficaram registradas
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0]!.operation, "forecast.daily");
+  assert.equal(rows[0]!.outcome, "ok");
+  assert.equal(rows[0]!.query?.startsWith("latitude=-19.90&longitude=-43.90"), true);
+  assert.equal(rows[0]!.meta.daysReturned, 2);
+  assert.equal(rows[1]!.outcome, "http_error");
+  assert.equal(rows[1]!.status, 429);
+  assert.equal(rows[1]!.errorExcerpt, "limite");
+});
+
+test("fetchDaily usa a operação archive.daily para datas antigas", async () => {
+  const rows: ExternalCallRecord[] = [];
+  const client = createHttpClient({
+    service: "open_meteo",
+    sink: { record: (r) => void rows.push(r) },
+    baseFetch: (async () => new Response(JSON.stringify(fixture))) as unknown as typeof fetch,
+  });
+  await fetchDaily({ lat: 1, lng: 2, from: "2025-01-01", to: "2025-01-02", timeZone: "UTC", today: "2026-10-15" }, client);
+  assert.equal(rows[0]!.operation, "archive.daily");
+  assert.equal(rows[0]!.host, "archive-api.open-meteo.com");
 });

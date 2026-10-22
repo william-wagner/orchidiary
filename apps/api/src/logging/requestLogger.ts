@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createMiddleware } from "hono/factory";
 import { logger } from "../logger.ts";
 import type { SessionUser } from "../auth/session.ts";
+import { runWithContext } from "../http/context.ts";
 
 export type RequestEnv = { Variables: { requestId: string; user?: SessionUser } };
 
@@ -18,7 +19,8 @@ export const requestLogger = createMiddleware<RequestEnv>(async (c, next) => {
   c.header("X-Request-Id", requestId);
   const started = performance.now();
 
-  await next();
+  // as chamadas externas e os logs feitos durante a requisição herdam o requestId
+  await runWithContext({ requestId, origin: "http" }, next);
 
   const path = c.req.path;
   const fields = {
