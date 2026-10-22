@@ -17,7 +17,7 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
     - Seed de desenvolvimento: planta **FAKE** com as 20 fotos de `.local/seed-fotos-1-ano/`, eventos de um ano e clima real do Open-Meteo.
   - Tarefas, nessa ordem (uma por commit):
     - [x] 1. Seed FAKE: `seedDemo.ts`, `pnpm db:seed:demo`, clima pelo `collectWeather` existente
-    - [ ] 2. API: `?days=` no `/comfort`, constantes e teste no `packages/shared`, endpoint `/occurrences`
+    - [x] 2. API: `?days=` no `/comfort`, constantes e teste no `packages/shared`, endpoint `/occurrences`
     - [ ] 3. Gráfico: `ComfortPanel.tsx` vira a seção "Clima e ocorrências" (painéis, fita, contas, janela e camadas lembradas no aparelho)
     - [ ] 4. Folha expandida: feed com fotos primeiro, abertura a partir do ponto, navegação entre pontos, foto abrindo no `PhotoViewer`
 - [x] Aplicar ações por local (rega, adubação etc.) de uma vez para todas as plantas daquele local

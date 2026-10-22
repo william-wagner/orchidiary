@@ -52,7 +52,8 @@ const TICK: Record<string, string> = {
  * (noites, dias, umidade), contra as faixas da ficha de cultivo.
  */
 export function ComfortPanel({ plantId }: { plantId: string }) {
-  const comfort = useQuery({ queryKey: ["comfort", plantId], queryFn: () => api.get<PlantComfort>(`/plants/${plantId}/comfort`) });
+  // até a seção nova (Clima e ocorrências), a janela antiga de 30 dias
+  const comfort = useQuery({ queryKey: ["comfort", plantId], queryFn: () => api.get<PlantComfort>(`/plants/${plantId}/comfort?days=30`) });
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const c = comfort.data;
   if (!c || c.status === "no_location") return null;

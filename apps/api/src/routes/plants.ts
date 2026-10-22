@@ -7,6 +7,8 @@ import {
   eventCreateSchema,
   locationInputSchema,
   manualReadingSchema,
+  occurrencesQuerySchema,
+  parseChartWindow,
   photoMetaSchema,
   plantCreateSchema,
   placeReadingsForPlant,
@@ -24,6 +26,7 @@ import { savePhoto } from "../services/photos.ts";
 import { weatherOfSegments } from "../services/weather/collect.ts";
 import { summariesOf } from "../services/taxonomy.ts";
 import { collectionComfort, plantComfort, setComfortSilence } from "../services/comfort.ts";
+import { plantOccurrences } from "../services/occurrences.ts";
 
 const { plants, plantLocations, places, photos, events, manualReadings, weatherDaily, taxa } = schema;
 
@@ -178,10 +181,20 @@ export const plantRoutes = new Hono<AppEnv>()
     return c.json(updated);
   })
 
-  // ─── Índice de conforto ────────────────────────────────────────────────────
+  // ─── Índice de conforto e gráfico "Clima e ocorrências" ────────────────────
+  // ?days=30|90|180|360|all (padrão 90)
   .get("/:id/comfort", async (c) => {
     const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
-    return c.json(await plantComfort(plant));
+    const window = parseChartWindow(c.req.query("days"));
+    if (window === null) return c.json({ error: "Janela inválida: use 30, 90, 180, 360 ou all." }, 400);
+    return c.json(await plantComfort(plant, window));
+  })
+
+  // Fita de ocorrências e feed da folha expandida (?from&to em dias locais, AAAA-MM-DD)
+  .get("/:id/occurrences", zValidator("query", occurrencesQuerySchema), async (c) => {
+    const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
+    const { from, to } = c.req.valid("query");
+    return c.json({ items: await plantOccurrences(plant.id, from, to) });
   })
 
   // "Já sei, não avisar" (PUT) e "Voltar a avisar" (DELETE), por dimensão
