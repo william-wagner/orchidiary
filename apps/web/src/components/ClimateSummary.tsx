@@ -60,7 +60,7 @@ export function ClimateSummary({ report, weather }: { report: Report; weather: W
           {[bandMin, bandMax].map((v) =>
             v == null ? null : (
               <text key={v} x={L - 4} y={y(v) + 3} textAnchor="end" fontSize={8} fontFamily="var(--font-mono)" fill="var(--musgo)">
-                {Math.round(v)} °C
+                {Math.round(v)}°C
               </text>
             ),
           )}
