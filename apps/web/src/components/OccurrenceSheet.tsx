@@ -35,8 +35,9 @@ function locationAt(locations: PlantLocation[], at: number) {
 }
 const placeLabel = (l: PlantLocation | null) => (l ? (l.placeName ?? l.city ?? "localização própria") : null);
 
-/** Fotos primeiro, sempre; depois a ordem do tempo. */
-const photosFirst = (a: Occurrence, b: Occurrence) => Number(b.kind === "photo") - Number(a.kind === "photo") || a.at.localeCompare(b.at);
+/** Ordem cronológica por dia; dentro do dia, as fotos primeiro e cada grupo pela hora. */
+const feedOrder = (a: Occurrence, b: Occurrence) =>
+  dayOf(a.at).localeCompare(dayOf(b.at)) || Number(b.kind === "photo") - Number(a.kind === "photo") || a.at.localeCompare(b.at);
 
 const DIMENSION_SHORT: Record<ComfortDimension, string> = { night: "noite", day: "dia", humidity: "umidade" };
 const STATE_TONE: Record<ComfortState, string> = { inside: "text-tinta", near: "text-ocre", outside: "text-ocre font-medium" };
@@ -102,7 +103,7 @@ interface Viewing {
 /**
  * Folha expandida da fita: cresce do ponto tocado e ocupa a tela. No alto, o dia (ou o
  * intervalo, quando o ponto junta dias próximos) com o clima contra a faixa; depois o feed,
- * fotos primeiro. As setas andam entre os pontos da fita; Esc fecha.
+ * em ordem cronológica, com as fotos primeiro dentro de cada dia. As setas andam entre os pontos da fita; Esc fecha.
  */
 export function OccurrenceSheet({
   plantName,
@@ -183,7 +184,7 @@ export function OccurrenceSheet({
       ? [placeLabel(firstLoc), firstLoc?.environment === "indoor" ? "dentro" : null].filter(Boolean).join(" · ")
       : `${placeLabel(firstLoc)} → ${placeLabel(lastLoc)}`;
   const readings = single ? report.readings.filter((r) => dayOf(r.measuredAt) === days[0]) : [];
-  const feed = [...cluster.items].sort(photosFirst);
+  const feed = [...cluster.items].sort(feedOrder);
   const stamp = (o: Occurrence) => (single ? hour(o.at) : `${shortDate(dayOf(o.at))} · ${hour(o.at)}`);
   const title = single ? herbariumDate(days[0]!, "UTC") : `${shortDate(days[0]!)} – ${herbariumDate(days.at(-1)!, "UTC")}`;
 

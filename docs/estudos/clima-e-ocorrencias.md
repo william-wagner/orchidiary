@@ -58,8 +58,8 @@ Abaixo do eixo, uma fita só, alinhada aos três painéis.
 
 - Abre **crescendo do ponto tocado** (`clip-path: circle()` com a origem nas coordenadas do toque), em tela cheia. Com `prefers-reduced-motion`, só aparece.
 - Conteúdo: cabeçalho com a data em etiqueta (`14.X.2026`) e o local; o clima daquele dia logo abaixo, com o estado contra a faixa; depois o **feed** das ocorrências, com rolagem quando passa da tela.
-- **Fotos primeiro**, sempre, depois os eventos; cada item com a hora.
-- Ponto que agrupa **dias próximos**: cabeçalho com o intervalo, as fotos no topo do feed e, em cada item, a sua data e o clima do seu dia numa linha curta.
+- Ordem **cronológica por dia**; **dentro de cada dia, as fotos primeiro**, depois os eventos, cada grupo pela hora. Cada item com a hora.
+- Ponto que agrupa **dias próximos**: cabeçalho com o intervalo e, em cada item, a sua data e o clima do seu dia numa linha curta. As fotos não sobem para o topo do feed: só passam à frente dos eventos do próprio dia.
 - Planta dentro de casa: mantém o aviso "clima de fora, só referência", e as medições manuais do dia aparecem no cabeçalho.
 - Rodapé com **anterior / próxima**, que andam entre **pontos da fita** (mesma janela, mesmas camadas ligadas). `Esc` fecha; setas do teclado navegam.
 - Tocar a foto no feed abre o `PhotoViewer` que já existe.
@@ -123,6 +123,6 @@ export const OCCURRENCE_CLUSTER_PX = 17;
 1. **Seed FAKE** — `seedDemo.ts` + `pnpm db:seed:demo` + clima real. Primeiro, para o resto ser desenvolvido com um ano de dados na tela.
 2. **API** — `?days=` no `/comfort`, constantes e teste no `packages/shared`, endpoint `/occurrences`.
 3. **Gráfico** — `ComfortPanel.tsx` vira o componente da Pauta (três painéis, fita, contas, aviso de indoor, janela e camadas lembradas no aparelho). Sai o "Já sei, não avisar".
-4. **Folha expandida** — feed com fotos primeiro, abertura crescendo do ponto, navegação entre pontos, foto abrindo no `PhotoViewer`.
+4. **Folha expandida** — feed em ordem cronológica (fotos primeiro dentro de cada dia), abertura crescendo do ponto, navegação entre pontos, foto abrindo no `PhotoViewer`.
 
 Cada tarefa é um commit. Ao fim da 4, atualizar `docs/ARCHITECTURE.md` com a seção nova e o endpoint.

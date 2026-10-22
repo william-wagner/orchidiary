@@ -11,7 +11,7 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
     - Janela de 30, 90, 180, 360 dias e "tudo"; padrão 90, lembrada no aparelho. Acima de 120 dias a linha agrega por semana; as contas continuam contando dias.
     - Na fita: marcos, fotos e saúde ligados; manejo e notas desligados. Evento com `batch_id` nunca vira ponto. Mudança de lugar é linha vertical nos três painéis; medição manual é marca sobre a linha, não ponto da fita.
     - Agrupamento por proximidade de 17 px (primeiro por dia, depois por distância no eixo), com o número dentro do ponto.
-    - Tocar num ponto abre a folha em tela cheia, crescendo do ponto tocado: clima daquele dia no alto e o feed das ocorrências com rolagem, **fotos primeiro**; as setas andam entre pontos da fita.
+    - Tocar num ponto abre a folha em tela cheia, crescendo do ponto tocado: clima daquele dia no alto e o feed das ocorrências com rolagem, em ordem cronológica e com as **fotos primeiro dentro de cada dia**; as setas andam entre pontos da fita.
     - Sai da interface o "Já sei, não avisar" (volta na Fase 3). Card da Coleção e livro de registro não mudam.
     - API: `?days=` no `/comfort` e o endpoint novo `GET /plants/:id/occurrences?from&to`.
     - Seed de desenvolvimento: planta **FAKE** com as 20 fotos de `.local/seed-fotos-1-ano/`, eventos de um ano e clima real do Open-Meteo.
@@ -19,7 +19,7 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
     - [x] 1. Seed FAKE: `seedDemo.ts`, `pnpm db:seed:demo`, clima pelo `collectWeather` existente
     - [x] 2. API: `?days=` no `/comfort`, constantes e teste no `packages/shared`, endpoint `/occurrences`
     - [x] 3. Gráfico: `ComfortPanel.tsx` vira a seção "Clima e ocorrências" (painéis, fita, contas, janela e camadas lembradas no aparelho)
-    - [x] 4. Folha expandida: feed com fotos primeiro, abertura a partir do ponto, navegação entre pontos, foto abrindo no `PhotoViewer`
+    - [x] 4. Folha expandida: feed cronológico (fotos primeiro dentro de cada dia), abertura a partir do ponto, navegação entre pontos, foto abrindo no `PhotoViewer`
 - [x] Aplicar ações por local (rega, adubação etc.) de uma vez para todas as plantas daquele local
   - UI decidida (protótipo: https://claude.ai/artifact/VfMz5Wjuzmf3NAfZJf3kkE):
     - Entrada pela Coleção: chips de local acima da grade, que também filtram. Com um local escolhido, aparece o botão "Registrar no local". Atalho na ficha: depois de regar ou adubar uma planta, o toast oferece o lote para as outras do mesmo local.

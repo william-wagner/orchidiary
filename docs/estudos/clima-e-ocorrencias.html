@@ -197,7 +197,7 @@ section.bloco{margin-top:1.6rem}
 
   <section class="bloco">
     <div class="cabeca"><h2>Visualização expandida</h2><span class="letra">folha</span></div>
-    <p class="resumo">Abre crescendo do ponto tocado, em tela cheia. O ponto é um dia (ou um punhado de dias próximos, nas janelas longas): a folha mostra tudo dele num feed com rolagem, fotos primeiro, com o clima daquele dia no alto. As setas vão para o ponto anterior e o próximo da mesma fita.</p>
+    <p class="resumo">Abre crescendo do ponto tocado, em tela cheia. O ponto é um dia (ou um punhado de dias próximos, nas janelas longas): a folha mostra tudo dele num feed com rolagem, em ordem cronológica e com as fotos primeiro dentro de cada dia, com o clima daquele dia no alto. As setas vão para o ponto anterior e o próximo da mesma fita.</p>
     <button class="botao" id="demo">Abrir um dia cheio</button>
   </section>
 
@@ -417,7 +417,7 @@ function contas(ds){
       (pior?'<span class="pior">pior '+n1(pior.v)+ln.u+' em '+curto(pior.t)+'</span>':"")+'</div>'}).join("");
 }
 
-/* ── folha: feed do dia, fotos primeiro ──────────────────────────────────── */
+/* ── folha: feed cronológico, fotos primeiro dentro de cada dia ───────────────────────────────────────────────── */
 const folha=document.getElementById("folha"),fundo=document.getElementById("fundo"),feed=document.getElementById("feed");
 let iGrupo=0;
 const SVG=(p,cls)=>'<span class="ico '+(cls||"")+'"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg></span>';
@@ -457,7 +457,7 @@ function mostra(){
   const porDiaMap=new Map();
   for(const o of g.itens){const k=diaChave(o.ms); if(!porDiaMap.has(k))porDiaMap.set(k,[]); porDiaMap.get(k).push(o)}
   const chaves=[...porDiaMap.keys()].sort((a,b)=>a-b);
-  const fotosPrimeiro=(a,b)=>(a.camada==="fotos"?0:1)-(b.camada==="fotos"?0:1)||a.ms-b.ms;
+  const fotosPrimeiro=(a,b)=>diaChave(a.ms)-diaChave(b.ms)||(a.camada==="fotos"?0:1)-(b.camada==="fotos"?0:1)||a.ms-b.ms;
   const cartao=(o,etq)=>o.foto
     ? '<figure class="fixada retrato"><img src="'+o.foto+'" alt="Fotografia da planta FAKE, '+etiqueta(o.ms)+'" loading="lazy"><figcaption>'+o.nota+'<br><span class="hora">'+etq+'</span></figcaption></figure>'
     : '<div class="item">'+iconeDe(o)+'<div><p class="tit">'+ROTULO[o.tipo]+seloDe(o)+'</p>'+
