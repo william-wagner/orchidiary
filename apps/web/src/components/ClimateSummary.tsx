@@ -1,4 +1,4 @@
-import type { IsoDate } from "@orchidiary/shared";
+import { herbariumDate, type IsoDate } from "@orchidiary/shared";
 import type { PlantComfort, WeatherDay } from "../lib/api.ts";
 import { useWidth } from "../lib/useWidth.ts";
 import { BANDS, tempColor } from "./TemperatureRegister.tsx";
@@ -12,6 +12,9 @@ const PAD = 4;
 /** Margem esquerda para os limites da faixa ("30°C") */
 const L = 34;
 const R = 2;
+
+/** 22.IX (sem o ano) */
+const shortDate = (iso: IsoDate) => herbariumDate(iso, "UTC").split(".").slice(0, 2).join(".");
 
 const dayTitle = (date: IsoDate, w: WeatherDay | undefined) =>
   `${date}: ${w ? `${w.tempMin ?? "?"}–${w.tempMax ?? "?"}°C` : "sem clima"}`;
@@ -45,6 +48,9 @@ export function ClimateSummary({ report, weather }: { report: Report; weather: W
 
   return (
     <div ref={ref} className="mt-2.5">
+      <p className="eyebrow">
+        Últimos {dates.length} dias · {shortDate(dates[0]!)} – {shortDate(dates.at(-1)!)}
+      </p>
       {W > 0 && (
         <svg
           viewBox={`0 0 ${W} ${H}`}
