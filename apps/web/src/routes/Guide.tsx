@@ -66,7 +66,7 @@ export function Guide() {
 }
 
 const range = (a: number | null, b: number | null, unit: string) =>
-  a == null && b == null ? "não informado" : `${a ?? "?"}–${b ?? "?"} ${unit}`;
+  a == null && b == null ? "não informado" : `${a ?? "?"}–${b ?? "?"}${unit}`;
 
 export function TaxonPage() {
   const { id } = useParams();
@@ -86,7 +86,7 @@ export function TaxonPage() {
   const ranges = [
     { k: "Temperatura de dia", v: range(care.tempDayMin, care.tempDayMax, "°C"), from: inheritedFrom("tempDayMin", "tempDayMax") },
     { k: "Temperatura à noite", v: range(care.tempNightMin, care.tempNightMax, "°C"), from: inheritedFrom("tempNightMin", "tempNightMax") },
-    { k: "Umidade do ar", v: range(care.humidityMin, care.humidityMax, "%"), from: inheritedFrom("humidityMin", "humidityMax") },
+    { k: "Umidade do ar", v: range(care.humidityMin, care.humidityMax, " %"), from: inheritedFrom("humidityMin", "humidityMax") },
   ];
   const bloomText = care.bloomMonths.length ? care.bloomMonths.map((m) => MONTH_NAMES[m - 1]).join(", ") : "sem registro";
   const bloomFrom = inheritedFrom("bloomMonths");

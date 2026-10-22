@@ -96,7 +96,7 @@ const num = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1 
 const shortDate = (iso: IsoDate) => herbariumDate(iso, "UTC").replace(/\.\d{4}$/, "");
 /** VIII (só o mês, para as marcas do eixo) */
 const romanMonth = (iso: IsoDate) => herbariumDate(iso, "UTC").split(".")[1]!;
-const unitOf = (d: ComfortDimension) => (d === "humidity" ? "%" : " °C");
+const unitOf = (d: ComfortDimension) => (d === "humidity" ? "%" : "°C");
 const DIMENSION_NAME: Record<ComfortDimension, string> = { night: "noites", day: "dias", humidity: "umidade" };
 const WINDOW_LABEL = (w: ChartWindow) => (w === "all" ? "tudo" : `${w} d`);
 
@@ -198,7 +198,7 @@ export function ClimatePanel({
           </span>
           <span className="typed text-[0.7rem] whitespace-nowrap">
             {!open && yesterday
-              ? `ontem ${yesterday.tempMin ?? "?"}–${yesterday.tempMax ?? "?"} °C`
+              ? `ontem ${yesterday.tempMin ?? "?"}–${yesterday.tempMax ?? "?"}°C`
               : `${shortDate(c.from)} – ${herbariumDate(c.to, "UTC")}`}
           </span>
         </button>

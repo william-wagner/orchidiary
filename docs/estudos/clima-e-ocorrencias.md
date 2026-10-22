@@ -11,7 +11,7 @@ O protótipo é a referência de desenho: escalas, alturas, formas dos pontos, a
 
 - A seção **Conforto** vira **"Clima e ocorrências"**, no mesmo lugar: entre o cabeçalho da ficha e o livro de registro.
 - Vem **fechada** por padrão (decidido depois do primeiro teste no app). O estado aberto/fechado fica lembrado no aparelho e vale para todas as plantas (`orchidiary:clima-aberto`, que só guarda `1` quando aberta).
-- Fechada, mostra o resumo dos **últimos 30 dias**, que **substitui o card "Registro térmico"** (ele sai da ficha): uma coluna por dia indo da mínima à máxima, na cor da temperatura média (a escala do antigo registro, como legenda), sobre a faixa de conforto da ficha (da mínima das noites à máxima dos dias), com os limites escritos à esquerda ("30 °C", "16 °C"). No cabeçalho, "ontem 13,9–24,2 °C". Abaixo, os selos das dimensões em atenção, com a contagem da última semana ("noites frias · 3 de 7 dias"), ou "Tudo dentro da faixa na última semana". A umidade fica só nos selos. A janela escolhida não muda esse resumo, e as ocorrências só são buscadas quando a seção abre. Planta sem faixas na ficha mantém o Registro térmico antigo dentro da seção.
+- Fechada, mostra o resumo dos **últimos 30 dias**, que **substitui o card "Registro térmico"** (ele sai da ficha): uma coluna por dia indo da mínima à máxima, na cor da temperatura média (a escala do antigo registro, como legenda), sobre a faixa de conforto da ficha (da mínima das noites à máxima dos dias), com os limites escritos à esquerda ("30°C", "16°C"). No cabeçalho, "ontem 13,9–24,2°C". Abaixo, os selos das dimensões em atenção, com a contagem da última semana ("noites frias · 3 de 7 dias"), ou "Tudo dentro da faixa na última semana". A umidade fica só nos selos. A janela escolhida não muda esse resumo, e as ocorrências só são buscadas quando a seção abre. Planta sem faixas na ficha mantém o Registro térmico antigo dentro da seção.
 
 ## 2. O gráfico (proposta "Pauta")
 
@@ -19,12 +19,12 @@ Três painéis empilhados, **um eixo de tempo só**, na ordem: noites, dias, umi
 
 - **Noites** compara `weather_daily.temp_min` com `tempNightMin/Max` da ficha; **dias**, `temp_max` com `tempDayMin/Max`; **umidade**, `humidity_mean` com `humidityMin/Max`.
 - Faixa da ficha desenhada ao fundo em `--salvia`, com o intervalo escrito no canto superior direito de cada painel. Faixa herdada ganha a nota "faixa do gênero *Nome*" (regra atual de `inheritCare`).
-- Linha do clima em `--folhagem`; dia fora da faixa ganha um ponto em `--ocre`. Margem de "perto": 2 °C e 5 pontos de umidade (as mesmas de hoje).
+- Linha do clima em `--folhagem`; dia fora da faixa ganha um ponto em `--ocre`. Margem de "perto": 2°C e 5 pontos de umidade (as mesmas de hoje).
 - **Mudança de lugar**: linha vertical pontilhada em `--ocre` atravessando os três painéis, na data em que o período de local começou. Dali para a frente o clima vem de outro local — nada é recalculado para trás.
 - **Medições manuais** (`manual_readings`): cruzinha em `--orquidea` sobre a linha. Medida entre 19h e 8h vai para o painel das noites; entre 8h e 19h, para o dos dias; a umidade sempre para o painel de baixo. Camada ligada por padrão.
 - **Chuva**: camada opcional, barras discretas no fundo do painel de umidade.
 - **Linha-guia**: ao abrir uma ocorrência, uma vertical pontilhada em `--tinta` marca a data nos três painéis.
-- Abaixo do gráfico, uma linha por dimensão com as contas do período: `65 dentro · 22 perto · 3 fora` e `pior 12,6 °C em 20.VIII`. Contam **dias**, sempre, mesmo quando o desenho está agregado por semana.
+- Abaixo do gráfico, uma linha por dimensão com as contas do período: `65 dentro · 22 perto · 3 fora` e `pior 12,6°C em 20.VIII`. Contam **dias**, sempre, mesmo quando o desenho está agregado por semana.
 
 ### Janela
 
@@ -110,7 +110,7 @@ export const OCCURRENCE_CLUSTER_PX = 17;
 
 `apps/api/src/db/seedDemo.ts`, rodado por `pnpm db:seed:demo`. Não precisa de proteção especial de ambiente; é idempotente (recria a planta FAKE do zero a cada execução) e não toca em nenhuma outra planta.
 
-- Planta **FAKE**, apontando para o gênero *Phalaenopsis* do catálogo (faixa herdada: dias 20–30 °C, noites 16–22 °C, umidade 50–80% — serve também para exercitar o rótulo "faixa do gênero").
+- Planta **FAKE**, apontando para o gênero *Phalaenopsis* do catálogo (faixa herdada: dias 20–30°C, noites 16–22°C, umidade 50–80% — serve também para exercitar o rótulo "faixa do gênero").
 - Um lugar criado para ela, com coordenadas reais, e duas mudanças de local no inverno (para dentro em 5.VI, de volta à varanda em 5.IX), usando `movePlant` — nunca editando períodos existentes.
 - **20 fotos** de `.local/seed-fotos-1-ano/fotos/`, com a data de `manifest.json`, salvas pelo `savePhoto` (gera webp, thumb e respeita o período de local da data).
 - Eventos contando a história que as notas do manifest descrevem: replante na chegada, haste em dezembro, floração em janeiro, mancha em fevereiro, fim da floração em março, folha nova em abril, raiz nova em maio, cochonilha e dois tratamentos em junho/julho, keiki em julho, folhas novas em agosto, nova haste em 19.VIII, segunda floração em outubro. Mais regas e adubações ao longo do ano, parte delas em lote (para exercitar a exclusão de `batch_id`).

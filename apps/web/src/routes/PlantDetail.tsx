@@ -377,7 +377,7 @@ export function PlantDetail() {
                           Medição:{" "}
                           <span className="typed text-[0.85rem]">
                             {[
-                              it.temperature != null ? `${it.temperature} °C` : null,
+                              it.temperature != null ? `${it.temperature}°C` : null,
                               it.humidity != null ? `${it.humidity}%` : null,
                             ]
                               .filter(Boolean)

@@ -7,7 +7,7 @@ import type { Care, TaxonRank } from "@orchidiary/shared";
  * achar "Laelia purpurata", "Oncidium flexuosum" ou "Ascocenda".
  *
  * Fichas de cultivo são pontos de partida, para revisar e completar.
- * Faixas em °C e % de umidade relativa; meses do hemisfério sul.
+ * Faixas em°C e % de umidade relativa; meses do hemisfério sul.
  */
 export interface CatalogNode {
   rank: TaxonRank;
@@ -116,7 +116,7 @@ const care = {
     light: "Muita luz; tolera sol da manhã.",
     watering: "Regular o ano todo, deixando secar levemente entre regas.",
     substrate: "Vaso pequeno com casca e carvão; gosta de ficar apertada.",
-    restPeriod: "Sem repouso marcado; sensível a noites abaixo de 15 °C.",
+    restPeriod: "Sem repouso marcado; sensível a noites abaixo de 15°C.",
   },
   bulbophyllum: {
     tempDayMin: 20, tempDayMax: 30, tempNightMin: 15, tempNightMax: 22, humidityMin: 60, humidityMax: 85,
@@ -146,7 +146,7 @@ const care = {
     fertilizing: "Rica em nitrogênio na primavera e verão; rica em potássio no fim do verão.",
     substrate: "Casca média com fibra de coco; vaso fundo.",
     bloomMonths: [6, 7, 8, 9],
-    restPeriod: "Noites frias (abaixo de 15 °C) no outono disparam as hastes.",
+    restPeriod: "Noites frias (abaixo de 15°C) no outono disparam as hastes.",
   },
   miltonia: {
     tempDayMin: 18, tempDayMax: 28, tempNightMin: 12, tempNightMax: 18, humidityMin: 60, humidityMax: 80,
@@ -220,7 +220,7 @@ const care = {
     light: "Pouca luz.",
     watering: "Úmida sempre, com água de baixa salinidade.",
     substrate: "Musgo esfagno em vaso pequeno.",
-    notes: "Planta de altitude: sofre muito acima de 26 °C.",
+    notes: "Planta de altitude: sofre muito acima de 26°C.",
   },
   dracula: {
     tempDayMin: 12, tempDayMax: 22, tempNightMin: 8, tempNightMax: 14, humidityMin: 75, humidityMax: 95,
@@ -241,7 +241,7 @@ const care = {
     watering: "Raízes expostas: molhar bem todos os dias no calor; devem secar até a noite.",
     fertilizing: "Adubo foliar diluído semanalmente no crescimento.",
     substrate: "Cesto de madeira ou raízes nuas penduradas; ventilação é essencial.",
-    restPeriod: "Sem repouso definido; reduzir rega quando as noites ficarem abaixo de 15 °C.",
+    restPeriod: "Sem repouso definido; reduzir rega quando as noites ficarem abaixo de 15°C.",
   },
   angraecum: {
     tempDayMin: 20, tempDayMax: 32, tempNightMin: 15, tempNightMax: 22, humidityMin: 60, humidityMax: 80,

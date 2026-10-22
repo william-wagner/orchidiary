@@ -62,7 +62,7 @@ function ClimateLine({ report, date }: { report: Report; date: IsoDate }) {
           {DIMENSION_SHORT[d.dimension]}{" "}
           <span className={d.state ? STATE_TONE[d.state] : "text-tinta"}>
             {num(d.value)}
-            {d.dimension === "humidity" ? "%" : " °C"}
+            {d.dimension === "humidity" ? "%" : "°C"}
             {d.state === "outside" ? " · fora" : d.state === "near" ? " · perto" : ""}
           </span>
         </span>
@@ -80,7 +80,7 @@ function shortClimate(report: Report, date: IsoDate) {
   const v = (d: ComfortDimension) => dims.find((x) => x.dimension === d)?.value;
   const parts = [
     v("night") != null && `noite ${num(v("night")!)}`,
-    v("day") != null && `dia ${num(v("day")!)} °C`,
+    v("day") != null && `dia ${num(v("day")!)}°C`,
     v("humidity") != null && `umid. ${num(v("humidity")!)}%`,
   ].filter(Boolean);
   return parts.join(" · ");
@@ -238,7 +238,7 @@ export function OccurrenceSheet({
                   {readings.map((r) => (
                     <span key={r.id} className="text-tinta">
                       {hour(r.measuredAt)}
-                      {r.temperature != null && ` · ${num(r.temperature)} °C`}
+                      {r.temperature != null && ` · ${num(r.temperature)}°C`}
                       {r.humidity != null && ` · ${num(r.humidity)}%`}
                     </span>
                   ))}

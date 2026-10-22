@@ -9,12 +9,12 @@ type Report = Extract<PlantComfort, { status: "ok" }>;
 const DAYS = 30;
 const H = 54;
 const PAD = 4;
-/** Margem esquerda para os limites da faixa ("30 °C") */
+/** Margem esquerda para os limites da faixa ("30°C") */
 const L = 34;
 const R = 2;
 
 const dayTitle = (date: IsoDate, w: WeatherDay | undefined) =>
-  `${date}: ${w ? `${w.tempMin ?? "?"}–${w.tempMax ?? "?"} °C` : "sem clima"}`;
+  `${date}: ${w ? `${w.tempMin ?? "?"}–${w.tempMax ?? "?"}°C` : "sem clima"}`;
 
 /**
  * Resumo da seção "Clima e ocorrências" fechada, que também substitui o antigo Registro térmico:
@@ -53,7 +53,7 @@ export function ClimateSummary({ report, weather }: { report: Report; weather: W
           className="block"
           role="img"
           aria-label={`Mínima e máxima de cada um dos últimos ${dates.length} dias sobre a faixa de conforto da ficha${
-            bandMin != null && bandMax != null ? `, de ${Math.round(bandMin)} a ${Math.round(bandMax)} °C` : ""
+            bandMin != null && bandMax != null ? `, de ${Math.round(bandMin)} a ${Math.round(bandMax)}°C` : ""
           }`}
         >
           {bandMin != null && bandMax != null && <rect x={L} y={y(bandMax)} width={plotW} height={y(bandMin) - y(bandMax)} fill="var(--salvia)" opacity={0.9} />}

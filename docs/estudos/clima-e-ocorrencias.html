@@ -282,7 +282,7 @@ const EVENTOS=[
  ["2026-04-18T10:30","marcos","new_growth","Folha nova no centro"],
  ["2026-04-18T10:40","notas","note","Cortei a haste acima do terceiro nó"],
  ["2026-05-09T08:50","marcos","new_root","Duas raízes novas, pontas verdes"],
- ["2026-06-05T17:00","marcos","moved","Para dentro: previsão de 9 °C"],
+ ["2026-06-05T17:00","marcos","moved","Para dentro: previsão de 9°C"],
  ["2026-06-20T09:15","saude","pest","Cochonilha na folha de baixo"],
  ["2026-06-22T08:40","saude","treatment","Óleo de neem"],
  ["2026-06-27T16:30","notas","note","Depois do neem, nenhuma cochonilha nova"],
@@ -369,8 +369,8 @@ function fita(ocs,x,y,W){
 function desenha(){
   const svg=document.getElementById("g-b"),W=largura(svg);
   const ds=visiveis(),x=escalaX(ds,W),bs=baldes(ds,Math.max(30,Math.floor((W-L-Rp)/3)));
-  const painel=[{k:"noite",rot:"noites",f:FAIXA.noite,v:b=>b.tmin,u:" °C",med:m=>{const h=new Date(m.ms).getUTCHours();return (h>=19||h<8)?m.temp:null}},
-                {k:"dia",rot:"dias",f:FAIXA.dia,v:b=>b.tmax,u:" °C",med:m=>{const h=new Date(m.ms).getUTCHours();return (h>=8&&h<19)?m.temp:null}},
+  const painel=[{k:"noite",rot:"noites",f:FAIXA.noite,v:b=>b.tmin,u:"°C",med:m=>{const h=new Date(m.ms).getUTCHours();return (h>=19||h<8)?m.temp:null}},
+                {k:"dia",rot:"dias",f:FAIXA.dia,v:b=>b.tmax,u:"°C",med:m=>{const h=new Date(m.ms).getUTCHours();return (h>=8&&h<19)?m.temp:null}},
                 {k:"umid",rot:"umidade",f:FAIXA.umid,v:b=>b.hum,u:"%",med:m=>m.hum}];
   const T=14,ph=54,gap=20; let s="";
   painel.forEach((p,i)=>{
@@ -405,8 +405,8 @@ function desenha(){
   contas(ds);
 }
 function contas(ds){
-  const linhas=[{rot:"noites",f:FAIXA.noite,k:"noite",v:d=>d.tmin,u:" °C"},
-                {rot:"dias",f:FAIXA.dia,k:"dia",v:d=>d.tmax,u:" °C"},
+  const linhas=[{rot:"noites",f:FAIXA.noite,k:"noite",v:d=>d.tmin,u:"°C"},
+                {rot:"dias",f:FAIXA.dia,k:"dia",v:d=>d.tmax,u:"°C"},
                 {rot:"umidade",f:FAIXA.umid,k:"umid",v:d=>d.hum,u:"%"}];
   document.getElementById("contas").innerHTML=linhas.map(ln=>{
     const c={dentro:0,perto:0,fora:0}; let pior=null,dist=0;
@@ -440,17 +440,17 @@ function climaDe(t){
   const d=porDia.get(t); if(!d)return "";
   const par=(rot,v,e)=>'<span>'+rot+' <span class="v'+(e&&e!=="dentro"?" "+e:"")+'">'+v+'</span></span>';
   return '<div class="clima">'+
-    par("noite",n1(d.tmin)+" °C",estado(d.tmin,FAIXA.noite,MARGEM.noite))+
-    par("dia",n1(d.tmax)+" °C",estado(d.tmax,FAIXA.dia,MARGEM.dia))+
+    par("noite",n1(d.tmin)+"°C",estado(d.tmin,FAIXA.noite,MARGEM.noite))+
+    par("dia",n1(d.tmax)+"°C",estado(d.tmax,FAIXA.dia,MARGEM.dia))+
     par("umidade",d.hum+"%",estado(d.hum,FAIXA.umid,MARGEM.umid))+
     par("chuva",d.chuva?n1(d.chuva)+" mm":"—")+'</div>'}
 function climaCurto(t){
   const d=porDia.get(t); if(!d)return "";
-  return "noite "+n1(d.tmin)+" · dia "+n1(d.tmax)+" °C · umid. "+d.hum+"%"}
+  return "noite "+n1(d.tmin)+" · dia "+n1(d.tmax)+"°C · umid. "+d.hum+"%"}
 function medicoesDe(t){
   const ms=MEDICOES.filter(m=>diaChave(m.ms)===t);
   if(!ms.length)return "";
-  return '<div class="clima"><span>medição</span>'+ms.map(m=>'<span class="v">'+hora(m.ms)+" · "+n1(m.temp)+" °C · "+m.hum+"%</span>").join("")+'</div>'}
+  return '<div class="clima"><span>medição</span>'+ms.map(m=>'<span class="v">'+hora(m.ms)+" · "+n1(m.temp)+"°C · "+m.hum+"%</span>").join("")+'</div>'}
 function mostra(){
   const g=gruposFita[iGrupo]; if(!g)return;
   st.sel=g.itens[0].id;
