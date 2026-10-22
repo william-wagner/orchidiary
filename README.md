@@ -15,6 +15,7 @@ pnpm install
 pnpm db:up                    # sobe o Postgres no Docker
 pnpm db:migrate               # aplica as migrações de apps/api/drizzle/
 pnpm db:seed                  # cria o usuário master e o catálogo de táxons do guia
+pnpm db:seed:demo             # opcional: planta FAKE com um ano de fotos, eventos e clima real
 pnpm dev                      # API na 8787 + app web na 5173
 ```
 
