@@ -49,7 +49,7 @@ Modelo completo em `.env.example`. As que mudam de um ambiente para o outro:
 | Variável | Local | AWS |
 |---|---|---|
 | `POSTGRES_PASSWORD` | `orchidiary` | senha longa e aleatória (vale só na criação do volume) |
-| `DATABASE_URL` | `postgres://…@localhost:5432/orchidiary` | ignorada (o compose aponta para `db`) |
+| `DATABASE_URL` | `postgres://…@localhost:5440/orchidiary` | ignorada (o compose aponta para `db`) |
 | `APP_DOMAIN` | `localhost` | `orchidiary.com` |
 | `WEB_ORIGIN` | `http://localhost:5173` ou o endereço `*.ts.net` | `https://orchidiary.com` (CORS e retorno do OAuth do Google Drive) |
 | `NODE_ENV` | `development` | `production` (o compose já força no `app`) |
@@ -65,7 +65,7 @@ Pré-requisitos: Node 22+, pnpm 10, Docker Desktop e Tailscale.
 ### Modo desenvolvimento (`pnpm dev`)
 
 ```
-Navegador ──▶ Vite :5173 ──/api──▶ API :8787 (node --watch + tsx) ──▶ Postgres :5432 (Docker, só 127.0.0.1)
+Navegador ──▶ Vite :5173 ──/api──▶ API :8787 (node --watch + tsx) ──▶ Postgres :5440 (Docker, só 127.0.0.1)
 ```
 
 ```bash
@@ -73,7 +73,7 @@ pnpm db:up      # só o Postgres: docker-compose.yml + docker-compose.dev.yml
 pnpm dev        # API (8787) + Vite (5173) em paralelo
 ```
 
-- `docker-compose.dev.yml` publica a 5432 apenas em `127.0.0.1`, para a API rodando fora do Docker.
+- `docker-compose.dev.yml` publica a 5440 (porta 5432 do container) apenas em `127.0.0.1`, para a API rodando fora do Docker.
 - O Vite escuta em todas as interfaces (`host: true`) e aceita hosts `.ts.net`, para abrir no celular.
 - A API lê o `.env` da raiz (`--env-file=../../.env`). Fotos e logs ficam em `apps/api/data/` (ignorado pelo git).
 - Migrações: `pnpm db:generate` gera a partir do schema (commitar `apps/api/drizzle/`); `pnpm db:migrate` e `pnpm db:seed` aplicam.
