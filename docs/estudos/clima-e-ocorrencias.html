@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Protótipo do item "Gráfico da planta no tempo com ocorrências" (docs/ROADMAP.md).
+  Estudo de 21.X.2026. Abra este arquivo no navegador (largura de celular) para ver
+  o comportamento decidido: painéis, escalas, agrupamento, folha expandida.
+  Dados são de ensaio (clima simulado, planta FAKE); as fotos são as do seed de 1 ano,
+  reduzidas. O que vale como especificação está em docs/estudos/clima-e-ocorrencias.md.
+-->
+<style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Gráficos da planta</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Caderno botânico: tokens do app (apps/web/src/styles.css). Coluna única, largura de celular. */
+:root{
+  --papel:#f7f5ec; --folha:#fcfaf4; --tinta:#254d3d; --tinta-viva:#39634d; --musgo:#66725f;
+  --folhagem:#6f7f5f; --salvia:#dfe7d6; --salvia-clara:#e9eddf; --linha:#dedfd2; --contorno:#c6d0bd;
+  --lilas:#ece3ef; --orquidea:#765f82; --ocre:#9a7647; --ocre-claro:#f3ecd9; --alerta:#9d4f44;
+  --fita:#d9d0ab99; --sombra:0 12px 40px #273f2f0d;
+  --serif:"Gelasio",Georgia,"Times New Roman",serif;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --papel:#161d19; --folha:#1d2621; --tinta:#e2e9da; --tinta-viva:#cbd8c1; --musgo:#a0ab99;
+  --folhagem:#a9b991; --salvia:#2a372f; --salvia-clara:#233029; --linha:#2f3b34; --contorno:#43524a;
+  --lilas:#352c3a; --orquidea:#c9aed6; --ocre:#d1ac78; --ocre-claro:#33301f; --alerta:#e39a8c;
+  --fita:#6b654a99; --sombra:0 12px 40px #00000033;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --papel:#161d19; --folha:#1d2621; --tinta:#e2e9da; --tinta-viva:#cbd8c1; --musgo:#a0ab99;
+  --folhagem:#a9b991; --salvia:#2a372f; --salvia-clara:#233029; --linha:#2f3b34; --contorno:#43524a;
+  --lilas:#352c3a; --orquidea:#c9aed6; --ocre:#d1ac78; --ocre-claro:#33301f; --alerta:#e39a8c;
+  --fita:#6b654a99; --sombra:0 12px 40px #00000033;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--papel); color:var(--tinta);
+  font-family:var(--sans); font-size:0.97rem; line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.03' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+h1,h2,h3{font-family:var(--serif); font-weight:400; line-height:1.15; text-wrap:balance; margin:0}
+p{margin:0}
+.envelope{max-width:33rem; margin:0 auto; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); padding-block:1.5rem 4rem}
+.eyebrow{font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--musgo)}
+.typed{font-family:var(--mono); color:var(--musgo); letter-spacing:.02em; font-variant-numeric:tabular-nums}
+.taxon{font-style:italic}
+.cartao{background:var(--folha); border:1px solid var(--linha); border-radius:10px}
+.selo{display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 9px; font-size:.7rem; line-height:1.3; white-space:nowrap; background:var(--salvia-clara); color:var(--folhagem)}
+.selo::before{content:""; width:5px; height:5px; border-radius:50%; background:currentColor}
+.selo-flor{background:var(--lilas); color:var(--orquidea)}
+.selo-ocre{background:var(--ocre-claro); color:var(--ocre)}
+.fixada{position:relative}
+.fixada::before{content:""; position:absolute; top:9px; left:calc(50% - 26px); width:52px; height:14px; background:var(--fita); transform:rotate(-6deg); z-index:1; pointer-events:none}
+:focus-visible{outline:2px solid var(--orquidea); outline-offset:3px}
+
+header.topo{display:flex; flex-direction:column; gap:.5rem; padding-bottom:1.1rem}
+header.topo h1{font-size:1.9rem}
+.aviso{font-size:.84rem; color:var(--musgo)}
+
+.barra{position:sticky; top:env(safe-area-inset-top,0px); z-index:9; margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px))); padding:.6rem max(16px,env(safe-area-inset-left,0px)); background:color-mix(in srgb,var(--papel) 92%,transparent); backdrop-filter:blur(6px); border-bottom:1px solid var(--linha); display:flex; flex-direction:column; gap:.45rem}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--papel)}
+.grupo{display:flex; align-items:center; gap:.3rem; flex-wrap:wrap}
+.grupo > .rot{font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; color:var(--musgo); width:4.6rem; flex-shrink:0}
+.chip{appearance:none; border:1px solid var(--contorno); background:transparent; color:var(--musgo); border-radius:999px; padding:.25rem .62rem; font-family:var(--mono); font-size:.72rem; line-height:1.4; cursor:pointer; min-height:30px; transition:background .15s,color .15s,border-color .15s}
+.chip:hover{background:var(--salvia-clara)}
+.chip[aria-pressed="true"]{background:var(--tinta); border-color:var(--tinta); color:var(--folha)}
+.chip.suave[aria-pressed="true"]{background:var(--salvia); border-color:var(--contorno); color:var(--tinta)}
+.chip[disabled]{opacity:.4; cursor:default}
+
+section.bloco{margin-top:1.6rem}
+.cabeca{display:flex; align-items:baseline; justify-content:space-between; gap:.75rem}
+.cabeca h2{font-size:1.35rem}
+.cabeca .letra{font-family:var(--mono); font-size:.72rem; color:var(--musgo)}
+.resumo{font-size:.86rem; color:var(--musgo); margin:.15rem 0 .7rem}
+.quadro{padding:.85rem .7rem .75rem}
+.quadro .titulo{display:flex; align-items:baseline; justify-content:space-between; gap:.5rem; padding:0 .25rem .35rem}
+.quadro .titulo .nome{font-family:var(--serif); font-size:1.05rem}
+.grafico{width:100%; display:block; touch-action:manipulation}
+.legenda{display:flex; flex-wrap:wrap; gap:.1rem .9rem; padding:.5rem .35rem .2rem; font-size:.7rem; color:var(--musgo)}
+.legenda span{display:inline-flex; align-items:center; gap:.33rem}
+.legenda i{display:inline-block; width:9px; height:9px; border-radius:2px; flex-shrink:0}
+.contas{display:flex; flex-direction:column; gap:.2rem; padding:.55rem .35rem 0; border-top:1px dotted var(--contorno); margin-top:.5rem}
+.conta{display:flex; align-items:baseline; gap:.45rem; font-size:.78rem; flex-wrap:wrap}
+.conta .dim{font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--musgo); width:4.6rem}
+.conta b{font-weight:500}
+.conta .pior{color:var(--ocre); font-family:var(--mono); font-size:.72rem}
+.notas{margin-top:.7rem; font-size:.84rem; color:var(--musgo); display:flex; flex-direction:column; gap:.4rem}
+.notas b{font-weight:500; color:var(--tinta)}
+.botao{appearance:none; border:1px solid var(--contorno); background:transparent; color:var(--tinta); border-radius:8px; padding:.5rem .8rem; font-family:var(--sans); font-size:.86rem; min-height:44px; cursor:pointer}
+.botao:hover{background:var(--salvia-clara)}
+
+/* folha expandida: cresce do ponto tocado */
+.folha-fundo{position:fixed; inset:0; background:color-mix(in srgb,var(--papel) 70%,transparent); backdrop-filter:blur(2px); z-index:40; opacity:0; transition:opacity .22s ease}
+.folha-fundo.aberta{opacity:1}
+.folha{position:fixed; inset:0; z-index:41; background:var(--papel); display:flex; flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  clip-path:circle(0px at var(--ox,50%) var(--oy,50%)); transition:clip-path .38s cubic-bezier(.2,.75,.25,1);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.03' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.folha.aberta{clip-path:circle(150% at var(--ox,50%) var(--oy,50%))}
+.folha[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){.folha{clip-path:none; opacity:0; transition:opacity .15s}.folha.aberta{opacity:1}}
+.folha-topo{display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.5rem max(14px,env(safe-area-inset-left,0px)); border-bottom:1px solid var(--linha)}
+.folha-corpo{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:.9rem max(16px,env(safe-area-inset-left,0px)) 1.5rem}
+.feed{max-width:24rem; margin:0 auto; display:flex; flex-direction:column; gap:1rem}
+.folha-rodape{display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.45rem max(14px,env(safe-area-inset-left,0px)); border-top:1px solid var(--linha); background:var(--folha)}
+.botao-lis{appearance:none; background:transparent; border:0; color:var(--tinta); font-family:var(--sans); font-size:.86rem; display:inline-flex; align-items:center; gap:.35rem; padding:.5rem .4rem; min-height:44px; cursor:pointer; border-radius:8px}
+.botao-lis:hover{background:var(--salvia-clara)}
+.botao-lis[disabled]{opacity:.35; cursor:default; background:none}
+.posicao{font-family:var(--mono); font-size:.7rem; color:var(--musgo); font-variant-numeric:tabular-nums}
+
+.dia{display:flex; flex-direction:column; gap:.7rem}
+.dia-cabeca{display:flex; align-items:baseline; justify-content:space-between; gap:.5rem; border-bottom:1.5px dotted var(--contorno); padding-bottom:.3rem}
+.dia-cabeca .data{font-family:var(--serif); font-size:1.2rem; color:var(--tinta)}
+.dia-cabeca .local{font-family:var(--mono); font-size:.68rem; color:var(--musgo); text-align:right}
+.clima{display:flex; flex-wrap:wrap; gap:.25rem .5rem; font-family:var(--mono); font-size:.72rem; color:var(--musgo)}
+.clima .v{color:var(--tinta)}
+.clima .v.fora{color:var(--ocre)}
+.clima .v.perto{color:var(--ocre)}
+.ref{font-family:var(--mono); font-size:.66rem; color:var(--ocre)}
+.retrato{width:100%; border:1px solid var(--linha); background:var(--folha); padding:.5rem .5rem .75rem; box-shadow:var(--sombra); margin:0}
+.retrato:nth-of-type(even){transform:rotate(.6deg)}
+.retrato img{display:block; width:100%; border-radius:2px}
+.retrato figcaption{margin-top:.5rem; font-size:.82rem; color:var(--musgo); text-align:center}
+.retrato figcaption .hora{font-family:var(--mono); font-size:.68rem}
+.item{display:grid; grid-template-columns:1.6rem minmax(0,1fr); gap:.5rem; align-items:start}
+.item .ico{color:var(--folhagem); padding-top:.15rem}
+.item .ico.flor{color:var(--orquidea)}
+.item .ico.ocre{color:var(--ocre)}
+.item .tit{font-family:var(--serif); font-size:1.08rem; display:flex; align-items:center; gap:.45rem; flex-wrap:wrap}
+.item .nota{font-size:.85rem; color:var(--musgo); margin-top:.1rem}
+.item .hora{font-family:var(--mono); font-size:.68rem; color:var(--musgo); margin-top:.15rem}
+.rodape-pagina{margin-top:2.2rem; padding-top:1rem; border-top:1px solid var(--linha); font-size:.8rem; color:var(--musgo)}
+</style>
+
+<div class="envelope">
+  <header class="topo">
+    <span class="eyebrow">Orchidiary · estudo de gráficos</span>
+    <h1>Gráficos da planta</h1>
+    <p class="aviso">Proposta <b>Pauta</b>: noites, dias e umidade empilhados num eixo de tempo só, com a fita de ocorrências embaixo valendo para os três. Toque numa ocorrência para abrir a folha. Dados de ensaio: a planta <b>FAKE</b> (<span class="taxon">Phalaenopsis</span>), um ano de clima simulado e as fotos do seed.</p>
+  </header>
+
+  <div class="barra">
+    <div class="grupo" role="group" aria-label="Janela do gráfico">
+      <span class="rot">Janela</span>
+      <button class="chip" data-win="30" aria-pressed="false">30 d</button>
+      <button class="chip" data-win="90" aria-pressed="true">90 d</button>
+      <button class="chip" data-win="180" aria-pressed="false">180 d</button>
+      <button class="chip" data-win="360" aria-pressed="false">360 d</button>
+      <button class="chip" data-win="tudo" aria-pressed="false">tudo</button>
+    </div>
+    <div class="grupo" role="group" aria-label="Ocorrências no gráfico">
+      <span class="rot">Ocorrên.</span>
+      <button class="chip" data-ev="on" aria-pressed="true">mostrar</button>
+      <button class="chip suave" data-layer="marcos" aria-pressed="true">marcos</button>
+      <button class="chip suave" data-layer="fotos" aria-pressed="true">fotos</button>
+      <button class="chip suave" data-layer="saude" aria-pressed="true">saúde</button>
+      <button class="chip suave" data-layer="manejo" aria-pressed="false">manejo</button>
+      <button class="chip suave" data-layer="notas" aria-pressed="false">notas</button>
+    </div>
+    <div class="grupo" role="group" aria-label="Camadas do gráfico">
+      <span class="rot">Camada</span>
+      <button class="chip suave" data-cam="chuva" aria-pressed="false">chuva</button>
+      <button class="chip suave" data-cam="medicoes" aria-pressed="true">medições</button>
+    </div>
+  </div>
+
+  <section class="bloco">
+    <div class="cabeca"><h2>Pauta</h2><span class="letra">proposta escolhida</span></div>
+    <p class="resumo">Cada painel compara uma dimensão com a faixa da ficha. A linha-guia pontilhada mostra onde cai a ocorrência aberta, nos três painéis ao mesmo tempo.</p>
+    <div class="cartao quadro">
+      <div class="titulo"><span class="nome">Noites · dias · umidade</span><span class="typed" style="font-size:.68rem" id="periodo"></span></div>
+      <svg class="grafico" id="g-b" role="img" aria-label="Noites, dias e umidade em painéis empilhados, com as ocorrências da planta numa fita abaixo"></svg>
+      <div class="legenda">
+        <span><i style="background:var(--salvia)"></i>faixa da ficha</span>
+        <span><i style="background:var(--folhagem)"></i>clima do dia</span>
+        <span><i style="background:var(--ocre)"></i>fora</span>
+        <span><i style="background:var(--orquidea); border-radius:50%"></i>ocorrência</span>
+      </div>
+      <div class="contas" id="contas"></div>
+    </div>
+    <div class="notas">
+      <p><b>Janelas longas:</b> acima de 120 dias a linha vira semanal (mínima mais baixa e máxima mais alta da semana), para não virar serrilha. As faixas e a fita de ocorrências continuam iguais.</p>
+      <p><b>Mudança de lugar:</b> linha vertical em ocre atravessando os três painéis — dali para a frente o clima vem de outro local.</p>
+      <p><b>Medições manuais:</b> cruzinhas sobre a linha. No período em que a planta ficou dentro de casa, são elas que dizem o microclima real; o clima da API vira referência.</p>
+    </div>
+  </section>
+
+  <section class="bloco">
+    <div class="cabeca"><h2>Visualização expandida</h2><span class="letra">folha</span></div>
+    <p class="resumo">Abre crescendo do ponto tocado, em tela cheia. O ponto é um dia (ou um punhado de dias próximos, nas janelas longas): a folha mostra tudo dele num feed com rolagem, em ordem cronológica e com as fotos primeiro dentro de cada dia, com o clima daquele dia no alto. As setas vão para o ponto anterior e o próximo da mesma fita.</p>
+    <button class="botao" id="demo">Abrir um dia cheio</button>
+  </section>
+
+  <p class="rodape-pagina">Só o gráfico: a ficha, o livro de registro e o resto da tela continuam como estão. Clima, eventos, medições e regas são de ensaio; as fotos são as do seed de 1 ano.</p>
+</div>
+
+<div class="folha-fundo" id="fundo" hidden></div>
+<div class="folha" id="folha" hidden role="dialog" aria-modal="true" aria-label="Ocorrências do dia">
+  <div class="folha-topo">
+    <button class="botao-lis" id="fechar" aria-label="Fechar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      Fechar
+    </button>
+    <span class="posicao" id="posicao"></span>
+  </div>
+  <div class="folha-corpo" id="corpo"><div class="feed" id="feed"></div></div>
+  <div class="folha-rodape">
+    <button class="botao-lis" id="anterior">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+      Anterior
+    </button>
+    <button class="botao-lis" id="proxima">
+      Próxima
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const DIA=86400000, MES=["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"];
+const ini=Date.UTC(2025,9,20), fim=Date.UTC(2026,9,21);
+const etiqueta=t=>{const d=new Date(t);return d.getUTCDate()+"."+MES[d.getUTCMonth()]+"."+d.getUTCFullYear()};
+const curto=t=>{const d=new Date(t);return d.getUTCDate()+"."+MES[d.getUTCMonth()]};
+const hora=t=>new Date(t).toISOString().slice(11,16);
+const n1=v=>v.toLocaleString("pt-BR",{maximumFractionDigits:1});
+const diaChave=t=>{const d=new Date(t);return Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())};
+
+/* ── clima de ensaio: um ano no hemisfério sul ───────────────────────────── */
+function prng(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const r=prng(20261021);
+const dias=[]; let ru=0, ruu=0;
+for(let t=ini;t<=fim;t+=DIA){
+  const d=new Date(t), doy=(t-Date.UTC(d.getUTCFullYear(),0,1))/DIA;
+  const est=Math.cos(2*Math.PI*(doy-10)/365);
+  ru=ru*0.74+(r()-0.5)*4.4; ruu=ruu*0.7+(r()-0.5)*17;
+  const amp=7.6+1.3*est, med=22.6+4.3*est+ru;
+  dias.push({t,tmin:med-amp/2,tmax:med+amp/2,hum:Math.max(32,Math.min(96,70+8*est+ruu)),
+    chuva:est>0?(r()<0.42?r()*26:0):(r()<0.15?r()*10:0)});
+}
+for(let i=0;i<dias.length;i++){
+  const m=new Date(dias[i].t).getUTCMonth();
+  if(m>=4&&m<=7&&r()<0.04){for(let k=0;k<3&&i+k<dias.length;k++){dias[i+k].tmin-=5.5-k*1.4;dias[i+k].tmax-=4-k;}i+=3}
+}
+dias.forEach(d=>{d.tmin=+d.tmin.toFixed(1);d.tmax=+d.tmax.toFixed(1);d.hum=Math.round(d.hum);d.chuva=+d.chuva.toFixed(1)});
+const porDia=new Map(dias.map(d=>[d.t,d]));
+const diaDe=ms=>porDia.get(diaChave(ms))||dias[dias.length-1];
+
+const FAIXA={noite:[16,22],dia:[24,30],umid:[55,80]}, MARGEM={noite:2,dia:2,umid:5};
+function estado(v,f,m){if(v==null)return null;if(v>=f[0]&&v<=f[1])return "dentro";if(v>=f[0]-m&&v<=f[1]+m)return "perto";return "fora"}
+
+/* ── locais (histórico não retroativo) ───────────────────────────────────── */
+const LOCAIS=[{de:ini,ate:Date.UTC(2026,5,5),nome:"Varanda leste",amb:"outdoor"},
+  {de:Date.UTC(2026,5,5),ate:Date.UTC(2026,8,5),nome:"Sala, janela leste",amb:"indoor"},
+  {de:Date.UTC(2026,8,5),ate:fim+DIA,nome:"Varanda leste",amb:"outdoor"}];
+const localDe=t=>(LOCAIS.find(l=>t>=l.de&&t<l.ate)||LOCAIS[0]);
+
+/* ── ocorrências ─────────────────────────────────────────────────────────── */
+const FOTOS=[["01","2025-10-25T16:12","Planta recém-chegada, 4 folhas, sem haste"],
+ ["04","2025-12-20T08:22","Ponta da haste floral aparecendo"],["06","2026-01-12T18:30","Haste alta, primeiros botões"],
+ ["08","2026-01-24T11:10","Primeiras flores abertas"],["10","2026-02-14T09:02","Floração plena"],
+ ["12","2026-04-18T10:15","Haste cortada, folha nova despontando"],["14","2026-06-27T16:20","Cinco folhas, raízes vigorosas"],
+ ["17","2026-08-19T07:41","Nova haste floral"],["19","2026-10-03T10:09","Primeiras flores da segunda floração"],
+ ["20","2026-10-18T15:52","Floração plena de novo"]];
+const EVENTOS=[
+ ["2025-10-26T09:00","marcos","repotting","Casca média, vaso transparente"],
+ ["2025-12-18T07:30","marcos","new_growth","Haste floral apontando entre as folhas"],
+ ["2026-01-24T11:20","marcos","bloom_start","Duas flores abertas"],
+ ["2026-02-20T18:10","saude","disease","Mancha escura na folha de baixo"],
+ ["2026-03-28T16:00","marcos","bloom_end","Última flor caiu"],
+ ["2026-04-18T10:30","marcos","new_growth","Folha nova no centro"],
+ ["2026-04-18T10:40","notas","note","Cortei a haste acima do terceiro nó"],
+ ["2026-05-09T08:50","marcos","new_root","Duas raízes novas, pontas verdes"],
+ ["2026-06-05T17:00","marcos","moved","Para dentro: previsão de 9°C"],
+ ["2026-06-20T09:15","saude","pest","Cochonilha na folha de baixo"],
+ ["2026-06-22T08:40","saude","treatment","Óleo de neem"],
+ ["2026-06-27T16:30","notas","note","Depois do neem, nenhuma cochonilha nova"],
+ ["2026-07-03T08:35","saude","treatment","Segunda aplicação"],
+ ["2026-07-12T15:20","marcos","keiki","Keiki na base da haste velha"],
+ ["2026-08-08T09:33","marcos","new_growth","Outra folha nova no centro"],
+ ["2026-08-19T07:45","marcos","new_growth","Nova haste floral"],
+ ["2026-08-19T07:50","notas","note","Haste saindo da axila da segunda folha"],
+ ["2026-09-05T10:00","marcos","moved","De volta para a varanda"],
+ ["2026-10-01T07:20","marcos","bloom_start","Primeira flor da segunda haste"],
+ ["2025-11-02T09:40","notas","note","Uma semana depois, tudo igual"],
+ ["2026-03-21T17:44","notas","note","Flores velhas caindo, haste ainda verde"],
+ ["2026-06-28T19:05","notas","note","Inverno seco: regando a cada dez dias"]];
+const ROTULO={photo:"Fotografia",watering:"Rega",fertilizing:"Adubação",repotting:"Replante",bloom_start:"Começou a florir",
+ bloom_end:"Fim da floração",new_growth:"Broto novo",new_root:"Raiz nova",keiki:"Keiki",pest:"Praga",disease:"Doença",
+ treatment:"Tratamento",moved:"Mudou de lugar",note:"Anotação"};
+let seq=0; const ocorrencias=[];
+FOTOS.forEach(([n,d,nota])=>ocorrencias.push({id:++seq,ms:Date.parse(d+"Z"),camada:"fotos",tipo:"photo",nota,foto:"fotos/p"+n+".jpg"}));
+EVENTOS.forEach(([d,camada,tipo,nota])=>ocorrencias.push({id:++seq,ms:Date.parse(d+"Z"),camada,tipo,nota}));
+for(let t=ini+2*DIA,i=0;t<=fim;i++){
+  const lote=r()<0.45;
+  ocorrencias.push({id:++seq,ms:t+9*3600000,camada:"manejo",tipo:"watering",nota:lote?"Registrada em lote com as outras do local":"",lote});
+  if(i%3===2) ocorrencias.push({id:++seq,ms:t+9*3600000+600000,camada:"manejo",tipo:"fertilizing",nota:"NPK fraco",lote:true});
+  const m=new Date(t).getUTCMonth();
+  t+=(m>=4&&m<=7?8:5)*DIA+Math.round(r()*2)*DIA;
+}
+ocorrencias.sort((a,b)=>a.ms-b.ms);
+/* medições manuais: mais frequentes no período dentro de casa */
+const MEDICOES=[["2026-06-06T21:30",17.8,58],["2026-06-12T07:10",16.2,61],["2026-06-20T22:05",18.4,54],
+ ["2026-07-02T06:50",15.1,52],["2026-07-15T14:20",24.6,48],["2026-07-28T21:40",17.2,51],
+ ["2026-08-10T13:15",26.1,46],["2026-08-24T22:10",18.9,50],["2026-09-02T07:05",17.4,55],
+ ["2026-02-10T14:40",31.2,74],["2026-05-20T21:15",19.6,63],["2026-10-10T15:05",28.4,61]]
+ .map(([d,t,h])=>({ms:Date.parse(d+"Z"),temp:t,hum:h}));
+
+/* ── estado da tela ──────────────────────────────────────────────────────── */
+const st={win:"90",eventos:true,camadas:{marcos:true,fotos:true,saude:true,manejo:false,notas:false},
+  cam:{chuva:false,medicoes:true},sel:null};
+function visiveis(){ if(st.win==="tudo") return dias; const n=+st.win; return dias.slice(Math.max(0,dias.length-n)) }
+function ocsVisiveis(){
+  if(!st.eventos) return [];
+  const ds=visiveis(), a=ds[0].t, b=ds[ds.length-1].t+DIA;
+  return ocorrencias.filter(o=>o.ms>=a&&o.ms<b&&st.camadas[o.camada]&&!(o.camada==="manejo"&&o.lote));
+}
+
+/* ── desenho ─────────────────────────────────────────────────────────────── */
+const L=30, Rp=10; let gruposFita=[];
+function largura(svg){return Math.max(280,Math.round(svg.getBoundingClientRect().width||svg.parentElement.getBoundingClientRect().width))}
+function escalaX(ds,W){const x0=L,x1=W-Rp,t0=ds[0].t,t1=ds[ds.length-1].t;return t=>x0+(t1===t0?0:(t-t0)/(t1-t0))*(x1-x0)}
+function baldes(ds,max){const k=Math.max(1,Math.ceil(ds.length/max)),out=[];
+  for(let i=0;i<ds.length;i+=k){const g=ds.slice(i,i+k);
+    out.push({t:g[0].t,n:g.length,tmin:Math.min.apply(null,g.map(d=>d.tmin)),tmax:Math.max.apply(null,g.map(d=>d.tmax)),
+      hum:g.reduce((s,d)=>s+d.hum,0)/g.length,chuva:g.reduce((s,d)=>s+d.chuva,0),dias:g})}
+  return out}
+function marcas(ds){const span=(ds[ds.length-1].t-ds[0].t)/DIA,out=[];
+  if(span<=70){const passo=span<=35?7:14;for(let i=ds.length-1;i>=0;i-=passo)out.unshift({t:ds[i].t,txt:curto(ds[i].t)})}
+  else{let m=-1;for(const d of ds){const dt=new Date(d.t);if(dt.getUTCMonth()!==m){m=dt.getUTCMonth();out.push({t:d.t,txt:MES[m]})}}}
+  return out}
+function eixo(ds,x,y,W){
+  let s='<line x1="'+L+'" x2="'+(W-Rp)+'" y1="'+y+'" y2="'+y+'" stroke="var(--linha)"/>',u=-99;
+  for(const m of marcas(ds)){const px=x(m.t); if(px-u<26)continue; u=px;
+    s+='<line x1="'+px.toFixed(1)+'" x2="'+px.toFixed(1)+'" y1="'+y+'" y2="'+(y+3)+'" stroke="var(--contorno)"/>'+
+       '<text x="'+px.toFixed(1)+'" y="'+(y+13)+'" text-anchor="middle" font-size="8.5" fill="var(--musgo)" font-family="var(--mono)">'+m.txt+'</text>'}
+  return s}
+function forma(o,px,y){
+  if(o.camada==="fotos")return '<rect x="'+(px-4)+'" y="'+(y-4)+'" width="8" height="8" rx="1.5" fill="var(--folha)" stroke="var(--tinta)" stroke-width="1.3"/>';
+  if(o.camada==="saude")return '<path d="M'+px+' '+(y-5)+'L'+(px+5)+' '+y+'L'+px+' '+(y+5)+'L'+(px-5)+' '+y+'Z" fill="var(--ocre)"/>';
+  if(o.camada==="manejo")return '<rect x="'+(px-0.7)+'" y="'+(y-4)+'" width="1.4" height="8" fill="var(--contorno)"/>';
+  if(o.camada==="notas")return '<circle cx="'+px+'" cy="'+y+'" r="3.3" fill="none" stroke="var(--musgo)" stroke-width="1.2"/>';
+  const cor=(o.tipo==="bloom_start"||o.tipo==="bloom_end")?"var(--orquidea)":(o.tipo==="moved"||o.tipo==="repotting")?"var(--ocre)":"var(--folhagem)";
+  return '<circle cx="'+px+'" cy="'+y+'" r="4.2" fill="'+cor+'"/>'}
+function fita(ocs,x,y,W){
+  gruposFita=[];
+  for(const o of ocs){const px=x(o.ms),u=gruposFita[gruposFita.length-1];
+    if(u&&px-u.x<17)u.itens.push(o); else gruposFita.push({x:px,itens:[o]})}
+  let s='<line x1="'+L+'" x2="'+(W-Rp)+'" y1="'+y+'" y2="'+y+'" stroke="var(--linha)" stroke-dasharray="1 3"/>';
+  gruposFita.forEach((g,i)=>{
+    if(g.itens.length===1)s+=forma(g.itens[0],g.x.toFixed(1),y);
+    else s+='<circle cx="'+g.x.toFixed(1)+'" cy="'+y+'" r="8" fill="var(--folha)" stroke="var(--tinta)" stroke-width="1.2"/>'+
+      '<text x="'+g.x.toFixed(1)+'" y="'+(y+3.2)+'" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--tinta)">'+g.itens.length+'</text>';
+    s+='<rect class="alvo" data-i="'+i+'" x="'+(g.x-12).toFixed(1)+'" y="'+(y-14)+'" width="24" height="28" fill="transparent" style="cursor:pointer"><title>'+
+      (g.itens.length>1?g.itens.length+" ocorrências em ":"")+etiqueta(g.itens[0].ms)+'</title></rect>'});
+  return s}
+
+function desenha(){
+  const svg=document.getElementById("g-b"),W=largura(svg);
+  const ds=visiveis(),x=escalaX(ds,W),bs=baldes(ds,Math.max(30,Math.floor((W-L-Rp)/3)));
+  const painel=[{k:"noite",rot:"noites",f:FAIXA.noite,v:b=>b.tmin,u:"°C",med:m=>{const h=new Date(m.ms).getUTCHours();return (h>=19||h<8)?m.temp:null}},
+                {k:"dia",rot:"dias",f:FAIXA.dia,v:b=>b.tmax,u:"°C",med:m=>{const h=new Date(m.ms).getUTCHours();return (h>=8&&h<19)?m.temp:null}},
+                {k:"umid",rot:"umidade",f:FAIXA.umid,v:b=>b.hum,u:"%",med:m=>m.hum}];
+  const T=14,ph=54,gap=20; let s="";
+  painel.forEach((p,i)=>{
+    const top=T+i*(ph+gap),vals=bs.map(p.v);
+    const lo=Math.min.apply(null,vals.concat([p.f[0]]))-2, hi=Math.max.apply(null,vals.concat([p.f[1]]))+2;
+    const y=v=>top+(1-(v-lo)/(hi-lo))*ph;
+    s+='<rect x="'+L+'" y="'+y(p.f[1]).toFixed(1)+'" width="'+(W-L-Rp)+'" height="'+(y(p.f[0])-y(p.f[1])).toFixed(1)+'" fill="var(--salvia)" opacity=".9"/>';
+    if(p.k==="umid"&&st.cam.chuva){const mx=Math.max(8,Math.max.apply(null,bs.map(b=>b.chuva))),cw=(W-L-Rp)/bs.length;
+      bs.forEach(b=>{if(!b.chuva)return;const h=(b.chuva/mx)*(ph*0.5);
+        s+='<rect x="'+(x(b.t)-Math.max(0.8,cw*0.35)).toFixed(1)+'" y="'+(top+ph-h).toFixed(1)+'" width="'+Math.max(1.6,cw*0.7).toFixed(1)+'" height="'+h.toFixed(1)+'" fill="var(--contorno)" opacity=".5"/>'})}
+    [p.f[0],p.f[1]].forEach(v=>{s+='<text x="'+(L-4)+'" y="'+(y(v)+3).toFixed(1)+'" text-anchor="end" font-size="8" font-family="var(--mono)" fill="var(--musgo)">'+v+'</text>'});
+    s+='<polyline points="'+bs.map(b=>x(b.t).toFixed(1)+","+y(p.v(b)).toFixed(1)).join(" ")+'" fill="none" stroke="var(--folhagem)" stroke-width="1.25"/>';
+    bs.forEach(b=>{if(estado(p.v(b),p.f,MARGEM[p.k])==="fora")
+      s+='<circle cx="'+x(b.t).toFixed(1)+'" cy="'+y(p.v(b)).toFixed(1)+'" r="2" fill="var(--ocre)"/>'});
+    if(st.cam.medicoes)MEDICOES.forEach(m=>{const v=p.med(m); if(v==null||m.ms<ds[0].t||m.ms>ds[ds.length-1].t+DIA)return;
+      const px=x(m.ms),py=Math.max(top+2,Math.min(top+ph-2,y(v)));
+      s+='<path d="M'+(px-3.2).toFixed(1)+' '+(py-3.2).toFixed(1)+'l6.4 6.4M'+(px+3.2).toFixed(1)+' '+(py-3.2).toFixed(1)+'l-6.4 6.4" stroke="var(--orquidea)" stroke-width="1.3"/>'});
+    s+='<text x="'+L+'" y="'+(top-4)+'" font-size="8.5" font-family="var(--mono)" fill="var(--musgo)" letter-spacing=".08em">'+p.rot.toUpperCase()+'</text>'+
+       '<text x="'+(W-Rp)+'" y="'+(top-4)+'" text-anchor="end" font-size="8.5" font-family="var(--mono)" fill="var(--musgo)">'+p.f[0]+'–'+p.f[1]+p.u+'</text>'+
+       '<line x1="'+L+'" x2="'+(W-Rp)+'" y1="'+(top+ph)+'" y2="'+(top+ph)+'" stroke="var(--linha)"/>';
+  });
+  const yEixo=T+3*(ph+gap)-gap+2, yFita=yEixo+30, H=yFita+16;
+  let extra="";
+  const a=ds[0].t,b2=ds[ds.length-1].t;
+  if(st.eventos&&st.camadas.marcos)for(const l of LOCAIS){ if(l.de<=a||l.de>b2)continue;
+    extra+='<line x1="'+x(l.de).toFixed(1)+'" x2="'+x(l.de).toFixed(1)+'" y1="'+T+'" y2="'+(yFita+8)+'" stroke="var(--ocre)" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>'}
+  if(st.sel){const o=ocorrencias.find(v=>v.id===st.sel);
+    if(o&&o.ms>=a&&o.ms<=b2+DIA)extra+='<line x1="'+x(o.ms).toFixed(1)+'" x2="'+x(o.ms).toFixed(1)+'" y1="'+T+'" y2="'+(yFita+8)+'" stroke="var(--tinta)" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>'}
+  s+=extra+eixo(ds,x,yEixo,W)+fita(ocsVisiveis(),x,yFita,W);
+  svg.setAttribute("viewBox","0 0 "+W+" "+H); svg.setAttribute("height",H); svg.innerHTML=s;
+  document.getElementById("periodo").textContent=etiqueta(ds[0].t)+" – "+etiqueta(ds[ds.length-1].t);
+  contas(ds);
+}
+function contas(ds){
+  const linhas=[{rot:"noites",f:FAIXA.noite,k:"noite",v:d=>d.tmin,u:"°C"},
+                {rot:"dias",f:FAIXA.dia,k:"dia",v:d=>d.tmax,u:"°C"},
+                {rot:"umidade",f:FAIXA.umid,k:"umid",v:d=>d.hum,u:"%"}];
+  document.getElementById("contas").innerHTML=linhas.map(ln=>{
+    const c={dentro:0,perto:0,fora:0}; let pior=null,dist=0;
+    for(const d of ds){const v=ln.v(d),e=estado(v,ln.f,MARGEM[ln.k]); c[e]++;
+      const fd=v<ln.f[0]?ln.f[0]-v:v>ln.f[1]?v-ln.f[1]:0; if(fd>dist){dist=fd;pior={v,t:d.t}}}
+    return '<div class="conta"><span class="dim">'+ln.rot+'</span>'+
+      '<span><b>'+c.dentro+'</b> dentro · <b>'+c.perto+'</b> perto · <b>'+c.fora+'</b> fora</span>'+
+      (pior?'<span class="pior">pior '+n1(pior.v)+ln.u+' em '+curto(pior.t)+'</span>':"")+'</div>'}).join("");
+}
+
+/* ── folha: feed cronológico, fotos primeiro dentro de cada dia ───────────────────────────────────────────────── */
+const folha=document.getElementById("folha"),fundo=document.getElementById("fundo"),feed=document.getElementById("feed");
+let iGrupo=0;
+const SVG=(p,cls)=>'<span class="ico '+(cls||"")+'"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg></span>';
+function iconeDe(o){
+  if(o.camada==="saude")return SVG('<path d="M12 3.5 19 6v5.5c0 4.3-3 7.6-7 9-4-1.4-7-4.7-7-9V6Z"/>',"ocre");
+  if(o.tipo==="moved")return SVG('<path d="M12 21s-6.5-5.4-6.5-11a6.5 6.5 0 0 1 13 0c0 5.6-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/>',"ocre");
+  if(o.tipo==="repotting")return SVG('<path d="m12 4 8.5 4.5L12 13 3.5 8.5Z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5"/>',"ocre");
+  if(o.tipo==="bloom_start"||o.tipo==="bloom_end")return SVG('<circle cx="12" cy="12" r="2.2"/><path d="M12 9.8C10 6 10.5 3.5 12 3.5s2 2.5 0 6.3ZM14.2 12c3.8-2 6.3-1.5 6.3 0s-2.5 2-6.3 0ZM12 14.2c2 3.8 1.5 6.3 0 6.3s-2-2.5 0-6.3ZM9.8 12C6 14 3.5 13.5 3.5 12S6 10 9.8 12Z"/>',"flor");
+  if(o.camada==="notas")return SVG('<path d="M6 3.5h9l3.5 3.5v13.5H6Z"/><path d="M9 11h6M9 15h6"/>');
+  if(o.tipo==="watering")return SVG('<path d="M12 3.5s6 6.4 6 10.8a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5Z"/>');
+  return SVG('<path d="M12 21v-9"/><path d="M12 12c0-4 3-6.5 7.5-6.5 0 4.4-3 6.5-7.5 6.5ZM12 14.5c0-3.3-2.5-5.5-6.5-5.5 0 3.6 2.5 5.5 6.5 5.5Z"/>');
+}
+function seloDe(o){
+  if(o.tipo==="bloom_start"||o.tipo==="bloom_end")return '<span class="selo selo-flor">floração</span>';
+  if(o.tipo==="moved")return '<span class="selo selo-ocre">mudança</span>';
+  if(o.tipo==="repotting")return '<span class="selo selo-ocre">replante</span>';
+  if(o.tipo==="keiki")return '<span class="selo">keiki</span>';
+  return ""}
+function climaDe(t){
+  const d=porDia.get(t); if(!d)return "";
+  const par=(rot,v,e)=>'<span>'+rot+' <span class="v'+(e&&e!=="dentro"?" "+e:"")+'">'+v+'</span></span>';
+  return '<div class="clima">'+
+    par("noite",n1(d.tmin)+"°C",estado(d.tmin,FAIXA.noite,MARGEM.noite))+
+    par("dia",n1(d.tmax)+"°C",estado(d.tmax,FAIXA.dia,MARGEM.dia))+
+    par("umidade",d.hum+"%",estado(d.hum,FAIXA.umid,MARGEM.umid))+
+    par("chuva",d.chuva?n1(d.chuva)+" mm":"—")+'</div>'}
+function climaCurto(t){
+  const d=porDia.get(t); if(!d)return "";
+  return "noite "+n1(d.tmin)+" · dia "+n1(d.tmax)+"°C · umid. "+d.hum+"%"}
+function medicoesDe(t){
+  const ms=MEDICOES.filter(m=>diaChave(m.ms)===t);
+  if(!ms.length)return "";
+  return '<div class="clima"><span>medição</span>'+ms.map(m=>'<span class="v">'+hora(m.ms)+" · "+n1(m.temp)+"°C · "+m.hum+"%</span>").join("")+'</div>'}
+function mostra(){
+  const g=gruposFita[iGrupo]; if(!g)return;
+  st.sel=g.itens[0].id;
+  const porDiaMap=new Map();
+  for(const o of g.itens){const k=diaChave(o.ms); if(!porDiaMap.has(k))porDiaMap.set(k,[]); porDiaMap.get(k).push(o)}
+  const chaves=[...porDiaMap.keys()].sort((a,b)=>a-b);
+  const fotosPrimeiro=(a,b)=>diaChave(a.ms)-diaChave(b.ms)||(a.camada==="fotos"?0:1)-(b.camada==="fotos"?0:1)||a.ms-b.ms;
+  const cartao=(o,etq)=>o.foto
+    ? '<figure class="fixada retrato"><img src="'+o.foto+'" alt="Fotografia da planta FAKE, '+etiqueta(o.ms)+'" loading="lazy"><figcaption>'+o.nota+'<br><span class="hora">'+etq+'</span></figcaption></figure>'
+    : '<div class="item">'+iconeDe(o)+'<div><p class="tit">'+ROTULO[o.tipo]+seloDe(o)+'</p>'+
+      (o.nota?'<p class="nota">'+o.nota+'</p>':"")+'<p class="hora">'+etq+'</p></div></div>';
+  let html="";
+  if(chaves.length===1){
+    const k=chaves[0], l=localDe(k);
+    html='<section class="dia"><div class="dia-cabeca"><span class="data">'+etiqueta(k)+'</span>'+
+      '<span class="local">'+l.nome+(l.amb==="indoor"?" · dentro":"")+'</span></div>'+
+      climaDe(k)+medicoesDe(k)+
+      (l.amb==="indoor"?'<p class="ref">clima de fora, só referência</p>':"")+
+      porDiaMap.get(k).slice().sort(fotosPrimeiro).map(o=>cartao(o,hora(o.ms))).join("")+'</section>';
+  }else{
+    const l0=localDe(chaves[0]), lf=localDe(chaves[chaves.length-1]);
+    html='<section class="dia"><div class="dia-cabeca"><span class="data">'+curto(chaves[0])+' – '+etiqueta(chaves[chaves.length-1])+'</span>'+
+      '<span class="local">'+(l0.nome===lf.nome?l0.nome+(l0.amb==="indoor"?" · dentro":""):l0.nome+" → "+lf.nome)+'</span></div>'+
+      '<p class="clima">'+chaves.length+' dias próximos · cada ocorrência com o clima do seu dia</p>'+
+      g.itens.slice().sort(fotosPrimeiro).map(o=>cartao(o,etiqueta(o.ms)+" · "+hora(o.ms)+" · "+climaCurto(diaChave(o.ms)))).join("")+'</section>';
+  }
+  feed.innerHTML=html;
+  document.getElementById("corpo").scrollTop=0;
+  document.getElementById("posicao").textContent="ponto "+(iGrupo+1)+" de "+gruposFita.length+(g.itens.length>1?" · "+g.itens.length+" ocorrências":"");
+  document.getElementById("anterior").disabled=iGrupo===0;
+  document.getElementById("proxima").disabled=iGrupo===gruposFita.length-1;
+  desenha();
+}
+function abrir(i,ev){
+  iGrupo=i;
+  if(ev){folha.style.setProperty("--ox",ev.clientX+"px");folha.style.setProperty("--oy",ev.clientY+"px")}
+  folha.hidden=false; fundo.hidden=false; mostra();
+  requestAnimationFrame(()=>{folha.classList.add("aberta");fundo.classList.add("aberta")});
+  document.getElementById("fechar").focus();
+}
+function fechar(){
+  folha.classList.remove("aberta"); fundo.classList.remove("aberta");
+  setTimeout(()=>{folha.hidden=true;fundo.hidden=true},280);
+  st.sel=null; desenha();
+}
+document.getElementById("fechar").addEventListener("click",fechar);
+fundo.addEventListener("click",fechar);
+document.getElementById("anterior").addEventListener("click",()=>{if(iGrupo>0){iGrupo--;mostra()}});
+document.getElementById("proxima").addEventListener("click",()=>{if(iGrupo<gruposFita.length-1){iGrupo++;mostra()}});
+document.addEventListener("keydown",e=>{ if(folha.hidden)return;
+  if(e.key==="Escape")fechar();
+  if(e.key==="ArrowLeft"&&iGrupo>0){iGrupo--;mostra()}
+  if(e.key==="ArrowRight"&&iGrupo<gruposFita.length-1){iGrupo++;mostra()}});
+document.addEventListener("click",e=>{const a=e.target.closest(".alvo");if(!a)return;abrir(+a.dataset.i,e)});
+document.getElementById("demo").addEventListener("click",e=>{
+  if(!gruposFita.length)return;
+  let melhor=0; gruposFita.forEach((g,i)=>{if(g.itens.length>gruposFita[melhor].itens.length)melhor=i});
+  abrir(melhor,e)});
+
+/* ── controles ───────────────────────────────────────────────────────────── */
+document.querySelectorAll("[data-win]").forEach(b=>b.addEventListener("click",()=>{
+  st.win=b.dataset.win;
+  document.querySelectorAll("[data-win]").forEach(o=>o.setAttribute("aria-pressed",String(o===b)));
+  desenha()}));
+document.querySelector("[data-ev]").addEventListener("click",e=>{
+  st.eventos=!st.eventos; e.currentTarget.setAttribute("aria-pressed",String(st.eventos));
+  document.querySelectorAll("[data-layer]").forEach(o=>{o.disabled=!st.eventos}); desenha()});
+document.querySelectorAll("[data-layer]").forEach(b=>b.addEventListener("click",()=>{
+  const k=b.dataset.layer; st.camadas[k]=!st.camadas[k]; b.setAttribute("aria-pressed",String(st.camadas[k])); desenha()}));
+document.querySelectorAll("[data-cam]").forEach(b=>b.addEventListener("click",()=>{
+  const k=b.dataset.cam; st.cam[k]=!st.cam[k]; b.setAttribute("aria-pressed",String(st.cam[k])); desenha()}));
+let tempo; addEventListener("resize",()=>{clearTimeout(tempo);tempo=setTimeout(desenha,120)});
+desenha();
+})();
+</script>
+</body></html>

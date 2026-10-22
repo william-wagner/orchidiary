@@ -18,7 +18,7 @@ export function PlaceReadout({ days }: { days: PlaceWeatherDay[] }) {
   return (
     <div className="flex items-end gap-6">
       <div>
-        <p className="typed text-[1.5rem] leading-none text-tinta">{num(day.tempMean)} °C</p>
+        <p className="typed text-[1.5rem] leading-none text-tinta">{num(day.tempMean)}°C</p>
         <p className="eyebrow mt-1">
           {num(day.tempMin)} – {num(day.tempMax)} ontem
         </p>
@@ -82,7 +82,7 @@ export function PlaceSparkline({ days, className = "h-14" }: { days: PlaceWeathe
       <figcaption className="typed flex justify-between text-[0.64rem]">
         <span>{first.date.slice(8, 10)}/{first.date.slice(5, 7)}</span>
         <span>
-          {s.min.toFixed(0)}–{s.max.toFixed(0)} °C em {usable.length} dias
+          {s.min.toFixed(0)}–{s.max.toFixed(0)}°C em {usable.length} dias
         </span>
         <span>{last.date.slice(8, 10)}/{last.date.slice(5, 7)}</span>
       </figcaption>

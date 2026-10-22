@@ -4,12 +4,12 @@ import type { WeatherDay } from "../lib/api.ts";
  * Faixas de cor do registro térmico, na paleta do caderno.
  * Frio em azul acinzentado, conforto em verdes, calor em ocre e terracota.
  */
-const BANDS: Array<{ max: number; color: string; label: string }> = [
-  { max: 16, color: "#8FA8BA", label: "até 16 °C" },
-  { max: 19, color: "#A9C3A0", label: "17–19 °C" },
-  { max: 22, color: "#6F9A6A", label: "20–22 °C" },
-  { max: 25, color: "#D8B06C", label: "23–25 °C" },
-  { max: Infinity, color: "#C0735A", label: "26 °C ou mais" },
+export const BANDS: Array<{ max: number; color: string; label: string }> = [
+  { max: 16, color: "#8FA8BA", label: "até 16°C" },
+  { max: 19, color: "#A9C3A0", label: "17–19°C" },
+  { max: 22, color: "#6F9A6A", label: "20–22°C" },
+  { max: 25, color: "#D8B06C", label: "23–25°C" },
+  { max: Infinity, color: "#C0735A", label: "26°C ou mais" },
 ];
 
 export function tempColor(t: number | null): string {
@@ -35,7 +35,7 @@ export function TemperatureRegister({ days }: { days: WeatherDay[] }) {
       <div className="flex items-baseline justify-between gap-3">
         <figcaption className="font-serif text-[1.3rem]">Registro térmico, {days.length} dias</figcaption>
         <span className="typed text-[0.7rem] whitespace-nowrap">
-          ontem {last.tempMin ?? "?"}–{last.tempMax ?? "?"} °C
+          ontem {last.tempMin ?? "?"}–{last.tempMax ?? "?"}°C
         </span>
       </div>
       <div
@@ -49,7 +49,7 @@ export function TemperatureRegister({ days }: { days: WeatherDay[] }) {
             key={`${d.sourceId}-${d.date}`}
             className="h-6 rounded-[3px]"
             style={{ background: tempColor(d.tempMean) }}
-            title={`${d.date}: ${d.tempMin ?? "?"}–${d.tempMax ?? "?"} °C, umidade ${d.humidityMean ?? "?"}%`}
+            title={`${d.date}: ${d.tempMin ?? "?"}–${d.tempMax ?? "?"}°C, umidade ${d.humidityMean ?? "?"}%`}
           />
         ))}
       </div>

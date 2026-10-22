@@ -2,7 +2,7 @@ import { formatLocality, joinsBatch } from "@orchidiary/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, Fragment, type ReactNode, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import { ComfortPanel } from "../components/ComfortPanel.tsx";
+import { ClimatePanel } from "../components/ClimatePanel.tsx";
 import { CoverSheet } from "../components/CoverSheet.tsx";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
@@ -10,7 +10,6 @@ import { PhotoViewer } from "../components/PhotoViewer.tsx";
 import { OriginFlag } from "../components/OriginFlag.tsx";
 import { type BatchAction, PlaceBatchSheet } from "../components/PlaceBatchSheet.tsx";
 import { ancestorsLabel, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
-import { TemperatureRegister } from "../components/TemperatureRegister.tsx";
 import { useToast } from "../components/Toast.tsx";
 import { BackLink, Button, ErrorText, Field, Icon, type IconName, Input, PressedOrchid } from "../components/ui.tsx";
 import {
@@ -24,32 +23,8 @@ import {
   type Timeline,
 } from "../lib/api.ts";
 import { coverOf } from "../lib/cover.ts";
+import { EVENT_ICON, EVENT_LABEL, STAMPED, stampTone } from "../lib/events.ts";
 import { accession, coords, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
-
-const EVENT_LABEL: Record<string, string> = {
-  note: "Anotação",
-  watering: "Rega",
-  fertilizing: "Adubação",
-  repotting: "Replante",
-  bloom_start: "Começou a florir",
-  bloom_end: "Fim da floração",
-  new_growth: "Broto novo",
-  new_root: "Raiz nova",
-  keiki: "Keiki",
-  pest: "Praga",
-  disease: "Doença",
-  treatment: "Tratamento",
-  moved: "Mudou de lugar",
-};
-
-/** Eventos que ganham selo no livro de registro */
-const STAMPED: Record<string, string> = {
-  bloom_start: "floração",
-  bloom_end: "fim da flor",
-  moved: "mudança",
-  repotting: "replante",
-  keiki: "keiki",
-};
 
 const QUICK_EVENTS = ["watering", "fertilizing", "bloom_start", "new_growth"] as const;
 
@@ -79,28 +54,10 @@ function placeNameAt(locations: PlantLocation[], at: string) {
 const chip =
   "inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-linha bg-folha px-3 text-[0.85rem] text-folhagem active:bg-salvia-clara disabled:opacity-45";
 
-const EVENT_ICON: Partial<Record<string, IconName>> = {
-  watering: "drop",
-  fertilizing: "sprout",
-  bloom_start: "flower",
-  bloom_end: "flower",
-  new_growth: "sprout",
-  new_root: "sprout",
-  keiki: "sprout",
-  moved: "pin",
-};
-
 function itemIcon(it: Item): IconName {
   if (it.kind === "photo") return "camera";
   if (it.kind === "reading") return "thermometer";
   return EVENT_ICON[it.type] ?? "note";
-}
-
-/** Floração em lilás; mudanças de manejo em ocre; o resto em sálvia. */
-function stampTone(type: string) {
-  if (type === "bloom_start" || type === "bloom_end") return "selo-flor";
-  if (type === "moved" || type === "repotting") return "selo-ocre";
-  return "";
 }
 
 /** Capa: a foto escolhida ou, na falta dela, a primeira (a timeline vem da mais recente para a mais antiga). */
@@ -139,6 +96,7 @@ export function PlantDetail() {
     qc.invalidateQueries({ queryKey: ["timeline", id] });
     qc.invalidateQueries({ queryKey: ["plants"] });
     qc.invalidateQueries({ queryKey: ["comfort", id] });
+    qc.invalidateQueries({ queryKey: ["occurrences", id] });
   };
 
   const current = timeline.data?.locations.find((l) => l.validTo === null);
@@ -301,16 +259,7 @@ export function PlantDetail() {
         </div>
       </section>
 
-      <section className="cartao mt-5 px-4 py-4" aria-label="Registro térmico">
-        <TemperatureRegister days={weather.slice(-30)} />
-        {current?.environment === "indoor" && (
-          <p className="mt-2.5 text-[0.82rem] text-musgo">
-            Clima de fora, como referência. Dentro de casa vale o que você medir.
-          </p>
-        )}
-      </section>
-
-      <ComfortPanel plantId={plant.id} />
+      <ClimatePanel plantId={plant.id} plantName={plant.nickname} locations={locations} weather={weather} />
 
       <section className="mt-6 space-y-3" aria-label="Registrar">
         {photoError && !cover && (
@@ -428,7 +377,7 @@ export function PlantDetail() {
                           Medição:{" "}
                           <span className="typed text-[0.85rem]">
                             {[
-                              it.temperature != null ? `${it.temperature} °C` : null,
+                              it.temperature != null ? `${it.temperature}°C` : null,
                               it.humidity != null ? `${it.humidity}%` : null,
                             ]
                               .filter(Boolean)

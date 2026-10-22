@@ -15,7 +15,8 @@
     "db:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db",
     "db:generate": "pnpm --filter @orchidiary/api db:generate",
     "db:migrate": "pnpm --filter @orchidiary/api db:migrate",
-    "db:seed": "pnpm --filter @orchidiary/api db:seed"
+    "db:seed": "pnpm --filter @orchidiary/api db:seed",
+    "db:seed:demo": "pnpm --filter @orchidiary/api db:seed:demo"
   },
   "devDependencies": {
     "typescript": "^6.0.3"

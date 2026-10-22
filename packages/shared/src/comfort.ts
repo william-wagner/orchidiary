@@ -26,8 +26,6 @@ export const COMFORT_ATTENTION_DAYS = 3;
 export const COMFORT_CARD_DAYS = 7;
 /** Janela do resumo: compara a quinzena que fechou com a anterior */
 export const COMFORT_DIGEST_DAYS = 14;
-/** Janela da seção Conforto da ficha */
-export const COMFORT_DETAIL_DAYS = 30;
 /** Segunda-feira de referência: o resumo fecha a cada 14 dias contados a partir dela */
 export const COMFORT_DIGEST_ANCHOR: IsoDate = "2026-01-05";
 

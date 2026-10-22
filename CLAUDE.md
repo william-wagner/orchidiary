@@ -13,5 +13,6 @@
 - Design: identidade "Caderno botânico" (caderno de campo claro, tinta verde-floresta, acentos de orquídea). Tokens em `apps/web/src/styles.css`: papel, folha, tinta, musgo (texto auxiliar), folhagem, sálvia, linha, contorno, lilás e orquídea (links e destaques de flor), ocre, alerta, fita, prancha.
   - Tipografia: Gelasio (serifa) para títulos e nomes científicos; Inter para o corpo; IBM Plex Mono (classes `typed` e `eyebrow`) para dados de campo: datas, locais, medições, números de tombo.
   - Nomes científicos sempre com a classe `taxon` (itálico). Datas no formato de etiqueta (14.X.2026) via `typedDate`.
+  - Temperaturas sempre coladas à unidade: `30°C`, `16–22°C` (nunca `30 °C`). Umidade segue `60%`.
   - Elementos: `cartao` (página clara), `selo` (+ `selo-flor`, `selo-ocre`, `selo-alerta`), `fixada` (foto presa com fita), `leader` (pontilhado), `chave` (interruptor), ícones de traço em `Icon` (ui.tsx).
   - Logo: o Relógio (`components/Logo.tsx` e `public/icon.svg`); as cores dele são as variáveis `--logo-*`. Mudou o SVG do ícone? Regere `icon-192.png` e `icon-512.png`.

@@ -14,6 +14,29 @@ export function toLocalDate(instant: Date, timeZone: string): IsoDate {
   }).format(instant);
 }
 
+/** Diferença do fuso para o UTC naquele instante, em minutos (ex.: -180 em São Paulo). */
+function offsetMinutes(instant: Date, timeZone: string): number {
+  const name =
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" }).formatToParts(instant).find((p) => p.type === "timeZoneName")
+      ?.value ?? "GMT";
+  const m = /GMT([+-])(\d{2}):(\d{2})/.exec(name);
+  if (!m) return 0;
+  return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+/** Instante em que o dia local começa (00:00 no fuso). */
+export function startOfLocalDay(date: IsoDate, timeZone: string): Date {
+  const midnightUtc = Date.parse(`${date}T00:00:00Z`);
+  const guess = midnightUtc - offsetMinutes(new Date(midnightUtc), timeZone) * 60_000;
+  // perto de uma troca de horário o deslocamento muda: confere no instante encontrado
+  return new Date(midnightUtc - offsetMinutes(new Date(guess), timeZone) * 60_000);
+}
+
+/** Hora local (0–23) de um instante. */
+export function localHour(instant: Date, timeZone: string): number {
+  return Number(new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", hourCycle: "h23" }).format(instant));
+}
+
 export function addDays(date: IsoDate, days: number): IsoDate {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);

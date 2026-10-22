@@ -2,8 +2,10 @@ import { and, eq, gte, inArray, isNull, lte, notInArray, sql } from "drizzle-orm
 import {
   addDays,
   attentionOf,
+  CHART_DEFAULT_WINDOW,
+  type ChartWindow,
+  chartRange,
   COMFORT_CARD_DAYS,
-  COMFORT_DETAIL_DAYS,
   COMFORT_DIMENSIONS,
   comfortChanges,
   comfortDays,
@@ -21,6 +23,8 @@ import {
   digestWindows,
   hasComfortRanges,
   RANK_LABEL,
+  readingPanel,
+  startOfLocalDay,
   toLocalDate,
 } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
@@ -29,8 +33,11 @@ import { formatComfortDigest, type DigestPlant } from "./alertRules.ts";
 import { sendAlert } from "./telegram.ts";
 import { effectiveCareOf } from "./taxonomy.ts";
 import { listLocations } from "./locations.ts";
+import { readingsForPlant } from "./readings.ts";
 
 const { weatherDaily, comfortSilences, plants, plantLocations, placeLocations, places, taxa } = schema;
+
+type WeatherDay = ComfortWeatherDay & { precipitation: number | null };
 
 /** Plantas que saíram da coleção não entram no índice */
 const GONE = ["dead", "given_away"] as const;
@@ -51,7 +58,7 @@ export const comfortEnd = (now = new Date()) => addDays(toLocalDate(now, env.APP
  * Uma janela que atravessa uma mudança junta as duas pontas, sem nada retroativo.
  */
 async function weatherByPlant(plantIds: string[], from: string, to: string) {
-  const out = new Map<string, ComfortWeatherDay[]>();
+  const out = new Map<string, WeatherDay[]>();
   const ids = [...new Set(plantIds)];
   if (!ids.length) return out;
 
@@ -81,6 +88,7 @@ async function weatherByPlant(plantIds: string[], from: string, to: string) {
     tempMin: weatherDaily.tempMin,
     tempMax: weatherDaily.tempMax,
     humidityMean: weatherDaily.humidityMean,
+    precipitation: weatherDaily.precipitation,
   };
   const [placeRows, plantRows] = await Promise.all([
     placeSources.size
@@ -96,7 +104,7 @@ async function weatherByPlant(plantIds: string[], from: string, to: string) {
           .where(and(inArray(weatherDaily.locationId, [...plantSources]), gte(weatherDaily.date, from), lte(weatherDaily.date, to)))
       : Promise.resolve([]),
   ]);
-  const bySource = new Map<string, ComfortWeatherDay[]>();
+  const bySource = new Map<string, WeatherDay[]>();
   for (const { sourceId, ...day } of [...placeRows, ...plantRows]) {
     if (!sourceId) continue;
     const list = bySource.get(sourceId) ?? [];
@@ -174,20 +182,28 @@ async function currentLocation(plantId: string) {
   return period ? { location: period, placeName: period.placeName } : null;
 }
 
-/** Seção Conforto da ficha: os últimos 30 dias no local atual, dimensão por dimensão. */
-export async function plantComfort(plant: { id: string; taxonId: string | null }, now = new Date()) {
-  const cur = await currentLocation(plant.id);
-  if (!cur) return { status: "no_location" as const };
-  const placeName = cur.placeName;
+/**
+ * Gráfico "Clima e ocorrências" da ficha: a janela pedida (padrão 90 dias), dimensão por
+ * dimensão, mais a chuva do dia e as medições manuais. O clima de cada dia vem do local
+ * onde a planta estava naquele dia: mudanças no meio da janela não recalculam nada.
+ */
+export async function plantComfort(plant: { id: string; taxonId: string | null }, window: ChartWindow = CHART_DEFAULT_WINDOW, now = new Date()) {
+  const periods = await listLocations(plant.id);
+  const current = periods.find((p) => p.validTo === null);
+  if (!current) return { status: "no_location" as const };
+  const placeName = current.placeName;
   if (!plant.taxonId) return { status: "no_ranges" as const, placeName };
   const care = (await rangesOf([plant.taxonId])).get(plant.taxonId);
   if (!care || !hasComfortRanges(care.ranges)) return { status: "no_ranges" as const, placeName };
 
+  const tz = env.APP_TIMEZONE;
   const end = comfortEnd(now);
-  const from = addDays(end, -(COMFORT_DETAIL_DAYS - 1));
-  const [weather, silenced] = await Promise.all([
+  const historyFrom = periods[0] ? toLocalDate(periods[0].validFrom, tz) : null;
+  const { from } = chartRange(window, end, historyFrom);
+  const [weather, silenced, readings] = await Promise.all([
     weatherByPlant([plant.id], from, end),
-    silencesOf([{ plantId: plant.id, locationId: cur.location.id }]),
+    silencesOf([{ plantId: plant.id, locationId: current.id }]),
+    readingsForPlant(plant.id, periods, startOfLocalDay(from, tz), startOfLocalDay(addDays(end, 1), tz)),
   ]);
   const days = weather.get(plant.id) ?? [];
   const off = silenced.get(plant.id) ?? new Set<ComfortDimension>();
@@ -228,11 +244,24 @@ export async function plantComfort(plant: { id: string; taxonId: string | null }
     status: "ok" as const,
     placeName,
     /** Dentro de casa, o clima de fora é só referência (o app avisa) */
-    environment: cur.location.environment,
-    since: cur.location.validFrom,
+    environment: current.environment,
+    since: current.validFrom,
+    window,
+    /** Primeiro dia da planta no diário (limite da janela "tudo") */
+    historyFrom,
     from,
     to: end,
     dimensions,
+    /** Chuva do dia (mm), só dos dias com clima */
+    precipitation: days.map((d) => ({ date: d.date, mm: d.precipitation })),
+    /** Medições manuais; `panel` diz em qual painel de temperatura entram (a umidade vai sempre no de baixo) */
+    readings: readings.map((r) => ({
+      id: r.id,
+      measuredAt: r.measuredAt,
+      temperature: r.temperature,
+      humidity: r.humidity,
+      panel: readingPanel(r.measuredAt, tz),
+    })),
   };
 }
 

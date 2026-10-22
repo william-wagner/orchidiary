@@ -111,6 +111,13 @@ export const placeBatchSchema = z
   })
   .refine((b) => b.type !== "note" || !!b.notes, { path: ["notes"], message: "Escreva a nota." });
 
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a data no formato AAAA-MM-DD.");
+
+/** Ocorrências da planta entre dois dias locais, inclusive. Sem `from`/`to`, sem limite daquele lado. */
+export const occurrencesQuerySchema = z
+  .object({ from: isoDate.optional(), to: isoDate.optional() })
+  .refine((q) => !q.from || !q.to || q.from <= q.to, { path: ["to"], message: "O fim vem antes do começo." });
+
 /** Metadados enviados junto com a foto (multipart). */
 export const photoMetaSchema = z.object({
   source: z.enum(PHOTO_SOURCES),

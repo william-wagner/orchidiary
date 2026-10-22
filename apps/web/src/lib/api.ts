@@ -6,6 +6,8 @@ import type {
   ComfortDimension,
   ComfortFlag,
   ComfortRange,
+  ChartWindow,
+  EventType,
   TaxonOrigin,
   TaxonRank,
 } from "@orchidiary/shared";
@@ -283,10 +285,23 @@ export type PlantComfort =
       environment: "indoor" | "outdoor";
       /** Desde quando a planta está no local atual */
       since: string;
+      window: ChartWindow;
+      /** Primeiro dia da planta no diário (limite da janela "tudo") */
+      historyFrom: string | null;
       from: string;
       to: string;
       dimensions: ComfortDimensionReport[];
+      /** Chuva do dia (mm), só dos dias com clima */
+      precipitation: Array<{ date: string; mm: number | null }>;
+      /** Medições manuais do período; `panel` é o painel de temperatura em que entram */
+      readings: Array<{ id: string; measuredAt: string; temperature: number | null; humidity: number | null; panel: "night" | "day" }>;
     };
+
+/** Item da fita de ocorrências e do feed da folha expandida (GET /plants/:id/occurrences) */
+export type Occurrence =
+  | { kind: "photo"; id: string; at: string; caption: string | null; width: number | null; height: number | null; placeName: string | null }
+  | { kind: "event"; id: string; at: string; type: EventType; notes: string | null; data: Record<string, unknown>; placeName: string | null }
+  | { kind: "reading"; id: string; at: string; temperature: number | null; humidity: number | null; notes: string | null; placeName: string | null };
 
 export interface LocationCheck {
   mismatch: boolean;
