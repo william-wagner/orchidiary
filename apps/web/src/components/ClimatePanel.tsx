@@ -28,12 +28,16 @@ import {
 } from "@orchidiary/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { api, type ComfortDimensionReport, type Occurrence, type PlantComfort } from "../lib/api.ts";
+import { api, type ComfortDimensionReport, type Occurrence, type PlantComfort, type PlantLocation } from "../lib/api.ts";
 import { EVENT_LABEL } from "../lib/events.ts";
 import { LOCAL_TZ } from "../lib/format.ts";
+import { OccurrenceSheet } from "./OccurrenceSheet.tsx";
 import { Icon } from "./ui.tsx";
 
 type Report = Extract<PlantComfort, { status: "ok" }>;
+type Origin = { x: number; y: number };
+/** Ponto aberto na folha: a primeira ocorrência dele e onde o dedo tocou */
+type Selection = { key: string; origin: Origin };
 
 // ─── Preferências lembradas no aparelho (valem para todas as plantas) ────────
 
@@ -110,11 +114,11 @@ const occurrenceLabel = (o: Occurrence) => (o.kind === "photo" ? "Fotografia" : 
  * de tempo só, a faixa da ficha ao fundo, e a fita do que aconteceu com a planta embaixo.
  * Janela, camadas e aberto/fechado ficam lembrados no aparelho.
  */
-export function ClimatePanel({ plantId }: { plantId: string }) {
+export function ClimatePanel({ plantId, plantName, locations }: { plantId: string; plantName: string; locations: PlantLocation[] }) {
   const [open, setOpen] = useState(() => readPref(OPEN_KEY, (r) => r !== "0"));
   const [window, setWindow] = useState<ChartWindow>(() => readPref(WINDOW_KEY, (r) => parseChartWindow(r) ?? CHART_DEFAULT_WINDOW));
   const [view, setView] = useState<View>(() => readPref(VIEW_KEY, parseView));
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Selection | null>(null);
 
   const comfort = useQuery({
     queryKey: ["comfort", plantId, window],
@@ -208,7 +212,15 @@ export function ClimatePanel({ plantId }: { plantId: string }) {
           <Controls window={window} onWindow={chooseWindow} view={view} onView={changeView} />
 
           <div className={`mt-3 transition-opacity ${comfort.isPlaceholderData ? "opacity-60" : ""}`}>
-            <Pauta report={c} items={items} view={view} selected={selected} onSelect={setSelected} />
+            <Pauta
+              plantName={plantName}
+              report={c}
+              locations={locations}
+              items={items}
+              view={view}
+              selected={selected}
+              onSelect={setSelected}
+            />
             <Legend view={view} />
             <Counts report={c} />
             <InheritedNote report={c} />
@@ -389,17 +401,21 @@ function clusterLabel(c: OccurrenceCluster<Occurrence>) {
 }
 
 function Pauta({
+  plantName,
   report,
+  locations,
   items,
   view,
   selected,
   onSelect,
 }: {
+  plantName: string;
   report: Report;
+  locations: PlantLocation[];
   items: Occurrence[];
   view: View;
-  selected: string | null;
-  onSelect: (key: string | null) => void;
+  selected: Selection | null;
+  onSelect: (selection: Selection | null) => void;
 }) {
   const [ref, W] = useWidth();
   const { from, to } = report;
@@ -420,7 +436,8 @@ function Pauta({
 
   const visible = view.events ? items.filter((o) => view.layers.includes(layerOf(o) as OccurrenceLayer)) : [];
   const clusters = clusterOccurrences(visible, dayOf, xDay);
-  const selectedCluster = clusters.find((c) => c.items.some((o) => occurrenceKey(o) === selected)) ?? null;
+  const selectedIndex = selected ? clusters.findIndex((c) => c.items.some((o) => occurrenceKey(o) === selected.key)) : -1;
+  const selectedCluster = clusters[selectedIndex] ?? null;
   const moves = view.events && view.layers.includes("milestones") ? items.filter((o) => o.kind === "event" && o.type === "moved") : [];
 
   // chuva somada por dia ou por semana, como a linha
@@ -552,7 +569,7 @@ function Pauta({
           {clusters.map((c) => {
             const key = occurrenceKey(c.items[0]!);
             const isSelected = c === selectedCluster;
-            const choose = () => onSelect(isSelected ? null : key);
+            const choose = (origin: Origin) => onSelect({ key, origin });
             return (
               <g key={key}>
                 {c.items.length === 1 ? (
@@ -575,14 +592,16 @@ function Pauta({
                   fill="transparent"
                   role="button"
                   tabIndex={0}
-                  aria-pressed={isSelected}
+                  aria-haspopup="dialog"
                   aria-label={clusterLabel(c)}
+                  data-key={key}
                   className="cursor-pointer outline-none focus-visible:stroke-orquidea"
-                  onClick={choose}
+                  onClick={(e) => choose({ x: e.clientX, y: e.clientY })}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      choose();
+                      const r = e.currentTarget.getBoundingClientRect();
+                      choose({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
                     }
                   }}
                 />
@@ -591,43 +610,22 @@ function Pauta({
           })}
         </svg>
       )}
-      {selectedCluster && <ClusterSummary cluster={selectedCluster} onClose={() => onSelect(null)} />}
-    </div>
-  );
-}
-
-/** O que há no ponto tocado (a folha em tela cheia, com o feed, vem a seguir). */
-function ClusterSummary({ cluster, onClose }: { cluster: OccurrenceCluster<Occurrence>; onClose: () => void }) {
-  const when =
-    cluster.days.length > 1 ? `${shortDate(cluster.days[0]!)} – ${herbariumDate(cluster.days.at(-1)!, "UTC")}` : herbariumDate(cluster.days[0]!, "UTC");
-  const place = cluster.items[0]!.placeName;
-  // fotos primeiro, como na folha
-  const sorted = [...cluster.items].sort((a, b) => Number(b.kind === "photo") - Number(a.kind === "photo"));
-  return (
-    <div className="mt-2 rounded-lg border border-linha bg-papel/60 px-3 py-2.5" aria-live="polite">
-      <div className="flex items-baseline justify-between gap-2 border-b border-dotted border-contorno pb-1">
-        <span className="font-serif text-[1.02rem]">{when}</span>
-        <span className="flex items-center gap-1">
-          {place && <span className="typed text-[0.66rem]">{place}</span>}
-          <button type="button" onClick={onClose} aria-label="Fechar" className="-mr-1.5 grid size-8 place-items-center text-musgo">
-            <Icon name="close" className="size-4" />
-          </button>
-        </span>
-      </div>
-      <ul className="mt-1.5 space-y-1 text-[0.84rem]">
-        {sorted.map((o) => (
-          <li key={occurrenceKey(o)} className="flex items-baseline gap-2">
-            <span className="typed w-[3.2rem] shrink-0 text-[0.68rem]">
-              {cluster.days.length > 1 ? shortDate(dayOf(o)) : new Date(o.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            </span>
-            <span>
-              {occurrenceLabel(o)}
-              {o.kind === "photo" && o.caption ? <span className="text-musgo"> · {o.caption}</span> : null}
-              {o.kind === "event" && o.notes ? <span className="text-musgo"> · {o.notes}</span> : null}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {selected && selectedIndex >= 0 && (
+        <OccurrenceSheet
+          plantName={plantName}
+          report={report}
+          locations={locations}
+          clusters={clusters}
+          index={selectedIndex}
+          origin={selected.origin}
+          onNavigate={(i) => onSelect({ key: occurrenceKey(clusters[i]!.items[0]!), origin: selected.origin })}
+          onClose={() => {
+            onSelect(null);
+            // devolve o foco ao ponto de onde a folha saiu
+            ref.current?.querySelector<SVGRectElement>(`[data-key="${selected.key}"]`)?.focus();
+          }}
+        />
+      )}
     </div>
   );
 }

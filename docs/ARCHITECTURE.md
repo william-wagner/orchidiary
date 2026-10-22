@@ -54,7 +54,7 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 
 ## Clima
 
-- Fonte: Open-Meteo (gratuita, sem chave). Últimos ~85 dias pela API de previsão; períodos mais antigos pela API histórica.
+- Fonte: Open-Meteo (gratuita, sem chave). Últimos 60 dias pela API de previsão (ela só guarda uns 66 dias de passado); períodos mais antigos pela API histórica.
 - O clima é guardado por **período da fonte** e por dia (`weather_daily`), e a fonte é o período de localização do **lugar** (`place_location_id`) ou o período da **planta sem lugar** (`location_id`) — exatamente uma das duas (`weather_daily_source_ck`). Por isso o clima também nunca muda retroativamente.
 - **Uma série por lugar**, não por planta: dez plantas no mesmo lugar dividem a mesma série. E **todo lugar coleta, mesmo sem planta nenhuma** — quando a primeira chegar, o histórico dela já começa preenchido, e o lugar tem gráfico próprio na tela de Lugares.
 - A série de uma planta é montada por **trechos** (`climateSegments` + `climateWindows`, em `packages/shared`): enquanto esteve num lugar, os dias vêm da série dele; fora, da série dela. Se o lugar mudou de coordenada no meio, o trecho se parte em dois — nada é copiado nem reescrito.
@@ -63,6 +63,18 @@ Celular / PC ──HTTPS (Tailscale)──▶ API Hono (Node) ──▶ Postgres
 - Métricas: mínima, máxima e média, umidade (média, mínima e máxima), ponto de orvalho, VPD (calculado a partir de temperatura e umidade horárias), chuva, radiação, horas de sol, evapotranspiração e vento máximo.
 - **Backfill**: a coleta calcula os dias que faltam no banco e busca só esses. Se o servidor ficar fora do ar, os dias perdidos são preenchidos quando ele voltar.
 - O clima da API é sempre o **externo**. Para lugares `indoor`, o app mostra o clima como referência e oferece medições manuais (`manual_readings`) de temperatura e umidade, da planta ou do lugar.
+
+## Clima e ocorrências (ficha da planta)
+
+Especificação completa e protótipo em `docs/estudos/clima-e-ocorrencias.md`.
+
+- **Índice de conforto**: o clima diário contra as faixas da ficha (própria ou herdada), por dimensão: noites (`temp_min`), dias (`temp_max`) e umidade (`humidity_mean`). Cada dia fica dentro, perto (margem de `COMFORT_MARGIN`) ou fora. Regras em `packages/shared/src/comfort.ts`; o card da Coleção usa os últimos 7 dias, e o resumo do Telegram, a quinzena.
+- **Gráfico** (`ClimatePanel.tsx`): os três painéis num eixo só, com a faixa ao fundo, as medições manuais (19h às 8h vão para as noites) e a chuva opcional. Janela de 30, 90, 180, 360 dias ou "tudo" (desde o primeiro dia da planta); acima de 120 dias a linha agrega por semana, mas as contas seguem contando dias. Cada dia vem do local onde a planta estava nele: uma mudança no meio da janela vira uma linha vertical, sem recalcular nada.
+- **Fita de ocorrências**: fotos e eventos, com camada por tipo (`EVENT_LAYER`). Eventos de lote (`batch_id`) nunca entram; o livro de registro continua mostrando. Pontos agrupados por dia e depois a 17 px no eixo (`clusterOccurrences`). Tocar num ponto abre a folha em tela cheia (`OccurrenceSheet.tsx`) com o clima do dia e o feed, fotos primeiro.
+- Janela, camadas e aberto/fechado ficam no `localStorage` do aparelho (`orchidiary:grafico-janela`, `orchidiary:grafico-camadas`, `orchidiary:clima-aberto`).
+- API: `GET /api/plants/:id/comfort?days=30|90|180|360|all` (padrão 90) traz as dimensões dia a dia, a chuva e as medições do período; `GET /api/plants/:id/occurrences?from&to` (dias locais, `AAAA-MM-DD`) traz fotos, eventos sem lote e medições em ordem crescente, cada um com o lugar **vigente na data**. As regras puras (janela, semana, camadas, agrupamento, montagem) estão em `packages/shared/src/chart.ts`.
+- O "Já sei, não avisar" saiu da interface em 21.X.2026 (volta na Fase 3). A tabela `comfort_silences` e as rotas `PUT/DELETE /plants/:id/comfort/silences/:dimension` continuam, e o resumo quinzenal ainda respeita os silêncios que existirem.
+- Dados de desenvolvimento: `pnpm db:seed:demo` recria a planta FAKE com um ano de fotos, eventos, medições, duas mudanças de lugar e clima real (`apps/api/src/db/seedDemo.ts`; as fotos ficam em `.local/`, fora do git).
 
 ## Rotinas agendadas (fuso `APP_TIMEZONE`)
 
