@@ -12,3 +12,4 @@ export * from "./weatherPlan.ts";
 export * from "./batch.ts";
 export * from "./comfort.ts";
 export * from "./chart.ts";
+export * from "./externalCalls.ts";

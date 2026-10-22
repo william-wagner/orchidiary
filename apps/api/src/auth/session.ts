@@ -5,6 +5,7 @@ import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import type { UserRole } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
+import { setContextUser } from "../http/context.ts";
 
 export const SESSION_COOKIE = "orchidiary_session";
 export const SESSION_TTL_DAYS = 60;
@@ -52,6 +53,7 @@ export const requireUser = createMiddleware<AppEnv>(async (c, next) => {
   const user = token ? await userFromToken(token) : null;
   if (!user) throw new HTTPException(401, { message: "Faça login." });
   c.set("user", user);
+  setContextUser(user.id);
   await next();
 });
 

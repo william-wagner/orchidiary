@@ -118,6 +118,18 @@ Logger único (`apps/api/src/logger.ts`, pino) com três destinos:
 - `GET /api/settings/logs` (**somente master**) lista `app_logs` com filtros `level`, `source` (prefixo), `q` (texto), `from`, `to` e paginação por `cursor`.
 - `app_logs` não entra no backup do Drive.
 
+### Chamadas a serviços externos
+
+Toda chamada de saída (Open-Meteo, Nominatim, OpenAI, Telegram, Google OAuth e Drive) passa por um cliente instrumentado (`apps/api/src/http/`) e vira uma linha em `external_calls`, mesmo quando dá certo. Chamar `fetch` direto nos serviços é proibido; um teste (`http/noRawFetch.test.ts`) falha se isso acontecer.
+
+- **Uso:** `http.<serviço>.call({ operation, url, init, meta }, async (res, scope) => …)` (`http/clients.ts`). O handler lê o corpo e lança erro quando a resposta não serve; a chamada é registrada depois dele, então `duration_ms` cobre também a leitura do corpo (`ttfb_ms` é só até os headers). Os serviços recebem o cliente como último parâmetro (com padrão), o que permite injetar um falso nos testes.
+- **Resultado (`outcome`):** `ok`, `http_error` (status fora de 2xx), `timeout`, `network_error` (DNS, conexão, TLS) ou `invalid_response` (2xx, mas o handler recusou o conteúdo). `error_code` traz `HTTP_<status>` ou o código da causa (`ENOTFOUND`...); `error_excerpt`, até 500 caracteres da resposta de erro.
+- **Correlação:** `request_id` e `origin` vêm de um `AsyncLocalStorage` (`http/context.ts`) aberto pelo `requestLogger` (origem `http`) e por cada rodada do scheduler (origem `scheduler:<nome>`, com um id gerado para a rodada). O mesmo contexto acrescenta `requestId` a todo log do pino, então dá para ir de uma chamada ao log da requisição que a causou. A fila de ilustrações guarda o contexto de quem pediu.
+- **Redação (`redactUrl`, `scrubSecrets` e `sanitizeMeta`, em `packages/shared/src/externalCalls.ts`):** lista de permitidos por serviço para a query (Open-Meteo e Nominatim guardam só os parâmetros conhecidos, com coordenadas arredondadas a 2 casas, ~1 km; OpenAI, Telegram e Google não guardam query); o token do Telegram sai do caminho (`/bot[redigido]/sendMessage`); corpo de requisição nunca é gravado; trechos de erro e `meta` passam por uma varredura de formatos conhecidos de segredo. `meta` é limitado a 4.000 caracteres. Ao criar um serviço novo: acrescente-o em `EXTERNAL_SERVICES` e a regra de query em `QUERY_ALLOWLIST`.
+- **Gravação:** em lote, com o mesmo `BatchWriter` do `app_logs` (buffer limitado, nunca derruba a chamada nem a API, descarregado no encerramento). O banco só é carregado quando há o que gravar.
+- **Retenção:** limpeza diária às 04:40, junto com a de `app_logs`: as que deram certo saem após `EXTERNAL_CALLS_RETENTION_DAYS` (30) e as com falha, após `EXTERNAL_CALLS_ERROR_RETENTION_DAYS` (90). A tabela não entra no backup do Drive.
+- **Consulta:** por enquanto só pelo banco (`select … from external_calls order by started_at desc`); não há rota nem tela.
+
 ## Fotos
 
 - Redimensionadas para no máximo 2048 px (WebP) e miniatura de 480 px. Os metadados EXIF são removidos do arquivo salvo (a data e o GPS ficam no banco).

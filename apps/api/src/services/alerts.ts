@@ -2,12 +2,14 @@ import { and, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { addDays, coordKey, toLocalDate } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
+import { http } from "../http/clients.ts";
+import type { HttpClient } from "../http/client.ts";
 import { sourceLogger } from "../logger.ts";
 import { sendAlert } from "./telegram.ts";
 import { evaluateForecast, type ForecastDay } from "./alertRules.ts";
 import { effectiveCareOf } from "./taxonomy.ts";
 
-async function fetchTomorrow(lat: number, lng: number, tomorrow: string, fetchImpl: typeof fetch): Promise<ForecastDay | null> {
+async function fetchTomorrow(lat: number, lng: number, tomorrow: string, client: HttpClient): Promise<ForecastDay | null> {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", lat.toFixed(4));
   url.searchParams.set("longitude", lng.toFixed(4));
@@ -15,18 +17,19 @@ async function fetchTomorrow(lat: number, lng: number, tomorrow: string, fetchIm
   url.searchParams.set("timezone", env.APP_TIMEZONE);
   url.searchParams.set("start_date", tomorrow);
   url.searchParams.set("end_date", tomorrow);
-  const res = await fetchImpl(url, { signal: AbortSignal.timeout(20_000) });
-  if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
-  const json = (await res.json()) as { daily?: { temperature_2m_min?: number[]; temperature_2m_max?: number[] } };
-  return {
-    date: tomorrow,
-    tempMin: json.daily?.temperature_2m_min?.[0] ?? null,
-    tempMax: json.daily?.temperature_2m_max?.[0] ?? null,
-  };
+  return client.call({ operation: "forecast.alert", url, init: { signal: AbortSignal.timeout(20_000) }, meta: { date: tomorrow } }, async (res) => {
+    if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
+    const json = (await res.json()) as { daily?: { temperature_2m_min?: number[]; temperature_2m_max?: number[] } };
+    return {
+      date: tomorrow,
+      tempMin: json.daily?.temperature_2m_min?.[0] ?? null,
+      tempMax: json.daily?.temperature_2m_max?.[0] ?? null,
+    };
+  });
 }
 
 /** Roda após a coleta diária: alerta de frio/calor previsto para amanhã. */
-export async function runForecastAlerts(now = new Date(), fetchImpl: typeof fetch = fetch) {
+export async function runForecastAlerts(now = new Date(), client: HttpClient = http.openMeteo) {
   const tomorrow = addDays(toLocalDate(now, env.APP_TIMEZONE), 1);
   // Coordenada e ambiente vêm do lugar quando a planta está num; sem lugar, são dela.
   const rows = await db
@@ -63,7 +66,7 @@ export async function runForecastAlerts(now = new Date(), fetchImpl: typeof fetc
   const forecastAt = (lat: number, lng: number) => {
     const key = coordKey({ lat, lng });
     let p = forecasts.get(key);
-    if (!p) forecasts.set(key, (p = fetchTomorrow(lat, lng, tomorrow, fetchImpl)));
+    if (!p) forecasts.set(key, (p = fetchTomorrow(lat, lng, tomorrow, client)));
     return p;
   };
 

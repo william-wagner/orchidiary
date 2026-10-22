@@ -1,4 +1,6 @@
 import { addDays, aggregateHourly, type IsoDate } from "@orchidiary/shared";
+import type { HttpClient } from "../../http/client.ts";
+import { http } from "../../http/clients.ts";
 
 /**
  * Cliente Open-Meteo (grátis, sem chave).
@@ -117,13 +119,26 @@ export const isComplete = (d: DailyWeather) => d.tempMin != null && d.tempMax !=
 
 export async function fetchDaily(
   p: { lat: number; lng: number; from: IsoDate; to: IsoDate; timeZone: string; today: IsoDate },
-  fetchImpl: typeof fetch = fetch,
+  client: HttpClient = http.openMeteo,
 ): Promise<DailyWeather[]> {
   const out: DailyWeather[] = [];
   for (const part of splitRange(p.from, p.to, p.today)) {
-    const res = await fetchImpl(buildUrl({ ...p, ...part }), { signal: AbortSignal.timeout(20_000) });
-    if (!res.ok) throw new Error(`Open-Meteo respondeu ${res.status}: ${await res.text()}`);
-    out.push(...parseResponse((await res.json()) as OpenMeteoResponse).filter(isComplete));
+    const url = buildUrl({ ...p, ...part });
+    const days = await client.call(
+      {
+        operation: url.startsWith(ARCHIVE_URL) ? "archive.daily" : "forecast.daily",
+        url,
+        init: { signal: AbortSignal.timeout(20_000) },
+        meta: { from: part.from, to: part.to },
+      },
+      async (res, scope) => {
+        if (!res.ok) throw new Error(`Open-Meteo respondeu ${res.status}: ${await res.text()}`);
+        const parsed = parseResponse((await res.json()) as OpenMeteoResponse);
+        scope.annotate({ daysReturned: parsed.length });
+        return parsed.filter(isComplete);
+      },
+    );
+    out.push(...days);
   }
   return out;
 }

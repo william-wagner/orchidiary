@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import type { HttpClient } from "../http/client.ts";
+import { http } from "../http/clients.ts";
 
 /**
  * Cliente mínimo do Google Drive (OAuth 2.0 + REST), sem o SDK do Google.
@@ -32,26 +34,34 @@ interface TokenResponse {
   error_description?: string;
 }
 
-async function tokenRequest(body: Record<string, string>, fetchImpl: typeof fetch): Promise<TokenResponse> {
-  const res = await fetchImpl(TOKEN_URL, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(body),
-    signal: AbortSignal.timeout(20_000),
-  });
-  const json = (await res.json()) as TokenResponse;
-  if (!res.ok || json.error) throw new Error(`Google OAuth: ${json.error_description ?? json.error ?? res.status}`);
-  return json;
+async function tokenRequest(body: Record<string, string>, client: HttpClient): Promise<TokenResponse> {
+  return client.call(
+    {
+      operation: body.grant_type === "refresh_token" ? "token.refresh" : "token.exchange",
+      url: TOKEN_URL,
+      init: {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(body),
+        signal: AbortSignal.timeout(20_000),
+      },
+    },
+    async (res) => {
+      const json = (await res.json()) as TokenResponse;
+      if (!res.ok || json.error) throw new Error(`Google OAuth: ${json.error_description ?? json.error ?? res.status}`);
+      return json;
+    },
+  );
 }
 
 /** Troca o código do callback por tokens. Também devolve o e-mail da conta conectada. */
 export async function exchangeCode(
   p: { clientId: string; clientSecret: string; redirectUri: string; code: string },
-  fetchImpl: typeof fetch = fetch,
+  client: HttpClient = http.googleOAuth,
 ): Promise<{ refreshToken: string; email?: string }> {
   const t = await tokenRequest(
     { code: p.code, client_id: p.clientId, client_secret: p.clientSecret, redirect_uri: p.redirectUri, grant_type: "authorization_code" },
-    fetchImpl,
+    client,
   );
   if (!t.refresh_token) throw new Error("O Google não devolveu refresh_token. Remova o acesso do app na conta Google e conecte de novo.");
   return { refreshToken: t.refresh_token, email: t.id_token ? emailFromIdToken(t.id_token) : undefined };
@@ -71,7 +81,7 @@ export class DriveClient {
 
   constructor(
     private readonly creds: { clientId: string; clientSecret: string; refreshToken: string },
-    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly clients: { oauth: HttpClient; drive: HttpClient } = { oauth: http.googleOAuth, drive: http.googleDrive },
   ) {}
 
   private async token(): Promise<string> {
@@ -83,21 +93,27 @@ export class DriveClient {
           refresh_token: this.creds.refreshToken,
           grant_type: "refresh_token",
         },
-        this.fetchImpl,
+        this.clients.oauth,
       );
       this.accessToken = t.access_token;
     }
     return this.accessToken;
   }
 
-  private async call<T>(url: string, init: RequestInit = {}): Promise<T> {
-    const res = await this.fetchImpl(url, {
-      ...init,
-      headers: { ...(init.headers as Record<string, string>), authorization: `Bearer ${await this.token()}` },
-      signal: AbortSignal.timeout(120_000),
-    });
-    if (!res.ok) throw new Error(`Google Drive ${res.status}: ${await res.text()}`);
-    return (res.status === 204 ? undefined : await res.json()) as T;
+  private async call<T>(operation: string, url: string, init: RequestInit = {}, meta?: Record<string, unknown>): Promise<T> {
+    const authorization = `Bearer ${await this.token()}`;
+    return this.clients.drive.call(
+      {
+        operation,
+        url,
+        meta,
+        init: { ...init, headers: { ...(init.headers as Record<string, string>), authorization }, signal: AbortSignal.timeout(120_000) },
+      },
+      async (res) => {
+        if (!res.ok) throw new Error(`Google Drive ${res.status}: ${await res.text()}`);
+        return (res.status === 204 ? undefined : await res.json()) as T;
+      },
+    );
   }
 
   async findFolder(name: string, parentId?: string): Promise<string | undefined> {
@@ -109,14 +125,14 @@ export class DriveClient {
     ]
       .filter(Boolean)
       .join(" and ");
-    const r = await this.call<{ files: Array<{ id: string }> }>(`${API}/files?q=${encodeURIComponent(q)}&fields=files(id)`);
+    const r = await this.call<{ files: Array<{ id: string }> }>("files.list", `${API}/files?q=${encodeURIComponent(q)}&fields=files(id)`);
     return r.files[0]?.id;
   }
 
   async ensureFolder(name: string, parentId?: string): Promise<string> {
     const found = await this.findFolder(name, parentId);
     if (found) return found;
-    const r = await this.call<{ id: string }>(`${API}/files?fields=id`, {
+    const r = await this.call<{ id: string }>("folders.create", `${API}/files?fields=id`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: parentId ? [parentId] : undefined }),
@@ -126,7 +142,7 @@ export class DriveClient {
 
   async upload(p: { name: string; mimeType: string; data: Buffer; parentId: string }): Promise<{ id: string; size: number }> {
     const { body, contentType } = buildMultipart({ name: p.name, parents: [p.parentId] }, p.mimeType, p.data);
-    const r = await this.call<{ id: string; size?: string }>(`${UPLOAD}?uploadType=multipart&fields=id,size`, {
+    const r = await this.call<{ id: string; size?: string }>("files.upload", `${UPLOAD}?uploadType=multipart&fields=id,size`, {
       method: "POST",
       headers: { "content-type": contentType },
       body: new Uint8Array(body),
@@ -137,13 +153,14 @@ export class DriveClient {
   async listFiles(parentId: string, namePrefix: string): Promise<Array<{ id: string; name: string; createdTime: string }>> {
     const q = `'${parentId}' in parents and trashed = false and name contains '${namePrefix}'`;
     const r = await this.call<{ files: Array<{ id: string; name: string; createdTime: string }> }>(
+      "files.list",
       `${API}/files?q=${encodeURIComponent(q)}&orderBy=createdTime desc&pageSize=200&fields=files(id,name,createdTime)`,
     );
     return r.files;
   }
 
   async delete(fileId: string): Promise<void> {
-    await this.call(`${API}/files/${fileId}`, { method: "DELETE" });
+    await this.call("files.delete", `${API}/files/${fileId}`, { method: "DELETE" });
   }
 }
 

@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
 import pino from "pino";
 import { env, isProd } from "./env.ts";
+import { currentContext } from "./http/context.ts";
+import { externalCallRecorder } from "./http/recorder.ts";
 import { DbLogStream } from "./logging/dbStream.ts";
 
 /**
@@ -8,6 +10,7 @@ import { DbLogStream } from "./logging/dbStream.ts";
  *  - stdout: legível em dev (pino-pretty), JSON em produção;
  *  - arquivo diário em LOG_DIR com rotação (tudo a partir de LOG_LEVEL);
  *  - tabela app_logs: só warn/error/fatal e auditoria (ver logging/dbStream.ts).
+ * As chamadas a serviços externos têm tabela própria (external_calls, ver http/).
  * Arquivo e stdout rodam em uma worker thread (pino.transport): escrever log não bloqueia as requisições.
  */
 
@@ -52,6 +55,12 @@ export const logger = pino(
       censor: "[redigido]",
     },
     base: undefined, // sem pid/hostname
+    // Todo log feito durante uma requisição ou rotina leva o requestId (e o usuário) dela, sem repassar por parâmetro.
+    // Campos passados explicitamente na chamada prevalecem.
+    mixin() {
+      const ctx = currentContext();
+      return ctx ? { requestId: ctx.requestId, ...(ctx.userId ? { userId: ctx.userId } : {}) } : {};
+    },
   },
   pino.multistream([
     { stream: fileAndConsole, level: "trace" },
@@ -59,8 +68,8 @@ export const logger = pino(
   ]),
 );
 
-/** Grava o que estiver no buffer do banco. Use antes de encerrar o processo. */
-export const flushLogs = () => dbStream.flush();
+/** Grava o que estiver nos buffers do banco (logs e chamadas externas). Use antes de encerrar o processo. */
+export const flushLogs = () => Promise.all([dbStream.flush(), externalCallRecorder.flush()]).then(() => undefined);
 
 /** Logger com a origem fixa (aparece na coluna `source`). */
 export const sourceLogger = (source: string) => logger.child({ source });

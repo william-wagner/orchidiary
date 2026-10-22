@@ -22,6 +22,10 @@ const schema = z.object({
   LOG_FILE_RETENTION_DAYS: z.coerce.number().int().positive().default(14),
   /** Quantos dias manter warn/error na tabela app_logs (a auditoria tem prazo próprio, mais longo) */
   LOG_DB_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+  /** Quantos dias manter, em external_calls, as chamadas externas que deram certo */
+  EXTERNAL_CALLS_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+  /** Prazo das chamadas externas com falha (vale ao menos o das que deram certo) */
+  EXTERNAL_CALLS_ERROR_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 });
 
 const parsed = schema.safeParse(process.env);

@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { Cron } from "croner";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
+import { runWithContext } from "../http/context.ts";
 import { sourceLogger } from "../logger.ts";
-import { purgeOldLogs } from "../logging/retention.ts";
+import { purgeExpiredRecords } from "../logging/retention.ts";
 import { runForecastAlerts } from "../services/alerts.ts";
 import { runBackup } from "../services/backup.ts";
 import { runComfortDigest } from "../services/comfort.ts";
@@ -49,9 +51,10 @@ async function backupCheck() {
   }
 }
 
+// Cada rodada ganha um id próprio (aparece como requestId nos logs e em external_calls) e a origem "scheduler:<nome>".
 const safe = (name: string, fn: () => Promise<unknown>) => async () => {
   try {
-    await fn();
+    await runWithContext({ requestId: randomUUID(), origin: `scheduler:${name}` }, fn);
   } catch (err) {
     sourceLogger(`scheduler:${name}`).error({ err }, `rotina "${name}" falhou`);
   }
@@ -68,15 +71,15 @@ export function startScheduler() {
   new Cron("0 8 * * *", opts, safe("conforto", () => runComfortDigest()));
   // Backup semanal: checa toda hora (recupera se o PC estava desligado)
   new Cron("25 * * * *", opts, safe("backup", backupCheck));
-  // Limpeza de app_logs vencidos
-  new Cron("40 4 * * *", opts, safe("logs", purgeOldLogs));
+  // Limpeza de app_logs e external_calls vencidos
+  new Cron("40 4 * * *", opts, safe("logs", purgeExpiredRecords));
   // Pranchas botânicas: retoma capas interrompidas e tenta de novo as que falharam (no máximo 1x por dia)
   new Cron("*/30 * * * *", opts, safe("ilustracao", () => illustrateCovers()));
 
   // Ao ligar o servidor, completa o que faltou enquanto o PC estava desligado
   setTimeout(safe("clima", weatherJob), 5_000);
   setTimeout(safe("backup", backupCheck), 60_000);
-  setTimeout(safe("logs", purgeOldLogs), 120_000);
+  setTimeout(safe("logs", purgeExpiredRecords), 120_000);
   // depois da coleta de clima, para o resumo atrasado (PC desligado no dia) usar a quinzena completa
   setTimeout(safe("conforto", () => runComfortDigest()), 180_000);
   setTimeout(safe("ilustracao", () => illustrateCovers()), 90_000);
