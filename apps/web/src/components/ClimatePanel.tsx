@@ -197,7 +197,7 @@ export function ClimatePanel({
             Clima e ocorrências
           </span>
           <span className="typed text-[0.62rem] whitespace-nowrap">
-            {open ? `${shortDate(c.from)} – ${herbariumDate(c.to, "UTC")}` : `Últimos ${COMPACT_DAYS} dias · ${shortDate(compactFrom)} – ${shortDate(c.to)}`}
+            {open ? `${shortDate(c.from)} – ${herbariumDate(c.to, "UTC")}` : `Últimos ${COMPACT_DAYS} dias · ${shortDate(compactFrom)}–${shortDate(c.to)}`}
           </span>
         </button>
       </h2>
