@@ -180,7 +180,7 @@ export function ClimatePanel({
   const problems = c.dimensions.filter((d) => d.attention.direction && !d.silenced);
   const items = occurrences.data?.items ?? [];
   // fechada, o resumo cobre os últimos 30 dias, qualquer que seja a janela escolhida
-  const yesterday = weather.at(-1);
+  const compactFrom = c.dimensions[0]?.days.at(-COMPACT_DAYS)?.date ?? c.from;
 
   return (
     <section className="cartao mt-5 px-4 py-4" aria-label="Clima e ocorrências">
@@ -190,16 +190,14 @@ export function ClimatePanel({
           onClick={toggle}
           aria-expanded={open}
           aria-controls={`clima-${plantId}`}
-          className="flex w-full items-baseline justify-between gap-3 text-left"
+          className="flex w-full flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-left"
         >
-          <span className="flex items-center gap-1.5 font-serif text-[1.3rem]">
+          <span className="flex items-center gap-1.5 font-serif text-[1.3rem] whitespace-nowrap">
             <Icon name="chevron" className={`size-4 self-center transition-transform ${open ? "rotate-90" : ""}`} />
             Clima e ocorrências
           </span>
-          <span className="typed text-[0.7rem] whitespace-nowrap">
-            {!open && yesterday
-              ? `ontem ${yesterday.tempMin ?? "?"}–${yesterday.tempMax ?? "?"}°C`
-              : `${shortDate(c.from)} – ${herbariumDate(c.to, "UTC")}`}
+          <span className="typed text-[0.62rem] whitespace-nowrap">
+            {open ? `${shortDate(c.from)} – ${herbariumDate(c.to, "UTC")}` : `Últimos ${COMPACT_DAYS} dias · ${shortDate(compactFrom)} – ${shortDate(c.to)}`}
           </span>
         </button>
       </h2>
