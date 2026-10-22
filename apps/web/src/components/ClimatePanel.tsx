@@ -189,7 +189,7 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
 
       {!open ? (
         <div id={`clima-${plantId}`}>
-          <CompactStrips report={c} />
+          <CompactChart report={c} />
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[0.8rem] text-musgo">
           {problems.length ? (
             problems.map((d) => (
@@ -239,51 +239,114 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
 
 // ─── Resumo da seção fechada ─────────────────────────────────────────────────
 
-/** Últimos dias que a seção fechada resume: um quadradinho por dia */
+/** Últimos dias que a seção fechada resume */
 const COMPACT_DAYS = 30;
-const TICK: Record<ComfortState | "none", string> = {
-  inside: "bg-salvia",
-  near: "bg-ocre-claro shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--ocre)_45%,transparent)]",
-  outside: "bg-ocre",
-  none: "bg-transparent shadow-[inset_0_0_0_1px_var(--linha)]",
-};
-const STATE_NAME: Record<ComfortState, string> = { inside: "dentro da faixa", near: "perto", outside: "fora" };
+const COMPACT_PANEL_H = 36;
+const COMPACT_GAP = 18;
 
-/** Uma fileira por dimensão, um quadradinho por dia dos últimos 30: dentro, perto ou fora da faixa. */
-function CompactStrips({ report }: { report: Report }) {
+/**
+ * Curva suave por pontos (Catmull-Rom em Béziers). Os controles ficam entre as alturas dos
+ * dois pontos vizinhos, para a curva não passar de picos que o dado não teve.
+ */
+function smoothPath(points: Array<[number, number]>): string {
+  if (points.length === 1) return `M${points[0]![0].toFixed(1)},${points[0]![1].toFixed(1)}`;
+  let d = `M${points[0]![0].toFixed(1)},${points[0]![1].toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i]!;
+    const p1 = points[i]!;
+    const p2 = points[i + 1]!;
+    const p3 = points[i + 2] ?? p2;
+    const lo = Math.min(p1[1], p2[1]);
+    const hi = Math.max(p1[1], p2[1]);
+    const c1y = Math.min(hi, Math.max(lo, p1[1] + (p2[1] - p0[1]) / 6));
+    const c2y = Math.min(hi, Math.max(lo, p2[1] - (p3[1] - p1[1]) / 6));
+    d += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)},${c1y.toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+
+/**
+ * Resumo da seção fechada: a curva do clima dos últimos 30 dias passando pela faixa de conforto
+ * da ficha, um painel pequeno por dimensão (cada uma tem a sua escala). Dia fora da faixa leva um ponto ocre.
+ */
+function CompactChart({ report }: { report: Report }) {
+  const [ref, W] = useWidth();
+  const panels = report.dimensions;
+  const H = TOP + panels.length * (COMPACT_PANEL_H + COMPACT_GAP) - COMPACT_GAP + 4;
+  const plotW = Math.max(0, W - L - R);
   return (
-    <div className="mt-2.5">
-      <div className="flex flex-col gap-1.5">
-        {report.dimensions.map((d) => {
-          const days = d.days.slice(-COMPACT_DAYS);
-          return (
-            <div key={d.dimension} className="flex items-center gap-2.5">
-              <span className="eyebrow w-[4.6rem] shrink-0">{DIMENSION_NAME[d.dimension]}</span>
-              <div
-                className="grid h-4 flex-1 gap-[2px]"
-                style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
-                role="img"
-                aria-label={`${DIMENSION_NAME[d.dimension]} dos últimos ${days.length} dias: ${days.filter((x) => x.state === "outside").length} fora da faixa`}
-              >
-                {days.map((day) => (
-                  <span
-                    key={day.date}
-                    title={`${shortDate(day.date)}: ${day.state ? STATE_NAME[day.state] : "sem dado"}`}
-                    className={`rounded-[2px] ${TICK[day.state ?? "none"]}`}
-                  />
+    <div ref={ref} className="mt-2.5">
+      {W > 0 && (
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          width={W}
+          height={H}
+          className="block"
+          role="img"
+          aria-label={`Noites, dias e umidade dos últimos ${COMPACT_DAYS} dias contra a faixa da ficha`}
+        >
+          {panels.map((d, i) => {
+            const top = TOP + i * (COMPACT_PANEL_H + COMPACT_GAP);
+            const days = d.days.slice(-COMPACT_DAYS);
+            const x = (k: number) => L + ((k + 0.5) / days.length) * plotW;
+            const values = days.flatMap((day) => (day.value == null ? [] : [day.value]));
+            const { min, max } = d.range;
+            const lo = Math.min(...values, min ?? Infinity, max ?? Infinity) - 2;
+            const hi = Math.max(...values, max ?? -Infinity, min ?? -Infinity) + 2;
+            const y = (v: number) => top + (1 - (v - lo) / (hi - lo)) * COMPACT_PANEL_H;
+            const bandTop = max != null ? y(max) : top;
+            const bandBottom = min != null ? y(min) : top + COMPACT_PANEL_H;
+            // a curva se parte nos dias sem clima
+            const runs: Array<Array<[number, number]>> = [];
+            let cur: Array<[number, number]> = [];
+            days.forEach((day, k) => {
+              if (day.value == null) {
+                if (cur.length) runs.push(cur);
+                cur = [];
+              } else cur.push([x(k), y(day.value)]);
+            });
+            if (cur.length) runs.push(cur);
+            return (
+              <g key={d.dimension}>
+                <rect x={L} y={bandTop} width={plotW} height={Math.max(0, bandBottom - bandTop)} fill="var(--salvia)" opacity={0.9} />
+                {[min, max].map((v) =>
+                  v == null ? null : (
+                    <text key={`r${v}`} x={L - 4} y={y(v) + 3} textAnchor="end" fontSize={8} fontFamily={mono} fill="var(--musgo)">
+                      {num(v)}
+                    </text>
+                  ),
+                )}
+                {runs.map((run) => (
+                  <path key={run[0]!.join()} d={smoothPath(run)} fill="none" stroke="var(--folhagem)" strokeWidth={1.5} strokeLinecap="round" />
                 ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.7rem] text-musgo" aria-hidden="true">
-        {(["inside", "near", "outside"] as const).map((st) => (
-          <li key={st} className="flex items-center gap-1.5">
-            <span className={`inline-block size-2.5 rounded-[2px] ${TICK[st]}`} />
-            {st === "inside" ? "dentro" : STATE_NAME[st]}
-          </li>
-        ))}
+                {days.map((day, k) =>
+                  day.state === "outside" && day.value != null ? <circle key={day.date} cx={x(k)} cy={y(day.value)} r={2} fill="var(--ocre)" /> : null,
+                )}
+                <text x={L} y={top - 4} fontSize={8.5} fontFamily={mono} fill="var(--musgo)" letterSpacing="0.08em">
+                  {DIMENSION_NAME[d.dimension].toUpperCase()}
+                </text>
+                <text x={W - R} y={top - 4} textAnchor="end" fontSize={8.5} fontFamily={mono} fill="var(--musgo)">
+                  {rangeText(d.range, unitOf(d.dimension))}
+                </text>
+                <line x1={L} x2={W - R} y1={top + COMPACT_PANEL_H} y2={top + COMPACT_PANEL_H} stroke="var(--linha)" />
+              </g>
+            );
+          })}
+        </svg>
+      )}
+      <ul className="flex flex-wrap gap-x-3.5 gap-y-0.5 px-1 pt-1.5 text-[0.7rem] text-musgo" aria-hidden="true">
+        <li className="flex items-center gap-1.5">
+          <i className="inline-block size-[9px] shrink-0 rounded-[2px] bg-salvia" />
+          faixa da ficha
+        </li>
+        <li className="flex items-center gap-1.5">
+          <i className="inline-block h-[2px] w-3 shrink-0 bg-folhagem" />
+          clima do dia
+        </li>
+        <li className="flex items-center gap-1.5">
+          <i className="inline-block size-[9px] shrink-0 rounded-full bg-ocre" />
+          fora
+        </li>
       </ul>
     </div>
   );
