@@ -2,13 +2,17 @@ import { addDays, aggregateHourly, type IsoDate } from "@orchidiary/shared";
 
 /**
  * Cliente Open-Meteo (grátis, sem chave).
- * - Últimos ~3 meses: API de previsão (aceita start_date/end_date no passado).
+ * - Últimos ~2 meses: API de previsão (aceita start_date/end_date no passado).
  * - Mais antigo: API histórica (archive), útil para preencher lacunas e importar fotos antigas.
  * Umidade, ponto de orvalho e VPD são consolidados a partir dos dados horários.
  */
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive";
-export const FORECAST_LOOKBACK_DAYS = 85;
+/**
+ * Até onde a previsão guarda o passado. Ela devolve null antes de ~66 dias (visto em X.2026)
+ * e o archive chega a poucos dias de hoje; 60 deixa folga dos dois lados.
+ */
+export const FORECAST_LOOKBACK_DAYS = 60;
 
 const DAILY_VARS = [
   "temperature_2m_max",
