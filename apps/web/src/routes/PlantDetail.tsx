@@ -10,7 +10,6 @@ import { PhotoViewer } from "../components/PhotoViewer.tsx";
 import { OriginFlag } from "../components/OriginFlag.tsx";
 import { type BatchAction, PlaceBatchSheet } from "../components/PlaceBatchSheet.tsx";
 import { ancestorsLabel, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
-import { TemperatureRegister } from "../components/TemperatureRegister.tsx";
 import { useToast } from "../components/Toast.tsx";
 import { BackLink, Button, ErrorText, Field, Icon, type IconName, Input, PressedOrchid } from "../components/ui.tsx";
 import {
@@ -260,16 +259,7 @@ export function PlantDetail() {
         </div>
       </section>
 
-      <section className="cartao mt-5 px-4 py-4" aria-label="Registro térmico">
-        <TemperatureRegister days={weather.slice(-30)} />
-        {current?.environment === "indoor" && (
-          <p className="mt-2.5 text-[0.82rem] text-musgo">
-            Clima de fora, como referência. Dentro de casa vale o que você medir.
-          </p>
-        )}
-      </section>
-
-      <ClimatePanel plantId={plant.id} plantName={plant.nickname} locations={locations} />
+      <ClimatePanel plantId={plant.id} plantName={plant.nickname} locations={locations} weather={weather} />
 
       <section className="mt-6 space-y-3" aria-label="Registrar">
         {photoError && !cover && (

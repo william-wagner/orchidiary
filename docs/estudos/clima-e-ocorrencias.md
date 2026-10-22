@@ -11,7 +11,7 @@ O protótipo é a referência de desenho: escalas, alturas, formas dos pontos, a
 
 - A seção **Conforto** vira **"Clima e ocorrências"**, no mesmo lugar: entre o cabeçalho da ficha e o livro de registro.
 - Vem **fechada** por padrão (decidido depois do primeiro teste no app). O estado aberto/fechado fica lembrado no aparelho e vale para todas as plantas (`orchidiary:clima-aberto`, que só guarda `1` quando aberta).
-- Fechada, mostra um gráfico simples dos **últimos 30 dias**: uma curva suave do clima passando pela faixa de conforto da ficha, um painel pequeno por dimensão (noites, dias, umidade), com ponto ocre nos dias fora, mais os selos das dimensões em atenção ou "Tudo dentro da faixa na última semana". A janela escolhida não muda esse resumo, e as ocorrências só são buscadas quando a seção abre.
+- Fechada, mostra o resumo dos **últimos 30 dias**, que **substitui o card "Registro térmico"** (ele sai da ficha): uma coluna por dia indo da mínima à máxima, na cor da temperatura média (a escala do antigo registro, como legenda), sobre a faixa de conforto da ficha (da mínima das noites à máxima dos dias), com os limites escritos à esquerda ("30 °C", "16 °C"). No cabeçalho, "ontem 13,9–24,2 °C". Abaixo, os selos das dimensões em atenção, com a contagem da última semana ("noites frias · 3 de 7 dias"), ou "Tudo dentro da faixa na última semana". A umidade fica só nos selos. A janela escolhida não muda esse resumo, e as ocorrências só são buscadas quando a seção abre. Planta sem faixas na ficha mantém o Registro térmico antigo dentro da seção.
 
 ## 2. O gráfico (proposta "Pauta")
 

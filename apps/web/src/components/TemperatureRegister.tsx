@@ -4,7 +4,7 @@ import type { WeatherDay } from "../lib/api.ts";
  * Faixas de cor do registro térmico, na paleta do caderno.
  * Frio em azul acinzentado, conforto em verdes, calor em ocre e terracota.
  */
-const BANDS: Array<{ max: number; color: string; label: string }> = [
+export const BANDS: Array<{ max: number; color: string; label: string }> = [
   { max: 16, color: "#8FA8BA", label: "até 16 °C" },
   { max: 19, color: "#A9C3A0", label: "17–19 °C" },
   { max: 22, color: "#6F9A6A", label: "20–22 °C" },

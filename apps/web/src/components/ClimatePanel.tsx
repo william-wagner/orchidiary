@@ -27,10 +27,13 @@ import {
   weekStart,
 } from "@orchidiary/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { api, type ComfortDimensionReport, type Occurrence, type PlantComfort, type PlantLocation } from "../lib/api.ts";
+import { type ReactNode, useState } from "react";
+import { api, type ComfortDimensionReport, type Occurrence, type PlantComfort, type PlantLocation, type WeatherDay } from "../lib/api.ts";
 import { EVENT_LABEL } from "../lib/events.ts";
 import { LOCAL_TZ } from "../lib/format.ts";
+import { useWidth } from "../lib/useWidth.ts";
+import { ClimateSummary } from "./ClimateSummary.tsx";
+import { TemperatureRegister } from "./TemperatureRegister.tsx";
 import { OccurrenceSheet } from "./OccurrenceSheet.tsx";
 import { Icon } from "./ui.tsx";
 
@@ -114,7 +117,17 @@ const occurrenceLabel = (o: Occurrence) => (o.kind === "photo" ? "Fotografia" : 
  * de tempo só, a faixa da ficha ao fundo, e a fita do que aconteceu com a planta embaixo.
  * Janela, camadas e aberto/fechado ficam lembrados no aparelho.
  */
-export function ClimatePanel({ plantId, plantName, locations }: { plantId: string; plantName: string; locations: PlantLocation[] }) {
+export function ClimatePanel({
+  plantId,
+  plantName,
+  locations,
+  weather,
+}: {
+  plantId: string;
+  plantName: string;
+  locations: PlantLocation[];
+  weather: WeatherDay[];
+}) {
   const [open, setOpen] = useState(() => readPref(OPEN_KEY, (r) => r === "1"));
   const [window, setWindow] = useState<ChartWindow>(() => readPref(WINDOW_KEY, (r) => parseChartWindow(r) ?? CHART_DEFAULT_WINDOW));
   const [view, setView] = useState<View>(() => readPref(VIEW_KEY, parseView));
@@ -139,9 +152,11 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
 
   if (c.status === "no_ranges") {
     return (
-      <section className="mt-5 rounded-xl border border-dashed border-contorno px-4 py-4 text-[0.86rem] text-musgo" aria-label="Clima e ocorrências">
-        <p className="font-serif text-[1.15rem] text-tinta">Clima e ocorrências</p>
-        <p className="mt-1">A ficha de cultivo desta planta não tem faixas de temperatura nem de umidade para comparar com o clima.</p>
+      <section className="cartao mt-5 px-4 py-4" aria-label="Clima e ocorrências">
+        <TemperatureRegister days={weather.slice(-COMPACT_DAYS)} />
+        <p className="mt-3 border-t border-dotted border-contorno pt-2.5 text-[0.82rem] text-musgo">
+          A ficha de cultivo desta planta não tem faixas de temperatura nem de umidade para comparar com o clima.
+        </p>
       </section>
     );
   }
@@ -165,7 +180,7 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
   const problems = c.dimensions.filter((d) => d.attention.direction && !d.silenced);
   const items = occurrences.data?.items ?? [];
   // fechada, o resumo cobre os últimos 30 dias, qualquer que seja a janela escolhida
-  const compactFrom = open ? c.from : (c.dimensions[0]?.days.at(-COMPACT_DAYS)?.date ?? c.from);
+  const yesterday = weather.at(-1);
 
   return (
     <section className="cartao mt-5 px-4 py-4" aria-label="Clima e ocorrências">
@@ -182,19 +197,21 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
             Clima e ocorrências
           </span>
           <span className="typed text-[0.7rem] whitespace-nowrap">
-            {shortDate(compactFrom)} – {herbariumDate(c.to, "UTC")}
+            {!open && yesterday
+              ? `ontem ${yesterday.tempMin ?? "?"}–${yesterday.tempMax ?? "?"} °C`
+              : `${shortDate(c.from)} – ${herbariumDate(c.to, "UTC")}`}
           </span>
         </button>
       </h2>
 
       {!open ? (
         <div id={`clima-${plantId}`}>
-          <CompactChart report={c} />
+          <ClimateSummary report={c} weather={weather} />
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[0.8rem] text-musgo">
           {problems.length ? (
             problems.map((d) => (
               <span key={d.dimension} className="selo selo-ocre">
-                {COMFORT_LABEL[d.dimension][d.attention.direction as -1 | 1]}
+                {COMFORT_LABEL[d.dimension][d.attention.direction as -1 | 1]} · {d.attention.count} de {d.attention.total} dias
               </span>
             ))
           ) : (
@@ -237,120 +254,8 @@ export function ClimatePanel({ plantId, plantName, locations }: { plantId: strin
   );
 }
 
-// ─── Resumo da seção fechada ─────────────────────────────────────────────────
-
-/** Últimos dias que a seção fechada resume */
+/** Dias do resumo da seção fechada e do Registro térmico */
 const COMPACT_DAYS = 30;
-const COMPACT_PANEL_H = 36;
-const COMPACT_GAP = 18;
-
-/**
- * Curva suave por pontos (Catmull-Rom em Béziers). Os controles ficam entre as alturas dos
- * dois pontos vizinhos, para a curva não passar de picos que o dado não teve.
- */
-function smoothPath(points: Array<[number, number]>): string {
-  if (points.length === 1) return `M${points[0]![0].toFixed(1)},${points[0]![1].toFixed(1)}`;
-  let d = `M${points[0]![0].toFixed(1)},${points[0]![1].toFixed(1)}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i - 1] ?? points[i]!;
-    const p1 = points[i]!;
-    const p2 = points[i + 1]!;
-    const p3 = points[i + 2] ?? p2;
-    const lo = Math.min(p1[1], p2[1]);
-    const hi = Math.max(p1[1], p2[1]);
-    const c1y = Math.min(hi, Math.max(lo, p1[1] + (p2[1] - p0[1]) / 6));
-    const c2y = Math.min(hi, Math.max(lo, p2[1] - (p3[1] - p1[1]) / 6));
-    d += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)},${c1y.toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
-  }
-  return d;
-}
-
-/**
- * Resumo da seção fechada: a curva do clima dos últimos 30 dias passando pela faixa de conforto
- * da ficha, um painel pequeno por dimensão (cada uma tem a sua escala). Dia fora da faixa leva um ponto ocre.
- */
-function CompactChart({ report }: { report: Report }) {
-  const [ref, W] = useWidth();
-  const panels = report.dimensions;
-  const H = TOP + panels.length * (COMPACT_PANEL_H + COMPACT_GAP) - COMPACT_GAP + 4;
-  const plotW = Math.max(0, W - L - R);
-  return (
-    <div ref={ref} className="mt-2.5">
-      {W > 0 && (
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          width={W}
-          height={H}
-          className="block"
-          role="img"
-          aria-label={`Noites, dias e umidade dos últimos ${COMPACT_DAYS} dias contra a faixa da ficha`}
-        >
-          {panels.map((d, i) => {
-            const top = TOP + i * (COMPACT_PANEL_H + COMPACT_GAP);
-            const days = d.days.slice(-COMPACT_DAYS);
-            const x = (k: number) => L + ((k + 0.5) / days.length) * plotW;
-            const values = days.flatMap((day) => (day.value == null ? [] : [day.value]));
-            const { min, max } = d.range;
-            const lo = Math.min(...values, min ?? Infinity, max ?? Infinity) - 2;
-            const hi = Math.max(...values, max ?? -Infinity, min ?? -Infinity) + 2;
-            const y = (v: number) => top + (1 - (v - lo) / (hi - lo)) * COMPACT_PANEL_H;
-            const bandTop = max != null ? y(max) : top;
-            const bandBottom = min != null ? y(min) : top + COMPACT_PANEL_H;
-            // a curva se parte nos dias sem clima
-            const runs: Array<Array<[number, number]>> = [];
-            let cur: Array<[number, number]> = [];
-            days.forEach((day, k) => {
-              if (day.value == null) {
-                if (cur.length) runs.push(cur);
-                cur = [];
-              } else cur.push([x(k), y(day.value)]);
-            });
-            if (cur.length) runs.push(cur);
-            return (
-              <g key={d.dimension}>
-                <rect x={L} y={bandTop} width={plotW} height={Math.max(0, bandBottom - bandTop)} fill="var(--salvia)" opacity={0.9} />
-                {[min, max].map((v) =>
-                  v == null ? null : (
-                    <text key={`r${v}`} x={L - 4} y={y(v) + 3} textAnchor="end" fontSize={8} fontFamily={mono} fill="var(--musgo)">
-                      {num(v)}
-                    </text>
-                  ),
-                )}
-                {runs.map((run) => (
-                  <path key={run[0]!.join()} d={smoothPath(run)} fill="none" stroke="var(--folhagem)" strokeWidth={1.5} strokeLinecap="round" />
-                ))}
-                {days.map((day, k) =>
-                  day.state === "outside" && day.value != null ? <circle key={day.date} cx={x(k)} cy={y(day.value)} r={2} fill="var(--ocre)" /> : null,
-                )}
-                <text x={L} y={top - 4} fontSize={8.5} fontFamily={mono} fill="var(--musgo)" letterSpacing="0.08em">
-                  {DIMENSION_NAME[d.dimension].toUpperCase()}
-                </text>
-                <text x={W - R} y={top - 4} textAnchor="end" fontSize={8.5} fontFamily={mono} fill="var(--musgo)">
-                  {rangeText(d.range, unitOf(d.dimension))}
-                </text>
-                <line x1={L} x2={W - R} y1={top + COMPACT_PANEL_H} y2={top + COMPACT_PANEL_H} stroke="var(--linha)" />
-              </g>
-            );
-          })}
-        </svg>
-      )}
-      <ul className="flex flex-wrap gap-x-3.5 gap-y-0.5 px-1 pt-1.5 text-[0.7rem] text-musgo" aria-hidden="true">
-        <li className="flex items-center gap-1.5">
-          <i className="inline-block size-[9px] shrink-0 rounded-[2px] bg-salvia" />
-          faixa da ficha
-        </li>
-        <li className="flex items-center gap-1.5">
-          <i className="inline-block h-[2px] w-3 shrink-0 bg-folhagem" />
-          clima do dia
-        </li>
-        <li className="flex items-center gap-1.5">
-          <i className="inline-block size-[9px] shrink-0 rounded-full bg-ocre" />
-          fora
-        </li>
-      </ul>
-    </div>
-  );
-}
 
 // ─── Controles ───────────────────────────────────────────────────────────────
 
@@ -423,21 +328,6 @@ function Controls({
 }
 
 // ─── O gráfico ───────────────────────────────────────────────────────────────
-
-/** Largura disponível, acompanhando giros de tela e redimensionamentos */
-function useWidth() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    setWidth(Math.round(el.getBoundingClientRect().width));
-    const observer = new ResizeObserver(([entry]) => setWidth(Math.round(entry!.contentRect.width)));
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width] as const;
-}
 
 // geometria (px): margem esquerda para os números da faixa, altura de cada painel e o vão entre eles
 const L = 30;
