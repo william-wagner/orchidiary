@@ -4,6 +4,7 @@ import {
   buildOccurrences,
   CHART_DEFAULT_WINDOW,
   chartRange,
+  clusterOccurrences,
   EVENT_LAYER,
   isWeeklyChart,
   parseChartWindow,
@@ -62,6 +63,29 @@ test("fita: todo tipo de evento tem camada; manejo e notas separados dos marcos"
   assert.equal(EVENT_LAYER.note, "notes");
   assert.equal(EVENT_LAYER.moved, "milestones");
   assert.equal(EVENT_LAYER.pest, "health");
+});
+
+test("fita: agrupa o mesmo dia e depois o que fica a menos de 17 px", () => {
+  const items = [
+    { id: 1, day: "2026-10-01" },
+    { id: 2, day: "2026-10-01" },
+    { id: 3, day: "2026-10-02" }, // 10 px depois: junta
+    { id: 4, day: "2026-10-03" }, // 20 px do primeiro ponto do grupo: novo ponto
+    { id: 5, day: "2026-10-10" },
+  ];
+  const xOf = (day: string) => Number(day.slice(8)) * 10;
+  const groups = clusterOccurrences(items, (i) => i.day, xOf);
+  assert.deepEqual(
+    groups.map((g) => ({ x: g.x, days: g.days, ids: g.items.map((i) => i.id) })),
+    [
+      { x: 10, days: ["2026-10-01", "2026-10-02"], ids: [1, 2, 3] },
+      { x: 30, days: ["2026-10-03"], ids: [4] },
+      { x: 100, days: ["2026-10-10"], ids: [5] },
+    ],
+  );
+  // tela larga: cada dia é um ponto
+  assert.equal(clusterOccurrences(items, (i) => i.day, (d) => xOf(d) * 3).length, 4);
+  assert.deepEqual(clusterOccurrences([], (i: { day: string }) => i.day, xOf), []);
 });
 
 test("medição: 19h às 8h vai para as noites; o resto, para os dias (hora local)", () => {

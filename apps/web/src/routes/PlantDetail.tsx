@@ -2,7 +2,7 @@ import { formatLocality, joinsBatch } from "@orchidiary/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, Fragment, type ReactNode, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import { ComfortPanel } from "../components/ComfortPanel.tsx";
+import { ClimatePanel } from "../components/ClimatePanel.tsx";
 import { CoverSheet } from "../components/CoverSheet.tsx";
 import { MovePrompt } from "../components/MovePrompt.tsx";
 import { PhotoCapture } from "../components/PhotoCapture.tsx";
@@ -24,23 +24,8 @@ import {
   type Timeline,
 } from "../lib/api.ts";
 import { coverOf } from "../lib/cover.ts";
+import { EVENT_LABEL } from "../lib/events.ts";
 import { accession, coords, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
-
-const EVENT_LABEL: Record<string, string> = {
-  note: "Anotação",
-  watering: "Rega",
-  fertilizing: "Adubação",
-  repotting: "Replante",
-  bloom_start: "Começou a florir",
-  bloom_end: "Fim da floração",
-  new_growth: "Broto novo",
-  new_root: "Raiz nova",
-  keiki: "Keiki",
-  pest: "Praga",
-  disease: "Doença",
-  treatment: "Tratamento",
-  moved: "Mudou de lugar",
-};
 
 /** Eventos que ganham selo no livro de registro */
 const STAMPED: Record<string, string> = {
@@ -139,6 +124,7 @@ export function PlantDetail() {
     qc.invalidateQueries({ queryKey: ["timeline", id] });
     qc.invalidateQueries({ queryKey: ["plants"] });
     qc.invalidateQueries({ queryKey: ["comfort", id] });
+    qc.invalidateQueries({ queryKey: ["occurrences", id] });
   };
 
   const current = timeline.data?.locations.find((l) => l.validTo === null);
@@ -310,7 +296,7 @@ export function PlantDetail() {
         )}
       </section>
 
-      <ComfortPanel plantId={plant.id} />
+      <ClimatePanel plantId={plant.id} />
 
       <section className="mt-6 space-y-3" aria-label="Registrar">
         {photoError && !cover && (

@@ -115,6 +115,42 @@ export const EVENT_LAYER: Record<EventType, OccurrenceLayer> = {
   note: "notes",
 };
 
+export interface OccurrenceCluster<T> {
+  /** Posição do ponto no eixo: a do primeiro dia do grupo */
+  x: number;
+  /** Dias locais cobertos, em ordem */
+  days: IsoDate[];
+  items: T[];
+}
+
+/**
+ * Pontos da fita: primeiro tudo do mesmo dia vira um grupo; depois, grupos a menos de
+ * `minGap` px do ponto anterior se juntam a ele. Se ajusta sozinho a qualquer janela e
+ * largura de tela. `items` precisa vir em ordem crescente.
+ */
+export function clusterOccurrences<T>(
+  items: readonly T[],
+  dayOf: (item: T) => IsoDate,
+  xOfDay: (day: IsoDate) => number,
+  minGap: number = OCCURRENCE_CLUSTER_PX,
+): OccurrenceCluster<T>[] {
+  const out: OccurrenceCluster<T>[] = [];
+  for (const item of items) {
+    const day = dayOf(item);
+    const last = out.at(-1);
+    if (last && last.days.at(-1) === day) {
+      last.items.push(item);
+      continue;
+    }
+    const x = xOfDay(day);
+    if (last && x - last.x < minGap) {
+      last.days.push(day);
+      last.items.push(item);
+    } else out.push({ x, days: [day], items: [item] });
+  }
+  return out;
+}
+
 /** Medição manual entre 19h e 8h vai para o painel das noites; o resto, para o dos dias. */
 export const NIGHT_FROM_HOUR = 19;
 export const DAY_FROM_HOUR = 8;
