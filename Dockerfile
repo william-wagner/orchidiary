@@ -16,6 +16,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 FROM deps AS web-build
 COPY packages/shared packages/shared
 COPY apps/web apps/web
+# a página /roadmap embute o markdown no build
+COPY docs/ROADMAP.md docs/ROADMAP.md
 RUN pnpm --filter @orchidiary/web build
 
 # Imagem final: a API roda com tsx (imports .ts), então leva as dependências completas
