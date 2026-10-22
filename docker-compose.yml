@@ -7,7 +7,8 @@ services:
       # Defina POSTGRES_PASSWORD no .env (no servidor, uma senha longa e aleatória)
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
       POSTGRES_DB: orchidiary
-    # Sem "ports": o banco só é visível na rede interna do Docker.
+    ports:
+      - "127.0.0.1:5432:5432"
     # Para desenvolver com pnpm dev, o docker-compose.dev.yml expõe a 5440 só em localhost (a 5432 costuma ficar presa por outros programas).
     volumes:
       - pgdata:/var/lib/postgresql/data
