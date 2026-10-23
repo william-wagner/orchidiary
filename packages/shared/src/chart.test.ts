@@ -20,6 +20,7 @@ const TZ = "America/Sao_Paulo";
 test("janela: padrão sem parâmetro, valores da lista, 'all' e recusa do resto", () => {
   assert.equal(parseChartWindow(undefined), CHART_DEFAULT_WINDOW);
   assert.equal(parseChartWindow(""), CHART_DEFAULT_WINDOW);
+  assert.equal(parseChartWindow("7"), 7);
   assert.equal(parseChartWindow("30"), 30);
   assert.equal(parseChartWindow("360"), 360);
   assert.equal(parseChartWindow("all"), "all");

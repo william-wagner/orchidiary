@@ -6,7 +6,7 @@ import { type LocationPeriod, periodAt } from "./locations.ts";
  * Gráfico "Clima e ocorrências" da ficha da planta: janela de dias, agregação por semana
  * e a fita de ocorrências. Ver docs/estudos/clima-e-ocorrencias.md.
  */
-export const CHART_WINDOWS = [30, 90, 180, 360] as const;
+export const CHART_WINDOWS = [7, 30, 90, 180, 360] as const;
 /** Janela do gráfico em dias, ou "all" (todo o histórico da planta) */
 export type ChartWindow = (typeof CHART_WINDOWS)[number] | "all";
 export const CHART_WINDOW_OPTIONS: readonly ChartWindow[] = [...CHART_WINDOWS, "all"];

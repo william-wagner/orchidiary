@@ -182,11 +182,11 @@ export const plantRoutes = new Hono<AppEnv>()
   })
 
   // ─── Índice de conforto e gráfico "Clima e ocorrências" ────────────────────
-  // ?days=30|90|180|360|all (padrão 90)
+  // ?days=7|30|90|180|360|all (padrão 90)
   .get("/:id/comfort", async (c) => {
     const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
     const window = parseChartWindow(c.req.query("days"));
-    if (window === null) return c.json({ error: "Janela inválida: use 30, 90, 180, 360 ou all." }, 400);
+    if (window === null) return c.json({ error: "Janela inválida: use 7, 30, 90, 180, 360 ou all." }, 400);
     return c.json(await plantComfort(plant, window));
   })
 
