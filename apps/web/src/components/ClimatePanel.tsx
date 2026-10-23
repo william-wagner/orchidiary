@@ -8,7 +8,6 @@ import {
   COMFORT_LABEL,
   COMFORT_MARGIN,
   type ComfortDimension,
-  type ComfortRange,
   type ComfortState,
   DEFAULT_OCCURRENCE_LAYERS,
   daysBetween,
@@ -99,12 +98,6 @@ const romanMonth = (iso: IsoDate) => herbariumDate(iso, "UTC").split(".")[1]!;
 const unitOf = (d: ComfortDimension) => (d === "humidity" ? "%" : "°C");
 const DIMENSION_NAME: Record<ComfortDimension, string> = { night: "noites", day: "dias", humidity: "umidade" };
 const WINDOW_LABEL = (w: ChartWindow) => (w === "all" ? "tudo" : `${w} d`);
-
-function rangeText(range: ComfortRange, unit: string) {
-  if (range.min != null && range.max != null) return `${num(range.min)}–${num(range.max)}${unit}`;
-  if (range.min != null) return `a partir de ${num(range.min)}${unit}`;
-  return `até ${num(range.max!)}${unit}`;
-}
 
 const dayOf = (o: Occurrence) => toLocalDate(new Date(o.at), LOCAL_TZ);
 const layerOf = (o: Occurrence): OccurrenceLayer | null =>
@@ -328,7 +321,7 @@ function Controls({
 // ─── O gráfico ───────────────────────────────────────────────────────────────
 
 // geometria (px): margem esquerda para os números da faixa, altura de cada painel e o vão entre eles
-const L = 30;
+const L = 38;
 const R = 10;
 const TOP = 14;
 const PANEL_H = 54;
@@ -524,6 +517,7 @@ function Pauta({
                   v == null ? null : (
                     <text key={`r${v}`} x={L - 4} y={y(v) + 3} textAnchor="end" fontSize={8} fontFamily={mono} fill="var(--musgo)">
                       {num(v)}
+                      {unit}
                     </text>
                   ),
                 )}
@@ -544,9 +538,6 @@ function Pauta({
                 <text x={L} y={top - 4} fontSize={8.5} fontFamily={mono} fill="var(--musgo)" letterSpacing="0.08em">
                   {DIMENSION_NAME[d.dimension].toUpperCase()}
                   {weekly ? " · POR SEMANA" : ""}
-                </text>
-                <text x={W - R} y={top - 4} textAnchor="end" fontSize={8.5} fontFamily={mono} fill="var(--musgo)">
-                  {rangeText(d.range, unit)}
                 </text>
                 <line x1={L} x2={W - R} y1={top + PANEL_H} y2={top + PANEL_H} stroke="var(--linha)" />
               </g>

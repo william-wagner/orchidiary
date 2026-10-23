@@ -36,14 +36,21 @@ export function Collection() {
   const hasComfort = (plants.data ?? []).some((p) => p.comfort !== null);
   const outOfRange = (plants.data ?? []).filter((p) => p.comfort?.length);
   const comfortFilter = !place && hasComfort && params.get("conforto") === "fora";
+  // ao ar livre: ambiente do período atual (o do lugar, ou o da planta sem lugar)
+  const outdoor = (plants.data ?? []).filter((p) => p.currentLocation?.environment === "outdoor");
+  const outdoorFilter = !place && !comfortFilter && outdoor.length > 0 && params.get("ambiente") === "ar-livre";
+  const allOn = !place && !comfortFilter && !outdoorFilter;
   const shown = place
     ? (plants.data ?? []).filter((p) => p.currentLocation?.placeId === place.id)
     : comfortFilter
       ? outOfRange
-      : plants.data;
+      : outdoorFilter
+        ? outdoor
+        : plants.data;
   const batchable = shown?.filter((p) => joinsBatch(p.status)).length ?? 0;
   const choose = (id: string | null) => setParams(id ? { local: id } : {}, { replace: true });
   const chooseOutOfRange = () => setParams({ conforto: "fora" }, { replace: true });
+  const chooseOutdoor = () => setParams({ ambiente: "ar-livre" }, { replace: true });
 
   return (
     <main className="pb-8">
@@ -70,16 +77,26 @@ export function Collection() {
         </div>
       )}
 
-      {places.length > 0 && (
+      {(places.length > 0 || outdoor.length > 0) && (
         <div className="mb-5 px-5">
           <div role="toolbar" aria-label="Filtrar por lugar" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
             <button
-              aria-pressed={!place && !comfortFilter}
+              aria-pressed={allOn}
               onClick={() => choose(null)}
-              className={`${placeChip} ${!place && !comfortFilter ? "border-tinta bg-tinta text-folha" : "border-contorno bg-folha text-folhagem active:bg-salvia-clara"}`}
+              className={`${placeChip} ${allOn ? "border-tinta bg-tinta text-folha" : "border-contorno bg-folha text-folhagem active:bg-salvia-clara"}`}
             >
-              Todas <span className={`typed text-[0.72rem] ${!place && !comfortFilter ? "text-salvia" : ""}`}>{count}</span>
+              Todas <span className={`typed text-[0.72rem] ${allOn ? "text-salvia" : ""}`}>{count}</span>
             </button>
+            {outdoor.length > 0 && (
+              <button
+                aria-pressed={outdoorFilter}
+                onClick={chooseOutdoor}
+                className={`${placeChip} ${outdoorFilter ? "border-tinta bg-tinta text-folha" : "border-contorno bg-folha text-folhagem active:bg-salvia-clara"}`}
+              >
+                <Icon name="sun" className="size-3.5" />
+                Ao ar livre <span className={`typed text-[0.72rem] ${outdoorFilter ? "text-salvia" : ""}`}>{outdoor.length}</span>
+              </button>
+            )}
             {hasComfort && (
               <button
                 aria-pressed={comfortFilter}
