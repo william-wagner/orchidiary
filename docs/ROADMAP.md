@@ -30,14 +30,17 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
     - Um evento por planta, como hoje, com a coluna `batch_id` em `events`: desfaz o lote, mostra "com outras N do local" no livro da planta e permite listar os lotes do local.
     - Exclusões lembradas numa tabela pequena por local + ação (as plantas que ficaram de fora no último lote).
     - Medição em lote é do local, não da planta: `manual_readings` ganha `place_id`, `plant_id` passa a aceitar nulo e a restrição exige exatamente um dos dois. O livro da planta mostra as leituras do lugar feitas enquanto o período dela ali estava aberto (nada retroativo). Com "Medição" escolhida, a lista de plantas sai da folha.
-- [ ] Registrar a cruza (parentais) no tombamento da planta
+- [x] Registrar a cruza (parentais) no tombamento da planta
   - Necessidade: uma planta *Renanthera monachica* × *Vanda falcata*. As duas espécies estão no catálogo, mas hoje a planta guarda um táxon só (`plants.taxon_id`, ou `taxon_text` em nome livre), então não há como dizer que é cruzamento delas. O nothogênero que daria nome ao híbrido (*Renantanda*) também não está em `catalog.ts`.
-  - A decidir (estudo antes de codar, em `docs/estudos/`): como modelar a cruza. Pontas a resolver:
-    - Parentais: semente e pólen (ordem importa na convenção, `semente × pólen`) como dois táxons de qualquer nível, ou nome livre quando um deles não está no catálogo. Parental desconhecido (`× ?`) tem que ser possível.
-    - Ligação com o catálogo: planta que aponta para o híbrido registrado (grex) já herda os parentais dele; planta de cruza própria, sem grex registrado, guarda os parentais na própria planta. Avaliar se o cruzamento sem nome vira um táxon `hybrid` sob o nothogênero ou fica só como atributo da planta.
-    - Ficha de cultivo: sem ficha própria, herdar do gênero (ou combinar a dos dois parentais). Regra pura em `packages/shared/src/taxonomy.ts`, com teste.
-    - Exibição: nome em fórmula (*Renanthera monachica* × *Vanda falcata*, cada espécie com a classe `taxon`) no cadastro, na ficha e na Coleção; busca da Coleção e do `TaxonPicker` achando a planta por qualquer um dos parentais; `OriginFlag` já trata cruzamento.
-  - Entrega mínima: no cadastro e na edição da planta, marcar "É uma cruza" e escolher os dois parentais; a ficha mostra a fórmula. A genealogia completa (keikis, divisões, árvore de ancestrais; Fase 3) fica de fora, mas o modelo não pode fechar a porta para ela.
+  - **Decidido e implementado** (estudo de 23.X.2026; migrações `0015_crosses` e `0016_drop_taxon_text`). Especificação em `docs/estudos/cruza-no-tombamento.md`; protótipo navegável em `docs/estudos/cruza-no-tombamento.html`:
+    - A cruza sem nome fica na planta, não vira táxon (`taxa` é de todos). O `taxon_id` da planta passa a ser o **Nome**, opcional: gênero híbrido (*Renantanda*), gênero ou grex.
+    - Tabela `crosses` (o cruzamento, com `user_id`; nulo = catálogo), apontada por `plants.cross_id` ou `taxa.cross_id` (só grex). Cada lado (semente, pólen) é um táxon de qualquer nível, nome livre ou desconhecido, e os dois desconhecidos valem ("Cruza sem nome"). Irmãs podem compartilhar a cruza. Checks no banco: planta com táxon **ou** cruza; só grex tem cruza no catálogo.
+    - Trocar a determinação troca a genealogia, sem histórico. Apagar táxon é sempre `restrict` (inclusive `plants.taxon_id`); fundir táxon fica para depois.
+    - Ficha: a de um dos parentais, escolhido tocando no card dele (a semente por padrão), com aviso de que é uma cruza. Sem parental no catálogo, sem ficha. Nada de média dos parentais (ver o item "Ficha de cultivo de uma cruza" em Ideias). Na cruza, o título é a fórmula.
+    - Grex registrado se escolhe na Espécie, sem "É uma cruza": a planta é determinada por um táxon **ou** por uma cruza própria, nunca pelos dois. Origem, parentais e ficha do grex vêm do catálogo.
+    - Exibição em fórmula: *Renantanda* (*Renanthera monachica* × *Vanda falcata*), sem abreviar gêneros; origem `cross` para toda cruza.
+    - Nome e etiqueta lado a lado, como nas coleções botânicas: o Nome (ou a Espécie) é sempre do catálogo; "Como veio na etiqueta" guarda o texto literal sem mexer na ficha (`taxon_text` vira `received_name` e passa a conviver com o táxon), e o app sugere religar quando o texto bate com o catálogo. Vale para toda planta.
+  - Entrega mínima: no cadastro e na edição da planta, marcar "É uma cruza" e escolher os dois parentais; a ficha e a Coleção mostram a fórmula; *Renantanda* entra no `catalog.ts`. A genealogia completa (keikis, divisões, árvore de ancestrais; Fase 3) fica de fora, mas o modelo deixa a porta aberta (estudo, §6).
 
 ## Fase 1 — Fundação (este commit)
 
@@ -77,6 +80,7 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
 
 - [ ] Etiqueta com QR code para o vaso
 - [ ] Genealogia (keikis, divisões, parentais de híbridos)
+  - Cruza feita pelo cultivador, com nome dado por ele, vira **táxon pessoal** (`taxa.user_id`, só `hybrid`/`cultivar`, visível só para o dono, selo "não registrado"); as mudas apontam para ele. Lado de cruza apontando para planta da coleção (`seed_plant_id`/`pollen_plant_id`), irmãs, árvore de ancestrais e fundir táxon. Ver `docs/estudos/cruza-no-tombamento.md`, §6.
 - [ ] Lembretes de rega/adubação que consideram a chuva
 - [ ] Editar ficha do Guia pelo app
 - [ ] Faixa própria da planta: o usuário ajusta temperatura e umidade só para aquela planta, sobrescrevendo a ficha ("a minha vive bem a 10°C"). O índice de conforto e os alertas passam a usar a faixa da planta.
@@ -108,7 +112,8 @@ Nenhum registrado por enquanto.
 
 Ajustes em algo que já existe (usabilidade, desempenho, visual, textos).
 
-Nenhuma registrada por enquanto.
+- [ ] Busca na Coleção (média)
+  - Hoje a Coleção só filtra por lugar, "Fora da faixa" e "Ao ar livre". Campo de busca local (a lista já vem inteira), com `normalizeSearch`, por apelido, nº de tombo, nome do táxon, nome da etiqueta e os dois parentais de uma cruza: buscar "falcata" acha a *Renanthera monachica* × *Vanda falcata*. Ver `docs/estudos/cruza-no-tombamento.md`, §7.
 
 ## Ideias
 
@@ -117,5 +122,7 @@ Funcionalidades novas ainda sem fase definida.
 - [x] Registro das chamadas a APIs externas no banco (média)
   - Feito: tabela `external_calls` e cliente instrumentado (`apps/api/src/http/`) usado por Open-Meteo (clima e alertas), Nominatim, OpenAI, Telegram e Google (OAuth e Drive). Registra serviço, operação, URL redigida, status, resultado, duração (e tempo até os headers), bytes, `requestId`/origem e, na OpenAI, o uso de tokens. Retenção própria (30 dias; falhas 90). Detalhes em `docs/ARCHITECTURE.md`.
   - Fora do escopo por decisão: rota e tela de consulta para o master (por ora só pelo banco).
+- [ ] Ficha de cultivo de uma cruza (média)
+  - Hoje a cruza usa a ficha de um dos parentais, escolhido pela pessoa, com um aviso. A média das faixas dos parentais foi descartada: um parental de clima quente e outro de clima frio dão uma faixa que não serve a nenhum. Estudar a regra boa: interseção quando existir, ficha própria da planta (ver "Faixa própria da planta" na Fase 3), aprender com as medições e o comportamento dela, ou só mostrar a ficha de cada parental lado a lado.
 - [ ] Integração com interface de automação Zigbee (sensores e dispositivos da casa)
   - Sensores de temperatura e umidade por lugar viram a fonte do microclima indoor — entram como mais uma fonte do período de localização do lugar, do lado da Open-Meteo. O índice de conforto indoor passa a ser calculado sempre a partir deles, e as plantas indoor entram também nos alertas.

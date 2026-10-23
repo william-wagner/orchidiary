@@ -7,6 +7,7 @@ import type {
   ComfortFlag,
   ComfortRange,
   ChartWindow,
+  CrossSide,
   EventType,
   TaxonOrigin,
   TaxonRank,
@@ -136,10 +137,17 @@ export interface Plant {
   id: string;
   nickname: string;
   accessionNumber: number | null;
+  /** Determinação por táxon do catálogo; nunca junto com `crossId` */
   taxonId: string | null;
-  /** Nome livre, quando o táxon não está no catálogo */
-  taxonText: string | null;
   taxon: TaxonSummary | null;
+  /** Determinação por cruza sem nome registrado; nunca junto com `taxonId` */
+  crossId: string | null;
+  /** Parentais: os da planta ou, num grex com parentais no catálogo, os do grex (`source: "taxon"`) */
+  cross: PlantCross | null;
+  /** De onde vem a ficha de cultivo (já resolvido pela API); null quando não há ficha */
+  care: PlantCare | null;
+  /** O nome como veio na etiqueta ou do vendedor */
+  receivedName: string | null;
   status: string;
   origin: string | null;
   acquiredAt: string | null;
@@ -158,6 +166,26 @@ export interface CollectionPlant extends Plant {
   inBloom: boolean;
   /** Selos do índice de conforto (últimos 7 dias, a pior primeiro); null quando a planta não tem índice */
   comfort: ComfortFlag[] | null;
+}
+
+/** Um lado da cruza: o táxon do catálogo, o nome livre ou null (desconhecido). */
+export type CrossSideView = { taxon: TaxonSummary } | { text: string } | null;
+
+export interface PlantCross {
+  id: string;
+  source: "plant" | "taxon";
+  seed: CrossSideView;
+  pollen: CrossSideView;
+  careFrom: CrossSide | null;
+}
+
+export interface PlantCare {
+  taxonId: string;
+  fullName: string;
+  /** Quando a ficha vem de um parental: qual lado */
+  side: CrossSide | null;
+  /** Quando vem de um parental do grex: o grex */
+  grexId: string | null;
 }
 
 export interface TaxonRef {
@@ -290,6 +318,8 @@ export type PlantComfort =
       historyFrom: string | null;
       from: string;
       to: string;
+      /** Numa cruza, de qual parental veio a ficha */
+      crossCare: { side: CrossSide; fullName: string; fromGrex: boolean } | null;
       dimensions: ComfortDimensionReport[];
       /** Chuva do dia (mm), só dos dias com clima */
       precipitation: Array<{ date: string; mm: number | null }>;

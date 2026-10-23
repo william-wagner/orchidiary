@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { addDays, coordKey, toLocalDate } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
 import { env } from "../env.ts";
@@ -8,6 +8,7 @@ import { sourceLogger } from "../logger.ts";
 import { sendAlert } from "./telegram.ts";
 import { evaluateForecast, type ForecastDay } from "./alertRules.ts";
 import { effectiveCareOf } from "./taxonomy.ts";
+import { identitiesOf } from "./crosses.ts";
 
 async function fetchTomorrow(lat: number, lng: number, tomorrow: string, client: HttpClient): Promise<ForecastDay | null> {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
@@ -52,14 +53,18 @@ export async function runForecastAlerts(now = new Date(), client: HttpClient = h
     )
     .where(
       and(
-        isNotNull(schema.plants.taxonId),
+        // com táxon ou com cruza: quem tem ficha é decidido abaixo
+        or(isNotNull(schema.plants.taxonId), isNotNull(schema.plants.crossId)),
         ne(schema.plants.status, "dead"),
         ne(schema.plants.status, "given_away"),
         eq(sql`coalesce(${schema.places.environment}, ${schema.plantLocations.environment})`, "outdoor"),
       ),
     );
+  // a ficha resolvida: a do táxon ou, numa cruza, a do parental escolhido;
   // faixas herdadas: uma Vanda coerulea sem faixa própria usa a do gênero Vanda
-  const careBy = await effectiveCareOf(rows.map((r) => r.plant.taxonId!));
+  const identities = await identitiesOf(rows.map((r) => r.plant));
+  const careTaxonOf = (plantId: string) => identities.get(plantId)?.care?.taxonId ?? null;
+  const careBy = await effectiveCareOf(rows.map((r) => careTaxonOf(r.plant.id)).filter((id): id is string => !!id));
 
   // Uma previsão por coordenada, compartilhada entre plantas (e usuários) no mesmo ponto
   const forecasts = new Map<string, Promise<ForecastDay | null>>();
@@ -72,7 +77,8 @@ export async function runForecastAlerts(now = new Date(), client: HttpClient = h
 
   let sent = 0;
   for (const { plant, location } of rows) {
-    const care = careBy.get(plant.taxonId!)?.care;
+    const careTaxonId = careTaxonOf(plant.id);
+    const care = careTaxonId ? careBy.get(careTaxonId)?.care : undefined;
     if (!care || (care.tempNightMin == null && care.tempDayMax == null)) continue;
     try {
       const day = await forecastAt(location.lat, location.lng);

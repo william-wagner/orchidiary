@@ -68,5 +68,9 @@ export type TaxonRank = (typeof TAXON_RANKS)[number];
 export const TAXON_ORIGIN_KINDS = ["country", "cross"] as const;
 export type TaxonOriginKind = (typeof TAXON_ORIGIN_KINDS)[number];
 
+/** Lados de uma cruza, na convenção `semente × pólen`: a mãe (que deu o fruto) e o pai. */
+export const CROSS_SIDES = ["seed", "pollen"] as const;
+export type CrossSide = (typeof CROSS_SIDES)[number];
+
 export const ILLUSTRATION_QUALITIES =["low", "medium", "high"] as const;
 export type IllustrationQuality = (typeof ILLUSTRATION_QUALITIES)[number];

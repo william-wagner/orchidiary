@@ -20,6 +20,7 @@ import {
 } from "drizzle-orm/pg-core";
 import {
   COMFORT_DIMENSIONS,
+  CROSS_SIDES,
   ENVIRONMENTS,
   type ExternalOutcome,
   type ExternalService,
@@ -77,6 +78,7 @@ export const sessions = pgTable(
 export const taxonRank = pgEnum("taxon_rank", TAXON_RANKS);
 export const taxonOriginKind = pgEnum("taxon_origin_kind", TAXON_ORIGIN_KINDS);
 export const comfortDimension = pgEnum("comfort_dimension", COMFORT_DIMENSIONS);
+export const crossSide = pgEnum("cross_side", CROSS_SIDES);
 
 /**
  * Catálogo de táxons em árvore (família → … → gênero → espécie → variedade;
@@ -119,11 +121,14 @@ export const taxa = pgTable(
     bloomMonths: integer("bloom_months").array().notNull().default(sql`'{}'::integer[]`),
     restPeriod: text("rest_period"),
     notes: text("notes"),
+    /** Parentais do grex (semente × pólen); só em `hybrid` */
+    crossId: uuid("cross_id").references((): AnyPgColumn => crosses.id),
     createdAt: createdAt(),
     updatedAt: ts("updated_at").notNull().defaultNow(),
   },
   (t) => [
     index("taxa_parent_idx").on(t.parentId),
+    check("taxa_cross_rank_ck", sql`${t.crossId} is null or ${t.rank} = 'hybrid'`),
     unique("taxa_parent_rank_name_uq").on(t.parentId, t.rank, t.name).nullsNotDistinct(),
     // gênero e níveis acima têm nome único no catálogo inteiro
     uniqueIndex("taxa_higher_name_uq")
@@ -132,6 +137,39 @@ export const taxa = pgTable(
     index("taxa_search_trgm_idx").using("gin", sql`${t.searchText} gin_trgm_ops`),
     // países só existem junto de origin_kind = 'country', e country sempre tem pelo menos um
     check("taxa_origin_countries_ck", sql`coalesce(${t.originKind} = 'country', false) = (cardinality(${t.originCountryCodes}) > 0)`),
+  ],
+);
+
+/**
+ * Cruzamento (semente × pólen): um acontecimento, apontado por quem o usa. A planta aponta por
+ * `plants.cross_id` (cruza sem nome registrado) e o grex por `taxa.cross_id` (parentais no catálogo);
+ * várias plantas podem dividir a mesma cruza (irmãs). Cada lado é um táxon de qualquer nível, um
+ * nome livre ou nada (desconhecido). `user_id` nulo é cruza do catálogo.
+ */
+export const crosses = pgTable(
+  "crosses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    seedTaxonId: uuid("seed_taxon_id").references(() => taxa.id, { onDelete: "restrict" }),
+    seedText: text("seed_text"),
+    pollenTaxonId: uuid("pollen_taxon_id").references(() => taxa.id, { onDelete: "restrict" }),
+    pollenText: text("pollen_text"),
+    /** De qual parental vem a ficha de cultivo (ver `careSource`, no shared) */
+    careFrom: crossSide("care_from"),
+    createdAt: createdAt(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("crosses_user_idx").on(t.userId),
+    check("crosses_seed_ck", sql`${t.seedTaxonId} is null or ${t.seedText} is null`),
+    check("crosses_pollen_ck", sql`${t.pollenTaxonId} is null or ${t.pollenText} is null`),
+    check(
+      "crosses_care_ck",
+      sql`${t.careFrom} is null
+        or (${t.careFrom} = 'seed' and ${t.seedTaxonId} is not null)
+        or (${t.careFrom} = 'pollen' and ${t.pollenTaxonId} is not null)`,
+    ),
   ],
 );
 
@@ -144,10 +182,12 @@ export const plants = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** Pode ser qualquer nível: quem só sabe que é uma Vanda aponta para o gênero */
-    taxonId: uuid("taxon_id").references(() => taxa.id, { onDelete: "set null" }),
-    /** Nome livre quando o táxon não está no catálogo */
-    taxonText: text("taxon_text"),
+    /** Pode ser qualquer nível: quem só sabe que é uma Vanda aponta para o gênero. Nunca junto com `cross_id` */
+    taxonId: uuid("taxon_id").references(() => taxa.id, { onDelete: "restrict" }),
+    /** Cruza sem nome registrado (semente × pólen); nunca junto com `taxon_id` */
+    crossId: uuid("cross_id").references(() => crosses.id),
+    /** O nome como veio na etiqueta ou do vendedor, do jeito que veio; não muda a ficha */
+    receivedName: text("received_name"),
     nickname: text("nickname").notNull(),
     /** Número de tombo: sequencial por usuário, nunca reaproveitado (identidade "Herbário") */
     accessionNumber: integer("accession_number"),
@@ -166,7 +206,10 @@ export const plants = pgTable(
   (t) => [
     index("plants_user_idx").on(t.userId),
     index("plants_taxon_idx").on(t.taxonId),
+    index("plants_cross_idx").on(t.crossId),
     uniqueIndex("plants_user_accession_idx").on(t.userId, t.accessionNumber),
+    // a planta é determinada por um táxon ou por uma cruza, nunca pelos dois
+    check("plants_determination_ck", sql`num_nonnulls(${t.taxonId}, ${t.crossId}) <= 1`),
   ],
 );
 

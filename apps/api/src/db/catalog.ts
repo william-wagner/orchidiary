@@ -734,6 +734,8 @@ export const catalog: CatalogNode[] = [
           nothogenus("Mokara", { care: care.vandeae }),
           nothogenus("Vandachostylis", { commonNames: ["rhynchovanda"], care: care.vandeae }),
           nothogenus("Aranthera", { care: care.vandeae }),
+          // Renanthera × Vanda; com Neofinetia absorvida por Vanda, inclui as antigas Renanetia
+          nothogenus("Renantanda", { commonNames: ["renanetia"], care: care.vandeae }),
         ]),
         subtribe("Angraecinae", [
           genus("Angraecum", { care: care.angraecum, children: [

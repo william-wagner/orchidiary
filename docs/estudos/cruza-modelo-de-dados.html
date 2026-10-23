@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!--
+  Visualização do modelo de dados da cruza (docs/estudos/cruza-no-tombamento.md, decisões 1 a 13).
+  Escolha uma planta de exemplo e veja as linhas de plants, taxa e crosses, o caminho na árvore
+  de taxa e de onde vem a ficha de cultivo. Catálogo de ensaio.
+-->
+<style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Modelo de dados da cruza</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Caderno botânico (tokens do app). Coluna larga: mapa, seletor de exemplo, linhas + ficha | árvore, regras. */
+:root{
+  --papel:#f7f5ec; --folha:#fcfaf4; --tinta:#254d3d; --musgo:#66725f; --folhagem:#6f7f5f;
+  --salvia:#dfe7d6; --salvia-clara:#e9eddf; --linha:#dedfd2; --contorno:#c6d0bd;
+  --lilas:#ece3ef; --orquidea:#765f82; --ocre:#9a7647; --ocre-claro:#f3ecd9; --alerta:#9d4f44;
+  --semente:#765f82; --semente-fundo:#ece3ef; --polen:#9a7647; --polen-fundo:#f3ecd9; --nome:#254d3d; --nome-fundo:#dfe7d6;
+  --serif:"Gelasio",Georgia,"Times New Roman",serif;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --papel:#161d19; --folha:#1d2621; --tinta:#e2e9da; --musgo:#a0ab99; --folhagem:#a9b991;
+  --salvia:#2a372f; --salvia-clara:#233029; --linha:#2f3b34; --contorno:#43524a;
+  --lilas:#352c3a; --orquidea:#c9aed6; --ocre:#d1ac78; --ocre-claro:#33301f; --alerta:#e39a8c;
+  --semente:#c9aed6; --semente-fundo:#352c3a; --polen:#d1ac78; --polen-fundo:#33301f; --nome:#e2e9da; --nome-fundo:#2a372f;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --papel:#161d19; --folha:#1d2621; --tinta:#e2e9da; --musgo:#a0ab99; --folhagem:#a9b991;
+  --salvia:#2a372f; --salvia-clara:#233029; --linha:#2f3b34; --contorno:#43524a;
+  --lilas:#352c3a; --orquidea:#c9aed6; --ocre:#d1ac78; --ocre-claro:#33301f; --alerta:#e39a8c;
+  --semente:#c9aed6; --semente-fundo:#352c3a; --polen:#d1ac78; --polen-fundo:#33301f; --nome:#e2e9da; --nome-fundo:#2a372f;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--papel); color:var(--tinta); font-family:var(--sans); font-size:.95rem; line-height:1.55; -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif); font-weight:400; line-height:1.15; text-wrap:balance; margin:0}
+p{margin:0}
+:focus-visible{outline:2px solid var(--orquidea); outline-offset:3px}
+.envelope{max-width:68rem; margin:0 auto; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); padding-block:1.6rem 4rem; display:flex; flex-direction:column; gap:1.6rem}
+.eyebrow{font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--musgo)}
+.taxon{font-style:italic}
+.mono{font-family:var(--mono); font-size:.8rem}
+.cartao{background:var(--folha); border:1px solid var(--linha); border-radius:10px}
+header.topo{display:flex; flex-direction:column; gap:.45rem; max-width:46rem}
+header.topo h1{font-size:2.1rem; letter-spacing:-.02em}
+.lead{color:var(--musgo)}
+
+/* mapa das ligações */
+.mapa{padding:1rem 1.1rem 1.1rem; display:flex; flex-direction:column; gap:.9rem}
+.esquema{overflow-x:auto}
+.esquema svg{display:block; min-width:640px; width:100%; height:auto}
+.mapa ol{margin:0; padding-left:1.2rem; display:flex; flex-direction:column; gap:.35rem; font-size:.9rem}
+.mapa b{font-weight:600}
+
+.exemplos{display:flex; flex-wrap:wrap; gap:.4rem}
+.ex{appearance:none; border:1px solid var(--contorno); background:transparent; color:var(--tinta); border-radius:10px; padding:.45rem .75rem; text-align:left; cursor:pointer; display:flex; flex-direction:column; gap:.05rem; min-height:44px; font:inherit}
+.ex:hover{background:var(--salvia-clara)}
+.ex[aria-pressed="true"]{background:var(--tinta); border-color:var(--tinta); color:var(--folha)}
+.ex[aria-pressed="true"] .sub{color:var(--folha); opacity:.8}
+.ex .tit{font-family:var(--serif); font-size:.98rem}
+.ex .sub{font-family:var(--mono); font-size:.64rem; color:var(--musgo)}
+
+.caso{padding:.9rem 1.1rem; display:flex; flex-direction:column; gap:.3rem}
+.caso .nome{font-family:var(--serif); font-size:1.45rem; line-height:1.2}
+.caso .formula{font-family:var(--serif); color:var(--folhagem)}
+.caso .comentario{font-size:.88rem; color:var(--musgo); margin-top:.3rem; max-width:46rem}
+
+.grade{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:1.2rem; align-items:start}
+@media (max-width:860px){.grade{grid-template-columns:minmax(0,1fr)}}
+.coluna{display:flex; flex-direction:column; gap:1.2rem; min-width:0}
+.bloco{display:flex; flex-direction:column; gap:.5rem}
+.bloco h2{font-size:1.25rem}
+.bloco .nota{font-size:.84rem; color:var(--musgo)}
+
+/* linhas de tabela como fichas de registro */
+.tabela{overflow:hidden}
+.tabela .cab{display:flex; justify-content:space-between; align-items:baseline; gap:.5rem; padding:.55rem .85rem; border-bottom:1px solid var(--linha); background:var(--salvia-clara); flex-wrap:wrap}
+.tabela .cab .nm{font-family:var(--mono); font-size:.86rem; font-weight:500}
+.tabela .cab .tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--musgo)}
+.campos{margin:0; padding:.35rem 0}
+.campo{display:grid; grid-template-columns:9.5rem minmax(0,1fr); gap:.6rem; padding:.28rem .85rem; align-items:baseline}
+.campo dt{font-family:var(--mono); font-size:.74rem; color:var(--musgo); overflow-wrap:anywhere}
+.campo dd{margin:0; font-size:.86rem; min-width:0; overflow-wrap:anywhere}
+.campo .nulo{font-family:var(--mono); font-size:.74rem; color:var(--musgo); opacity:.7}
+.campo .mudou{display:block; font-family:var(--mono); font-size:.58rem; color:var(--orquidea); text-transform:uppercase; letter-spacing:.06em}
+.seta-tab{display:flex; align-items:center; gap:.4rem; padding-left:1rem; font-family:var(--mono); font-size:.7rem; color:var(--musgo)}
+.seta-tab::before{content:"↓"; font-size:1rem; color:var(--contorno)}
+
+.ref{display:inline-flex; align-items:baseline; gap:.35rem; padding:.05rem .45rem; border-radius:6px; font-size:.86rem}
+.ref .seta{font-family:var(--mono); font-size:.68rem}
+.ref.semente{background:var(--semente-fundo); color:var(--semente)}
+.ref.polen{background:var(--polen-fundo); color:var(--polen)}
+.ref.nome{background:var(--nome-fundo); color:var(--nome)}
+.ref.cruza{background:transparent; border:1px solid var(--contorno); color:var(--tinta); font-family:var(--mono); font-size:.76rem}
+.ref.texto{background:transparent; border:1px dashed var(--contorno); color:var(--tinta)}
+.dono{display:inline-block; font-family:var(--mono); font-size:.66rem; padding:.05rem .4rem; border-radius:999px; border:1px solid var(--contorno); color:var(--musgo)}
+.dono.voce{border-color:var(--orquidea); color:var(--orquidea)}
+.dica-linha{font-size:.76rem; color:var(--ocre); margin-top:.15rem}
+
+/* árvore */
+.arvore{padding:.8rem .6rem .9rem}
+.arvore ul{list-style:none; margin:0; padding-left:1.05rem; border-left:1px dotted var(--contorno)}
+.arvore > ul{padding-left:0; border-left:0}
+.arvore li{margin:.12rem 0}
+.no{display:inline-flex; align-items:baseline; flex-wrap:wrap; gap:.35rem; padding:.12rem .45rem; border-radius:6px; border:1.5px solid transparent; font-size:.9rem}
+.no .rk{font-family:var(--mono); font-size:.6rem; color:var(--musgo)}
+.no .fc,.no .cz,.no .ps{font-family:var(--mono); font-size:.58rem; border:1px solid var(--contorno); border-radius:999px; padding:0 .35rem}
+.no .fc{color:var(--folhagem)}
+.no .cz{color:var(--ocre); border-color:var(--ocre)}
+.no .ps{color:var(--orquidea); border-color:var(--orquidea); border-style:dashed}
+.no.semente{background:var(--semente-fundo); border-color:var(--semente)}
+.no.polen{background:var(--polen-fundo); border-color:var(--polen)}
+.no.nome{background:var(--nome-fundo); border-color:var(--nome)}
+.no.fonte .fc{background:var(--tinta); color:var(--folha); border-color:var(--tinta)}
+.no.fonte .fc::before{content:"ficha usada · "}
+.no.apagado{opacity:.42}
+.legenda{display:flex; flex-wrap:wrap; gap:.4rem .8rem; font-size:.76rem; color:var(--musgo); padding:0 .2rem}
+.legenda span{display:inline-flex; align-items:center; gap:.35rem}
+.legenda i{width:12px; height:12px; border-radius:3px; border:1.5px solid}
+.legenda .mini{font-family:var(--mono); font-size:.58rem; border:1px solid var(--contorno); border-radius:999px; padding:0 .35rem}
+
+/* ficha: passos */
+.ramo{font-family:var(--mono); font-size:.72rem; color:var(--musgo)}
+.ramo b{color:var(--tinta); font-weight:500}
+.passos{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem}
+.passo{display:grid; grid-template-columns:1.7rem minmax(0,1fr); gap:.55rem; padding:.55rem .7rem; border-radius:8px; border:1px solid var(--linha); background:var(--folha); align-items:start}
+.passo .n{font-family:var(--mono); font-size:.72rem; color:var(--musgo); width:1.5rem; height:1.5rem; border-radius:50%; border:1px solid var(--contorno); display:grid; place-items:center}
+.passo .t{font-size:.88rem}
+.passo .d{font-size:.78rem; color:var(--musgo)}
+.passo.pulado{opacity:.55}
+.passo.pulado .d::before{content:"não serve: "}
+.passo.depois{opacity:.32}
+.passo.vale{border-color:var(--tinta); box-shadow:inset 0 0 0 1px var(--tinta)}
+.passo.vale .n{background:var(--tinta); color:var(--folha); border-color:var(--tinta)}
+.resultado{padding:.75rem .9rem; font-size:.88rem; background:var(--salvia-clara); border-radius:8px}
+
+.regras{display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:.75rem}
+.regra{padding:.85rem 1rem; display:flex; flex-direction:column; gap:.35rem}
+.regra h3{font-size:1.05rem}
+.regra p{font-size:.86rem; color:var(--musgo)}
+.regra code{font-family:var(--mono); font-size:.76rem; color:var(--tinta)}
+.regra .onde{font-family:var(--mono); font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; color:var(--orquidea)}
+.futuro{border-style:dashed}
+</style>
+</head>
+<body>
+<div class="envelope">
+  <header class="topo">
+    <p class="eyebrow">Orchidiary · estudo de 23.X.2026</p>
+    <h1>Modelo de dados da cruza</h1>
+    <p class="lead">Três tabelas guardam a identidade de uma orquídea: <span class="mono">taxa</span> (o catálogo, uma árvore), <span class="mono">plants</span> (a sua planta) e a nova <span class="mono">crosses</span> (o cruzamento). Escolha uma planta de exemplo para ver as linhas de cada tabela, o caminho na árvore e de onde vem a ficha de cultivo.</p>
+  </header>
+
+  <section class="cartao mapa" aria-label="Como as tabelas se ligam">
+    <p class="eyebrow">Como as tabelas se ligam</p>
+    <div class="esquema">
+      <svg viewBox="0 0 760 210" role="img" aria-label="plants aponta para taxa ou para crosses; taxa aponta para o pai e, no grex, para crosses; crosses aponta para taxa nos dois parentais">
+        <defs>
+          <marker id="ponta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--musgo)"/></marker>
+        </defs>
+        <!-- plants -->
+        <rect x="10" y="60" width="190" height="96" rx="9" fill="var(--folha)" stroke="var(--contorno)"/>
+        <text x="24" y="84" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="500" fill="var(--tinta)">plants</text>
+        <text x="24" y="106" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--musgo)">taxon_id  ─┐ um</text>
+        <text x="24" y="124" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--musgo)">cross_id  ─┘ ou outro</text>
+        <text x="24" y="142" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--musgo)">received_name</text>
+        <!-- taxa -->
+        <rect x="290" y="10" width="190" height="96" rx="9" fill="var(--folha)" stroke="var(--contorno)"/>
+        <text x="304" y="34" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="500" fill="var(--tinta)">taxa</text>
+        <text x="304" y="56" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--musgo)">parent_id → taxa</text>
+        <text x="304" y="74" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--musgo)">cross_id (só grex)</text>
+        <text x="304" y="92" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--musgo)">user_id (Fase 3)</text>
+        <!-- crosses -->
+        <rect x="290" y="128" width="190" height="72" rx="9" fill="var(--folha)" stroke="var(--orquidea)"/>
+        <text x="304" y="152" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="500" fill="var(--tinta)">crosses <tspan fill="var(--orquidea)" font-size="10">nova</tspan></text>
+        <text x="304" y="172" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--musgo)">user_id · care_from</text>
+        <text x="304" y="190" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--musgo)">seed_* · pollen_*</text>
+        <!-- setas -->
+        <path d="M200 100 C 240 100, 250 60, 288 60" fill="none" stroke="var(--musgo)" stroke-width="1.4" marker-end="url(#ponta)"/>
+        <text x="214" y="70" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--musgo)">taxon_id</text>
+        <path d="M200 120 C 240 120, 250 160, 288 160" fill="none" stroke="var(--musgo)" stroke-width="1.4" marker-end="url(#ponta)"/>
+        <text x="214" y="172" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--musgo)">cross_id</text>
+        <path d="M420 106 L420 126" fill="none" stroke="var(--musgo)" stroke-width="1.4" marker-end="url(#ponta)"/>
+        <text x="426" y="120" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--musgo)">cross_id</text>
+        <path d="M480 164 C 560 164, 560 40, 482 40" fill="none" stroke="var(--semente)" stroke-width="1.4" marker-end="url(#ponta)"/>
+        <path d="M480 182 C 600 182, 600 30, 482 30" fill="none" stroke="var(--polen)" stroke-width="1.4" marker-end="url(#ponta)"/>
+        <text x="572" y="104" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--semente)">seed_taxon_id</text>
+        <text x="605" y="124" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--polen)">pollen_taxon_id</text>
+        <path d="M480 22 C 520 0, 520 50, 482 52" fill="none" stroke="var(--musgo)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ponta)"/>
+        <text x="524" y="24" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--musgo)">parent_id</text>
+      </svg>
+    </div>
+    <ol>
+      <li><b>plants</b> é a planta. Ela é identificada <i>ou</i> por um táxon do catálogo (<span class="mono">taxon_id</span>: espécie, grex, gênero…) <i>ou</i> por uma cruza (<span class="mono">cross_id</span>), nunca pelos dois. <span class="mono">received_name</span> guarda o texto da etiqueta como veio.</li>
+      <li><b>crosses</b> é o cruzamento: <span class="ref semente">♀ semente</span> × <span class="ref polen">♂ pólen</span>, cada lado um táxon, um texto ou nada (desconhecido), e <span class="mono">care_from</span> diz de qual parental vem a ficha. Tem dono (<span class="mono">user_id</span>); vazio quer dizer que é do catálogo. Várias plantas podem apontar para a mesma cruza (irmãs).</li>
+      <li><b>taxa</b> é o catálogo, uma árvore por <span class="mono">parent_id</span>, com a ficha de cultivo. Um grex pode apontar para a sua cruza (<span class="mono">cross_id</span>), e é assim que a planta de um grex conhece os parentais.</li>
+    </ol>
+  </section>
+
+  <section class="bloco" aria-label="Exemplos">
+    <p class="eyebrow">Escolha um exemplo</p>
+    <div class="exemplos" id="exemplos" role="group" aria-label="Plantas de exemplo"></div>
+  </section>
+
+  <section class="cartao caso" id="caso" aria-live="polite"></section>
+
+  <div class="grade">
+    <div class="coluna">
+      <section class="bloco">
+        <h2>As linhas no banco</h2>
+        <p class="nota">Só as colunas que importam aqui. Em lilás, o que é novo ou mudou neste item.</p>
+        <div id="linhas" style="display:flex;flex-direction:column;gap:.5rem"></div>
+      </section>
+      <section class="bloco">
+        <h2>De onde vem a ficha</h2>
+        <p class="nota">A regra <span class="mono">careSource</span> tem dois caminhos, conforme a planta tenha táxon ou cruza, e para na primeira fonte que serve.</p>
+        <p class="ramo" id="ramo"></p>
+        <ol class="passos" id="passos"></ol>
+        <p class="resultado" id="resultado"></p>
+      </section>
+    </div>
+    <div class="coluna">
+      <section class="bloco">
+        <h2>O caminho na árvore de táxons</h2>
+        <div class="legenda">
+          <span><i style="background:var(--semente-fundo);border-color:var(--semente)"></i>semente</span>
+          <span><i style="background:var(--polen-fundo);border-color:var(--polen)"></i>pólen</span>
+          <span><i style="background:var(--nome-fundo);border-color:var(--nome)"></i>táxon da planta</span>
+          <span><span class="mini" style="color:var(--folhagem)">ficha</span>tem ficha própria</span>
+          <span><span class="mini" style="color:var(--ocre);border-color:var(--ocre)">cruza</span>grex com parentais</span>
+          <span><span class="mini" style="color:var(--orquidea);border-color:var(--orquidea);border-style:dashed">pessoal</span>táxon de uma pessoa</span>
+        </div>
+        <div class="cartao arvore" id="arvore"></div>
+        <p class="nota">Recorte do catálogo. Táxons fora do caminho do exemplo ficam apagados.</p>
+      </section>
+    </div>
+  </div>
+
+  <section class="bloco">
+    <h2>Regras que o banco e a API garantem</h2>
+    <div class="regras">
+      <div class="cartao regra"><span class="onde">banco</span><h3>Táxon ou cruza</h3><p><code>plants_determination_ck</code>: no máximo um de <code>taxon_id</code> e <code>cross_id</code>. Grex registrado entra pelo táxon; a cruza é para o que não tem nome no catálogo.</p></div>
+      <div class="cartao regra"><span class="onde">banco</span><h3>Só grex tem cruza</h3><p><code>taxa_cross_rank_ck</code>: <code>taxa.cross_id</code> só em táxon de nível <code>hybrid</code>.</p></div>
+      <div class="cartao regra"><span class="onde">banco</span><h3>Cada lado é uma coisa só</h3><p>Táxon <i>ou</i> texto; os dois vazios querem dizer “não sei”, e os dois lados podem ser “não sei”. <code>care_from</code> só aponta para um lado com táxon.</p></div>
+      <div class="cartao regra"><span class="onde">banco</span><h3>Nada some sem aviso</h3><p>Toda referência a um táxon usa <code>restrict</code>, inclusive <code>plants.taxon_id</code>. Para tirar um táxon em uso, uma operação futura de fundir táxon repõe as referências.</p></div>
+      <div class="cartao regra"><span class="onde">api</span><h3>Cada um no seu</h3><p>A planta só aponta para cruza do próprio dono; o táxon, para cruza do mesmo dono que ele. O catálogo nunca depende de nada pessoal.</p></div>
+      <div class="cartao regra"><span class="onde">api</span><h3>Trocar é trocar</h3><p>Mudar a identificação da planta troca a genealogia junto, sem histórico. A cruza que ficou sem nenhuma planta é apagada na mesma operação.</p></div>
+      <div class="cartao regra"><span class="onde">api</span><h3>Sugestão, nunca troca sozinha</h3><p>Quando a etiqueta ou um parental em texto bate com um táxon do catálogo, o app oferece a troca; a pessoa decide.</p></div>
+      <div class="cartao regra futuro"><span class="onde">fase 3</span><h3>Parental da coleção</h3><p>Colunas <code>seed_plant_id</code> e <code>pollen_plant_id</code> deixam um lado apontar para outra planta sua. Keiki e divisão continuam em <code>plants.parent_plant_id</code>.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+// ─── Catálogo de ensaio (recorte de taxa) ────────────────────────────────────
+const RANK = { tribe:"tribo", subtribe:"subtribo", genus:"gênero", nothogenus:"gênero híbrido", species:"espécie", hybrid:"grex" };
+const T = {};
+const tx = (id, rank, name, parent, extra = {}) => (T[id] = { id, rank, name, parent, care: false, user: null, cross: null, ...extra });
+tx("epid", "tribe", "Epidendreae", null);
+tx("laeli", "subtribe", "Laeliinae", "epid");
+tx("catt", "genus", "Cattleya", "laeli", { care: true });
+tx("c-walk", "species", "walkeriana", "catt", { care: true });
+tx("c-lodd", "species", "loddigesii", "catt");
+tx("vandeae", "tribe", "Vandeae", null);
+tx("aerid", "subtribe", "Aeridinae", "vandeae");
+tx("vanda", "genus", "Vanda", "aerid", { care: true });
+tx("v-falc", "species", "falcata", "vanda");
+tx("v-coer", "species", "coerulea", "vanda");
+tx("v-sand", "species", "sanderiana", "vanda");
+tx("v-roth", "hybrid", "Rothschildiana", "vanda", { cross: "C9" });
+tx("v-gordon", "hybrid", "Gordon Dillon", "vanda");
+tx("ren", "genus", "Renanthera", "aerid", { care: true });
+tx("r-mon", "species", "monachica", "ren");
+tx("r-coc", "species", "coccinea", "ren");
+tx("rntda", "nothogenus", "Renantanda", "aerid", { care: true, novo: true });
+tx("t-laranja", "hybrid", "Laranja da Varanda", "rntda", { care: true, user: "você", cross: "C7" });
+
+// cruzas: as da pessoa (user "você") e as do catálogo (user null)
+const C = {
+  C1: { user: "você", seed_taxon_id: "r-mon", pollen_taxon_id: "v-falc", care_from: "seed" },
+  C2: { user: "você", seed_taxon_id: "v-falc", care_from: null },
+  C3: { user: "você", seed_taxon_id: "r-coc", pollen_text: "Vanda 'Gordon Dillon'", care_from: null },
+  C7: { user: "você", seed_taxon_id: "r-coc", pollen_taxon_id: "v-falc", care_from: "pollen" },
+  C9: { user: null, seed_taxon_id: "v-coer", pollen_taxon_id: "v-sand", care_from: "seed" },
+};
+
+const kids = (id) => Object.values(T).filter((t) => t.parent === id);
+const lineage = (id) => { const out = []; for (let t = T[id]; t; t = t.parent ? T[t.parent] : null) out.unshift(t); return out; };
+function fullName(id) {
+  const t = T[id];
+  return t.rank === "species" || t.rank === "hybrid" ? `${T[t.parent].name} ${t.name}` : t.name;
+}
+function nameHtml(id) {
+  const t = T[id];
+  if (t.rank === "hybrid") return `<span class="taxon">${T[t.parent].name}</span> ${t.name}`;
+  if (["genus", "nothogenus", "species"].includes(t.rank)) return `<span class="taxon">${fullName(id)}</span>`;
+  return fullName(id);
+}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+/** Ficha efetiva: o táxon mais próximo, na linhagem, que tem ficha. */
+const careFrom = (id) => lineage(id).reverse().find((t) => t.care) ?? null;
+const lado = { seed: "a semente", pollen: "o pólen" };
+
+// ─── Exemplos ────────────────────────────────────────────────────────────────
+const EXEMPLOS = [
+  { id: "a", tit: "Renanthera × Vanda", sub: "nº 0038 · o caso do item", apelido: "Mini vanda laranja", tombo: 38,
+    plant: { taxon_id: null, cross_id: "C1", received_name: "Ren. monachica x Neof. falcata" },
+    nota: "Cruza sem nome registrado: a planta aponta para uma cruza sua. A ficha vem do parental marcado, a semente." },
+  { id: "b", tit: "Pólen desconhecido", sub: "nº 0040 · × ?", apelido: "Fukiran cruzada", tombo: 40,
+    plant: { taxon_id: null, cross_id: "C2", received_name: null },
+    nota: "Um lado em branco é “não sei”. Ninguém marcou a ficha, então vale o único parental do catálogo." },
+  { id: "c", tit: "Pólen em texto livre", sub: "nº 0041 · fora do catálogo", apelido: "Semente da troca", tombo: 41,
+    plant: { taxon_id: null, cross_id: "C3", received_name: null },
+    nota: "O pólen veio escrito e foi guardado como texto. Como “Vanda Gordon Dillon” existe no catálogo, a edição da cruza sugere trocar o texto pelo táxon." },
+  { id: "d", tit: "Grex fora do catálogo", sub: "nº 0042 · etiqueta guarda o nome", apelido: "Laranjinha da exposição", tombo: 42,
+    plant: { taxon_id: "rntda", cross_id: null, received_name: "Rntda. Sunshine" },
+    nota: "O grex não está no catálogo, então a planta fica no gênero híbrido e a etiqueta guarda o nome. Quando o grex entrar no Guia, o app sugere apontar para ele." },
+  { id: "e", tit: "Grex do catálogo com parentais", sub: "nº 0019 · depois da entrega mínima", apelido: "Rothschildiana do aniversário", tombo: 19,
+    plant: { taxon_id: "v-roth", cross_id: null, received_name: null },
+    nota: "A planta aponta só para o grex. Os parentais e a escolha da ficha estão na cruza do catálogo, ligada ao grex: ninguém digita de novo, e não há duas versões." },
+  { id: "f", tit: "Cruza do cultivador", sub: "fase 3 · táxon pessoal", apelido: "Muda 3 do frasco", tombo: 57,
+    plant: { taxon_id: "t-laranja", cross_id: null, received_name: null },
+    nota: "Quem polinizou e deu nome à cruza cria um táxon pessoal (visível só para ele, selo “não registrado”). As 12 mudas do frasco apontam para o mesmo táxon, e ele tem ficha própria, preenchida pela pessoa." },
+  { id: "g", tit: "Espécie, sem cruza", sub: "nº 0012 · para comparar", apelido: "Walkeriana da vó", tombo: 12,
+    plant: { taxon_id: "c-walk", cross_id: null, received_name: null },
+    nota: "O caso de sempre: táxon do catálogo, ficha herdada como hoje." },
+];
+
+const side = (c, k) => (c[k + "_taxon_id"] ? { taxonId: c[k + "_taxon_id"] } : c[k + "_text"] ? { text: c[k + "_text"] } : null);
+const sideHtml = (s) => (s?.taxonId ? nameHtml(s.taxonId) : s?.text ? `<span class="taxon">${esc(s.text)}</span>` : "?");
+function formula(c) {
+  const s = side(c, "seed"), p = side(c, "pollen");
+  return !s && !p ? "parentais desconhecidos" : `${sideHtml(s)} × ${sideHtml(p)}`;
+}
+/** A cruza que vale para a planta: a dela, ou a do grex na linhagem. */
+function crossOf(ex) {
+  if (ex.plant.cross_id) return { id: ex.plant.cross_id, via: null };
+  const grex = ex.plant.taxon_id && lineage(ex.plant.taxon_id).find((t) => t.rank === "hybrid" && t.cross);
+  return grex ? { id: grex.cross, via: grex.id } : null;
+}
+function parentPick(c) {
+  const inCat = ["seed", "pollen"].filter((k) => c[k + "_taxon_id"]);
+  const marcado = inCat.includes(c.care_from) ? c.care_from : null;
+  return { inCat, marcado, qualquer: !marcado && inCat[0] };
+}
+
+/** careSource, como no estudo (§3). Devolve o ramo, os passos e qual valeu. */
+function resolve(ex) {
+  const tid = ex.plant.taxon_id;
+  let ramo, steps, i, via;
+  if (ex.plant.cross_id) {
+    const c = C[ex.plant.cross_id];
+    const { inCat, marcado, qualquer } = parentPick(c);
+    ramo = "planta com <b>cruza</b>";
+    steps = [
+      { n: 1, t: "O parental marcado (care_from)", d: marcado ? `${lado[marcado]}: ${nameHtml(c[marcado + "_taxon_id"])}` : "ninguém marcou" },
+      { n: 2, t: "O parental do catálogo que houver, a semente primeiro", d: qualquer ? `${lado[qualquer]}: ${nameHtml(c[qualquer + "_taxon_id"])}` : inCat.length ? "já resolvido no passo 1" : "nenhum parental está no catálogo" },
+      { n: 3, t: "Sem ficha", d: "sem faixa no gráfico, sem índice de conforto, sem alertas" },
+    ];
+    if (marcado) { i = 0; via = { id: c[marcado + "_taxon_id"], side: marcado }; }
+    else if (qualquer) { i = 1; via = { id: c[qualquer + "_taxon_id"], side: qualquer }; }
+    else i = 2;
+  } else {
+    ramo = "planta com <b>táxon</b>";
+    const lin = lineage(tid);
+    const proprio = [...lin].reverse().find((t, k, arr) => (t.rank === "hybrid" || t.rank === "cultivar") && t.care && arr.slice(0, k).every((x) => x.rank === "hybrid" || x.rank === "cultivar"));
+    const grex = lin.find((t) => t.rank === "hybrid" && t.cross);
+    const pick = grex ? parentPick(C[grex.cross]) : null;
+    const gside = pick && (pick.marcado || pick.qualquer);
+    steps = [
+      { n: 1, t: "Ficha própria do táxon até o grex", d: proprio ? `${nameHtml(proprio.id)} tem ficha própria` : T[tid].rank === "hybrid" ? `${nameHtml(tid)} não preencheu a ficha` : "o táxon não é grex nem cultivar" },
+      { n: 2, t: "O parental marcado da cruza do grex", d: gside ? `${lado[gside]} do grex: ${nameHtml(C[grex.cross][gside + "_taxon_id"])}` : "o grex não tem parentais no catálogo" },
+      { n: 3, t: "O resto da linhagem, como hoje", d: `${nameHtml(tid)} → ficha de ${nameHtml(careFrom(tid).id)}` },
+    ];
+    if (proprio) { i = 0; via = { id: proprio.id }; }
+    else if (gside) { i = 1; via = { id: C[grex.cross][gside + "_taxon_id"], side: gside, grex: grex.id }; }
+    else { i = 2; via = { id: tid }; }
+  }
+  steps.forEach((s, k) => { s.vale = k === i; s.pulado = k < i; s.depois = k > i; });
+  const fonte = via ? careFrom(via.id) : null;
+  let res;
+  if (!fonte) res = "A planta fica sem ficha de cultivo.";
+  else {
+    const herda = fonte.id !== via.id ? `, que herda a do ${RANK[fonte.rank]} ${nameHtml(fonte.id)}` : ", que é própria";
+    const aviso = via.side ? " Leva o aviso “esta planta é uma cruza”." : " Sem aviso.";
+    res = `Ficha de ${nameHtml(via.id)}${via.side ? ` (${lado[via.side]}${via.grex ? " do grex" : ""})` : ""}${herda}.${aviso}`;
+  }
+  return { ramo, steps, fonte, res };
+}
+
+// ─── Desenho ─────────────────────────────────────────────────────────────────
+const nulo = `<span class="nulo">null</span>`;
+const ref = (cls, id) => `<span class="ref ${cls}"><span class="seta">→</span>${nameHtml(id)}</span>`;
+const txt = (s) => `<span class="ref texto">“${esc(s)}”</span>`;
+const dono = (u) => (u ? `<span class="dono voce">${u}</span>` : `<span class="dono">null · catálogo</span>`);
+const campo = (nome, valor, mudou = "") => `<div class="campo"><dt>${nome}${mudou ? `<span class="mudou">${mudou}</span>` : ""}</dt><dd>${valor ?? nulo}</dd></div>`;
+function tabela(nm, tag, campos) {
+  return `<div class="cartao tabela"><div class="cab"><span class="nm">${nm}</span><span class="tag">${tag}</span></div><dl class="campos">${campos}</dl></div>`;
+}
+function crossTable(id, tag) {
+  const c = C[id];
+  const textHint = c.pollen_text && norm(c.pollen_text) === norm(fullName("v-gordon")) ? `<div class="dica-linha">bate com ${nameHtml("v-gordon")} no catálogo: o app sugere trocar</div>` : "";
+  return tabela(`crosses <span style="color:var(--musgo)">· ${id}</span>`, tag, `
+    ${campo("user_id", dono(c.user), "novo")}
+    ${campo("seed_taxon_id", c.seed_taxon_id ? ref("semente", c.seed_taxon_id) : null)}
+    ${campo("seed_text", c.seed_text ? txt(c.seed_text) : null)}
+    ${campo("pollen_taxon_id", c.pollen_taxon_id ? ref("polen", c.pollen_taxon_id) : null)}
+    ${campo("pollen_text", c.pollen_text ? txt(c.pollen_text) + textHint : null)}
+    ${campo("care_from", c.care_from ? `<span class="mono">'${c.care_from}'</span>` : null)}`);
+}
+const norm = (s) => s.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function linhas(ex) {
+  const p = ex.plant;
+  let out = tabela("plants", `a planta · nº ${String(ex.tombo).padStart(4, "0")}`, `
+    ${campo("nickname", esc(ex.apelido))}
+    ${campo("taxon_id", p.taxon_id ? ref("nome", p.taxon_id) : null, "agora restrict")}
+    ${campo("cross_id", p.cross_id ? `<span class="ref cruza">→ crosses · ${p.cross_id}</span>` : null, "novo")}
+    ${campo("received_name", p.received_name ? txt(p.received_name) : null, "era taxon_text")}`);
+  if (p.cross_id) {
+    out += `<p class="seta-tab">plants.cross_id</p>` + crossTable(p.cross_id, "a cruza · sua");
+  } else if (p.taxon_id) {
+    const t = T[p.taxon_id];
+    if (t.rank === "hybrid") {
+      out += `<p class="seta-tab">plants.taxon_id</p>` + tabela(`taxa <span style="color:var(--musgo)">· ${esc(fullName(t.id))}</span>`, t.user ? "táxon pessoal · fase 3" : "grex do catálogo", `
+        ${campo("rank", `<span class="mono">'hybrid'</span>`)}
+        ${campo("parent_id", ref("nome", t.parent))}
+        ${campo("user_id", dono(t.user), "fase 3")}
+        ${campo("cross_id", t.cross ? `<span class="ref cruza">→ crosses · ${t.cross}</span>` : null, "novo")}`);
+      if (t.cross) out += `<p class="seta-tab">taxa.cross_id</p>` + crossTable(t.cross, t.user ? "a cruza · sua" : "a cruza · do catálogo");
+    } else {
+      out += `<p class="nota" style="padding:.2rem .2rem 0">Sem linha em <span class="mono">crosses</span>: a planta é identificada por um táxon${t.rank === "nothogenus" ? " (o gênero híbrido)" : ""} e ele não tem parentais.</p>`;
+    }
+  }
+  return out;
+}
+function arvore(ex, fonteId) {
+  const marcas = {};
+  const add = (id, cls) => { if (id) (marcas[id] ||= new Set()).add(cls); };
+  const cr = crossOf(ex);
+  if (cr) { add(C[cr.id].seed_taxon_id, "semente"); add(C[cr.id].pollen_taxon_id, "polen"); }
+  add(ex.plant.taxon_id, "nome");
+  const aceso = new Set();
+  for (const id of Object.keys(marcas)) for (const t of lineage(id)) aceso.add(t.id);
+  if (fonteId) for (const t of lineage(fonteId)) aceso.add(t.id);
+  const no = (t) => {
+    const m = marcas[t.id] ? [...marcas[t.id]] : [];
+    const cls = ["no", ...m, t.id === fonteId ? "fonte" : "", aceso.has(t.id) ? "" : "apagado"].join(" ");
+    const papel = m.map((x) => ({ semente: "♀ semente", polen: "♂ pólen", nome: "táxon da planta" })[x]).join(" · ");
+    const nome = t.rank === "tribe" || t.rank === "subtribe" ? t.name : nameHtml(t.id);
+    const tags = `${t.care ? `<span class="fc">ficha</span>` : ""}${t.cross ? `<span class="cz">cruza ${t.cross}</span>` : ""}${t.user ? `<span class="ps">pessoal · não registrado</span>` : ""}`;
+    return `<li><span class="${cls}">${nome}<span class="rk">${RANK[t.rank]}${t.novo ? " · entra no catálogo" : ""}${papel ? " · " + papel : ""}</span>${tags}</span>${kids(t.id).length ? `<ul>${kids(t.id).map(no).join("")}</ul>` : ""}</li>`;
+  };
+  return `<ul>${Object.values(T).filter((t) => !t.parent).map(no).join("")}</ul>`;
+}
+function render(id) {
+  const ex = EXEMPLOS.find((e) => e.id === id);
+  for (const b of document.querySelectorAll(".ex")) b.setAttribute("aria-pressed", String(b.dataset.id === id));
+  const r = resolve(ex);
+  const p = ex.plant;
+  let titulo, sub = "";
+  if (p.cross_id) {
+    const c = C[p.cross_id];
+    titulo = side(c, "seed") || side(c, "pollen") ? formula(c) : "Cruza sem nome";
+  } else {
+    titulo = nameHtml(p.taxon_id);
+    const cr = crossOf(ex);
+    if (cr) sub = formula(C[cr.id]);
+  }
+  document.getElementById("caso").innerHTML = `<p class="eyebrow">Como aparece no app · ${esc(ex.apelido)}</p><p class="nome">${titulo}${T[p.taxon_id]?.user ? ` <span class="dono voce" style="vertical-align:middle">não registrado</span>` : ""}</p>${sub ? `<p class="formula">${sub}</p>` : ""}${p.received_name ? `<p class="mono" style="color:var(--musgo)">etiqueta: “${esc(p.received_name)}”</p>` : ""}<p class="comentario">${ex.nota}</p>`;
+  document.getElementById("linhas").innerHTML = linhas(ex);
+  document.getElementById("ramo").innerHTML = `caminho: ${r.ramo}`;
+  document.getElementById("passos").innerHTML = r.steps.map((s) => `<li class="passo${s.vale ? " vale" : ""}${s.pulado ? " pulado" : ""}${s.depois ? " depois" : ""}"><span class="n">${s.n}</span><span><span class="t">${s.t}</span><br><span class="d">${s.d}</span></span></li>`).join("");
+  document.getElementById("resultado").innerHTML = r.res;
+  document.getElementById("arvore").innerHTML = arvore(ex, r.fonte?.id);
+  try { history.replaceState(null, "", "#" + id); } catch {}
+}
+document.getElementById("exemplos").innerHTML = EXEMPLOS.map((e) => `<button class="ex" data-id="${e.id}" aria-pressed="false"><span class="tit">${e.tit}</span><span class="sub">${e.sub}</span></button>`).join("");
+document.getElementById("exemplos").addEventListener("click", (e) => { const b = e.target.closest(".ex"); if (b) render(b.dataset.id); });
+const inicio = location.hash.slice(1);
+render(EXEMPLOS.some((e) => e.id === inicio) ? inicio : "a");
+</script>
+</body>
+</html>

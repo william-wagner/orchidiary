@@ -32,6 +32,7 @@ import { env } from "../env.ts";
 import { formatComfortDigest, type DigestPlant } from "./alertRules.ts";
 import { sendAlert } from "./telegram.ts";
 import { effectiveCareOf } from "./taxonomy.ts";
+import { identitiesOf, type PlantCare } from "./crosses.ts";
 import { listLocations } from "./locations.ts";
 import { readingsForPlant } from "./readings.ts";
 
@@ -187,7 +188,9 @@ async function currentLocation(plantId: string) {
  * dimensão, mais a chuva do dia e as medições manuais. O clima de cada dia vem do local
  * onde a planta estava naquele dia: mudanças no meio da janela não recalculam nada.
  */
-export async function plantComfort(plant: { id: string; taxonId: string | null }, window: ChartWindow = CHART_DEFAULT_WINDOW, now = new Date()) {
+export async function plantComfort(plantRef: { id: string; care: PlantCare | null }, window: ChartWindow = CHART_DEFAULT_WINDOW, now = new Date()) {
+  // a ficha resolvida: a do táxon da planta ou, numa cruza, a do parental escolhido
+  const plant = { id: plantRef.id, taxonId: plantRef.care?.taxonId ?? null };
   const periods = await listLocations(plant.id);
   const current = periods.find((p) => p.validTo === null);
   if (!current) return { status: "no_location" as const };
@@ -251,6 +254,8 @@ export async function plantComfort(plant: { id: string; taxonId: string | null }
     historyFrom,
     from,
     to: end,
+    /** Numa cruza, de qual parental veio a ficha ("faixa de X, a semente · é uma cruza") */
+    crossCare: plantRef.care?.side ? { side: plantRef.care.side, fullName: plantRef.care.fullName, fromGrex: !!plantRef.care.grexId } : null,
     dimensions,
     /** Chuva do dia (mm), só dos dias com clima */
     precipitation: days.map((d) => ({ date: d.date, mm: d.precipitation })),
@@ -298,6 +303,7 @@ export async function runComfortDigest(now = new Date()) {
       userId: plants.userId,
       nickname: plants.nickname,
       taxonId: plants.taxonId,
+      crossId: plants.crossId,
       locationId: plantLocations.id,
       // o ambiente é do lugar quando a planta está num; sem lugar, é dela
       environment: sql<"indoor" | "outdoor">`coalesce(${places.environment}, ${plantLocations.environment})`,
@@ -306,24 +312,25 @@ export async function runComfortDigest(now = new Date()) {
     .innerJoin(plantLocations, and(eq(plantLocations.plantId, plants.id), isNull(plantLocations.validTo)))
     .leftJoin(places, eq(places.id, plantLocations.placeId))
     .where(notInArray(plants.status, [...GONE]));
-  const withTaxon = rows.filter((r): r is typeof r & { taxonId: string } => !!r.taxonId);
-  const [ranges, weather, silenced, names] = await Promise.all([
-    rangesOf(withTaxon.map((r) => r.taxonId)),
+  // a ficha resolvida (táxon ou, numa cruza, o parental) e o nome em texto (táxon ou fórmula)
+  const identities = await identitiesOf(rows.map((r) => ({ id: r.plantId, taxonId: r.taxonId, crossId: r.crossId })));
+  const withCare = rows.flatMap((r) => {
+    const identity = identities.get(r.plantId);
+    return identity?.care ? [{ ...r, careTaxonId: identity.care.taxonId, name: identity.name }] : [];
+  });
+  const [ranges, weather, silenced] = await Promise.all([
+    rangesOf(withCare.map((r) => r.careTaxonId)),
     weatherByPlant(
-      withTaxon.map((r) => r.plantId),
+      withCare.map((r) => r.plantId),
       w.previous.from,
       w.current.to,
     ),
-    silencesOf(withTaxon.map((r) => ({ plantId: r.plantId, locationId: r.locationId }))),
-    withTaxon.length
-      ? db.select({ id: taxa.id, fullName: taxa.fullName }).from(taxa).where(inArray(taxa.id, [...new Set(withTaxon.map((r) => r.taxonId))]))
-      : Promise.resolve([]),
+    silencesOf(withCare.map((r) => ({ plantId: r.plantId, locationId: r.locationId }))),
   ]);
-  const nameOf = new Map(names.map((t) => [t.id, t.fullName]));
 
   const byUser = new Map<string, { plants: DigestPlant[]; unchanged: number; silenced: number }>();
-  for (const r of withTaxon) {
-    const rr: ComfortRanges | undefined = ranges.get(r.taxonId)?.ranges;
+  for (const r of withCare) {
+    const rr: ComfortRanges | undefined = ranges.get(r.careTaxonId)?.ranges;
     if (!rr || !hasComfortRanges(rr)) continue;
     const off = silenced.get(r.plantId) ?? new Set<ComfortDimension>();
     const days = weather.get(r.plantId) ?? [];
@@ -334,7 +341,7 @@ export async function runComfortDigest(now = new Date()) {
       const range = rr[d];
       if (range && attentionOf(comfortDays(d, range, days, w.current.from, w.current.to)).direction) acc.silenced++;
     }
-    if (changes.length) acc.plants.push({ taxonName: nameOf.get(r.taxonId) ?? r.nickname, nickname: r.nickname, indoor: r.environment === "indoor", changes });
+    if (changes.length) acc.plants.push({ taxonName: r.name ?? r.nickname, nickname: r.nickname, indoor: r.environment === "indoor", changes });
     else acc.unchanged++;
     byUser.set(r.userId, acc);
   }
@@ -351,5 +358,5 @@ export async function runComfortDigest(now = new Date()) {
     const r = await sendAlert({ userId, kind: "comfort_digest", message, dedupeKey: `comfort-digest:${userId}:${boundary}` });
     if (r === "sent") sent++;
   }
-  return { due: true as const, boundary, plants: withTaxon.length, sent };
+  return { due: true as const, boundary, plants: withCare.length, sent };
 }

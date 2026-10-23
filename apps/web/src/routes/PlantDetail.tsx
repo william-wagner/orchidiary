@@ -9,7 +9,8 @@ import { PhotoCapture } from "../components/PhotoCapture.tsx";
 import { PhotoViewer } from "../components/PhotoViewer.tsx";
 import { OriginFlag } from "../components/OriginFlag.tsx";
 import { type BatchAction, PlaceBatchSheet } from "../components/PlaceBatchSheet.tsx";
-import { ancestorsLabel, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
+import { ancestorsLabel, PlantFormula, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
+import { CareLink, ParentsList, ReceivedName } from "../components/PlantIdentity.tsx";
 import { useToast } from "../components/Toast.tsx";
 import { BackLink, Button, ErrorText, Field, Icon, type IconName, Input, PressedOrchid } from "../components/ui.tsx";
 import {
@@ -180,6 +181,7 @@ export function PlantDetail() {
         <h1 className="mt-1.5 text-[2.35rem] leading-[1.08] tracking-[-0.03em] [overflow-wrap:anywhere]">
           <PlantTaxon plant={plant} /> <OriginFlag origin={plantOrigin(plant)} />
         </h1>
+        <PlantFormula plant={plant} className="mt-1.5 block font-serif text-[1.2rem] leading-snug text-folhagem [overflow-wrap:anywhere]" />
         <p className="mt-1.5 font-serif text-[1.15rem] text-folhagem italic">{plant.nickname}</p>
       </header>
 
@@ -235,9 +237,11 @@ export function PlantDetail() {
           {plant.taxon && plant.taxon.lineage.length > 1 && (
             <p className="typed text-[0.7rem] leading-relaxed">{ancestorsLabel(plant.taxon.lineage)}</p>
           )}
-          <p className="mt-1 font-serif text-[1.5rem] leading-tight">
+          <p className="mt-1 font-serif text-[1.5rem] leading-tight [overflow-wrap:anywhere]">
             <PlantTaxon plant={plant} />
           </p>
+          <ParentsList plant={plant} />
+          <ReceivedName plant={plant} />
           <ul className="mt-4 grid gap-2 text-[0.88rem]">
             {current && (
               <DataRow icon="pin">
@@ -250,12 +254,7 @@ export function PlantDetail() {
             {first && <DataRow icon="sprout">Na coleção desde {typedDate(plant.acquiredAt ?? first.validFrom)}</DataRow>}
             {locations.length > 1 && <DataRow icon="arrow-right">Já passou por {locations.length} lugares</DataRow>}
           </ul>
-          {plant.taxon && (
-            <Link to={`/guia/${plant.taxon.id}`} className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-[0.9rem] text-orquidea">
-              Ver ficha de cultivo
-              <Icon name="arrow-right" className="size-4" />
-            </Link>
-          )}
+          <CareLink plant={plant} />
         </div>
       </section>
 

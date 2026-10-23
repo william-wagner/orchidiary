@@ -3,7 +3,14 @@ import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { CoverSheet } from "../components/CoverSheet.tsx";
 import { PlacePicker, type PlaceRef } from "../components/PlacePicker.tsx";
-import { TaxonPicker } from "../components/TaxonPicker.tsx";
+import {
+  type DeterminationDraft,
+  determinationBody,
+  DeterminationField,
+  DeterminationPreview,
+  determinationOf,
+  ReceivedNameField,
+} from "../components/Determination.tsx";
 import { BackLink, Button, ErrorText, Field, Icon, Input, PageHeader, PressedOrchid, Select } from "../components/ui.tsx";
 import {
   api,
@@ -12,7 +19,6 @@ import {
   type Plant,
   type PlantLocation,
   photoUrl,
-  type TaxonSummary,
   type Timeline,
 } from "../lib/api.ts";
 import { coverOf, plateOf } from "../lib/cover.ts";
@@ -43,7 +49,8 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
   const cover = coverOf(plant, photos);
   const plate = plateOf(cover);
   const qc = useQueryClient();
-  const [taxon, setTaxon] = useState<TaxonSummary | null>(plant.taxon);
+  const [determination, setDetermination] = useState<DeterminationDraft>(() => determinationOf(plant));
+  const [receivedName, setReceivedName] = useState(plant.receivedName ?? "");
   const initialPlaceId = current?.placeId ?? null;
   // o período atual já traz ambiente e coordenadas resolvidos (do lugar, quando há um)
   const [place, setPlace] = useState<PlaceRef | null>(
@@ -85,8 +92,8 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
     const acquiredAt = String(f.get("acquiredAt") ?? "");
     save.mutate({
       nickname: f.get("nickname"),
-      taxonId: taxon?.id ?? null,
-      taxonText: taxon ? null : text("taxonText"),
+      ...determinationBody(determination),
+      receivedName: receivedName.trim() || null,
       origin: text("origin"),
       // só reenvia a data se ela foi mexida, para não deslocar o dia por fuso
       ...(acquiredAt !== initialDate && { acquiredAt: acquiredAt || null }),
@@ -109,12 +116,14 @@ function EditForm({ plant, photos, current }: { plant: Plant; photos: Photo[]; c
         <Field label="Apelido">
           <Input name="nickname" required maxLength={80} defaultValue={plant.nickname} />
         </Field>
-        <TaxonPicker value={taxon} onChange={setTaxon} />
-        {!taxon && (
-          <Field label="Ou o nome livre" hint="Se não achou no catálogo: o que estiver escrito na etiqueta">
-            <Input name="taxonText" maxLength={160} defaultValue={plant.taxonText ?? ""} />
-          </Field>
-        )}
+        <DeterminationField value={determination} onChange={setDetermination} hadCross={plant.cross?.source === "plant"} />
+        <ReceivedNameField
+          value={receivedName}
+          onChange={setReceivedName}
+          determination={determination}
+          onUse={(taxon) => setDetermination({ ...determination, isCross: false, taxon })}
+        />
+        <DeterminationPreview determination={determination} receivedName={receivedName} />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Origem">
             <Select name="origin" defaultValue={plant.origin ?? ""}>

@@ -19,9 +19,10 @@ export const BACKUP_PREFIX = "orchidiary-backup-";
  * o hash de senha também não sai do servidor.
  */
 export async function exportDiary() {
-  const [users, taxa, places, placeLocations, plants, plantLocations, photos, events, weatherDaily, manualReadings, placeBatchExclusions] = await Promise.all([
+  const [users, taxa, crosses, places, placeLocations, plants, plantLocations, photos, events, weatherDaily, manualReadings, placeBatchExclusions] = await Promise.all([
     db.select({ id: schema.users.id, email: schema.users.email, name: schema.users.name, role: schema.users.role, createdAt: schema.users.createdAt }).from(schema.users),
     db.select().from(schema.taxa),
+    db.select().from(schema.crosses),
     db.select().from(schema.places),
     db.select().from(schema.placeLocations),
     db.select().from(schema.plants),
@@ -35,9 +36,10 @@ export async function exportDiary() {
   return {
     format: "orchidiary-backup",
     // 5: localização e ambiente no lugar (places.environment, place_locations, weather_daily.place_location_id)
-    version: 5,
+    // 6: cruzas (crosses, plants.cross_id, taxa.cross_id) e plants.received_name no lugar de taxon_text
+    version: 6,
     exportedAt: new Date().toISOString(),
-    tables: { users, taxa, places, placeLocations, plants, plantLocations, photos, events, weatherDaily, manualReadings, placeBatchExclusions },
+    tables: { users, taxa, crosses, places, placeLocations, plants, plantLocations, photos, events, weatherDaily, manualReadings, placeBatchExclusions },
   };
 }
 

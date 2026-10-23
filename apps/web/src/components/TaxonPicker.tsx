@@ -1,11 +1,11 @@
 import { RANK_LABEL } from "@orchidiary/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { api, type TaxonHit, type TaxonSummary } from "../lib/api.ts";
 import { ancestorsLabel, TaxonName } from "./Taxon.tsx";
 
 /** Valor que só muda depois que a pessoa para de digitar por `ms`. */
-function useDebounced<T>(value: T, ms: number) {
+export function useDebounced<T>(value: T, ms: number) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const t = setTimeout(() => setDebounced(value), ms);
@@ -23,10 +23,23 @@ export function TaxonPicker({
   value,
   onChange,
   label = "Espécie",
+  labelHidden = false,
+  aside,
+  autoFocus = false,
+  hint = "Pode ser só o gênero, se você não souber a espécie.",
+  emptyHint = "Nada no catálogo com esse nome. Anote o que veio escrito em “Como veio na etiqueta”.",
 }: {
   value: TaxonSummary | null;
   onChange: (taxon: TaxonSummary | null) => void;
   label?: string;
+  /** O rótulo fica só para leitores de tela (quem usa já tem um cabeçalho próprio) */
+  labelHidden?: boolean;
+  /** Algo ao lado do rótulo, como o interruptor "É uma cruza" */
+  aside?: ReactNode;
+  autoFocus?: boolean;
+  hint?: string | null;
+  /** O que dizer quando a busca não acha nada */
+  emptyHint?: string;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,10 +77,21 @@ export function TaxonPicker({
     }
   }
 
+  const labelClass = labelHidden ? "sr-only" : "block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem";
+  const header = (labelEl: ReactNode) =>
+    aside ? (
+      <div className="mb-1 flex min-h-11 items-center justify-between gap-3">
+        {labelEl}
+        {aside}
+      </div>
+    ) : (
+      <div className={labelHidden ? "" : "mb-1.5"}>{labelEl}</div>
+    );
+
   if (value) {
     return (
       <div>
-        <span className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">{label}</span>
+        {header(<span className={labelClass}>{label}</span>)}
         <div className="cartao flex items-start justify-between gap-3 px-3 py-2">
           <div className="min-w-0">
             <TaxonName lineage={value.lineage} className="block font-serif text-[1.2rem] leading-tight" />
@@ -92,10 +116,13 @@ export function TaxonPicker({
   }
 
   return (
-    <div className="relative">
-      <label htmlFor={id} className="mb-1.5 block font-mono text-[0.74rem] tracking-[0.02em] text-folhagem">
-        {label}
-      </label>
+    <div>
+      {header(
+        <label htmlFor={id} className={labelClass}>
+          {label}
+        </label>,
+      )}
+      <div className="relative">
       <input
         ref={inputRef}
         id={id}
@@ -106,6 +133,7 @@ export function TaxonPicker({
         aria-activedescendant={showList && hits[active] ? `${id}-${hits[active].id}` : undefined}
         aria-autocomplete="list"
         autoComplete="off"
+        autoFocus={autoFocus}
         placeholder="Ex.: Vanda, walkeriana, chuva-de-ouro"
         value={text}
         onChange={(e) => {
@@ -118,18 +146,15 @@ export function TaxonPicker({
         onKeyDown={onKeyDown}
         className="w-full min-h-12 rounded-md border border-contorno bg-folha px-3 text-[0.95rem] text-tinta placeholder:text-musgo/70 focus:border-tinta focus:outline-none"
       />
-      <span className="mt-1.5 block text-[0.82rem] text-musgo">
-        Pode ser só o gênero, se você não souber a espécie.
-      </span>
       {showList && (
         <ul
           id={`${id}-list`}
           role="listbox"
           aria-label="Táxons encontrados"
-          className="absolute inset-x-0 top-[4.6rem] z-20 max-h-80 overflow-y-auto rounded-lg border border-contorno bg-folha shadow-caderno"
+          className="absolute inset-x-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-contorno bg-folha shadow-caderno"
         >
           {hits.length === 0 && (
-            <li className="px-3 py-3 text-musgo">Nada no catálogo com esse nome. Escreva o nome livre abaixo.</li>
+            <li className="px-3 py-3 text-musgo">{emptyHint}</li>
           )}
           {hits.map((t, i) => (
             <li
@@ -157,6 +182,8 @@ export function TaxonPicker({
           ))}
         </ul>
       )}
+      </div>
+      {hint && <span className="mt-1.5 block text-[0.82rem] text-musgo">{hint}</span>}
     </div>
   );
 }

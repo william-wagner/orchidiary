@@ -12,6 +12,7 @@ import {
   DEFAULT_OCCURRENCE_LAYERS,
   daysBetween,
   EVENT_LAYER,
+  CROSS_SIDE_LABEL,
   herbariumDate,
   type IsoDate,
   isWeeklyChart,
@@ -685,8 +686,19 @@ function Counts({ report }: { report: Report }) {
   );
 }
 
-/** "Faixa do gênero Phalaenopsis" quando a ficha da planta herda as faixas de um ancestral. */
+/**
+ * "Faixa do gênero Phalaenopsis" quando a ficha da planta herda as faixas de um ancestral;
+ * numa cruza, de qual parental veio a ficha ("faixa de Renanthera monachica, a semente · é uma cruza").
+ */
 function InheritedNote({ report }: { report: Report }) {
+  if (report.crossCare) {
+    return (
+      <p className="mt-1.5 px-1 text-[0.74rem] text-musgo">
+        Faixa de <span className="taxon">{report.crossCare.fullName}</span>, {CROSS_SIDE_LABEL[report.crossCare.side]}
+        {report.crossCare.fromGrex && " do grex"} · é uma cruza
+      </p>
+    );
+  }
   const sources = new Map(report.dimensions.flatMap((d) => (d.inheritedFrom ? [[d.inheritedFrom.fullName, d.inheritedFrom] as const] : [])));
   if (!sources.size) return null;
   return (
