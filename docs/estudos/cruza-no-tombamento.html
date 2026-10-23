@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!--
+  Protótipo do item "Registrar a cruza (parentais) no tombamento da planta" (docs/ROADMAP.md).
+  Estudo de 23.X.2026. Abra no navegador, em largura de celular.
+  Catálogo de ensaio com poucos táxons; bandeiras simplificadas (código do país).
+  O que vale como especificação está em docs/estudos/cruza-no-tombamento.md.
+-->
+<style>:root{color-scheme:light}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Cruza no tombamento</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gelasio:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Caderno botânico: tokens do app (apps/web/src/styles.css). Coluna única, largura de celular. */
+:root{
+  --papel:#f7f5ec; --folha:#fcfaf4; --tinta:#254d3d; --tinta-viva:#39634d; --musgo:#66725f;
+  --folhagem:#6f7f5f; --salvia:#dfe7d6; --salvia-clara:#e9eddf; --linha:#dedfd2; --contorno:#c6d0bd;
+  --lilas:#ece3ef; --orquidea:#765f82; --ocre:#9a7647; --ocre-claro:#f3ecd9; --alerta:#9d4f44;
+  --fita:#d9d0ab99; --prancha:#fbfbf7; --sombra:0 12px 40px #273f2f0d;
+  --serif:"Gelasio",Georgia,"Times New Roman",serif;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --papel:#161d19; --folha:#1d2621; --tinta:#e2e9da; --tinta-viva:#cbd8c1; --musgo:#a0ab99;
+  --folhagem:#a9b991; --salvia:#2a372f; --salvia-clara:#233029; --linha:#2f3b34; --contorno:#43524a;
+  --lilas:#352c3a; --orquidea:#c9aed6; --ocre:#d1ac78; --ocre-claro:#33301f; --alerta:#e39a8c;
+  --fita:#6b654a99; --prancha:#1f2723; --sombra:0 12px 40px #00000033;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --papel:#161d19; --folha:#1d2621; --tinta:#e2e9da; --tinta-viva:#cbd8c1; --musgo:#a0ab99;
+  --folhagem:#a9b991; --salvia:#2a372f; --salvia-clara:#233029; --linha:#2f3b34; --contorno:#43524a;
+  --lilas:#352c3a; --orquidea:#c9aed6; --ocre:#d1ac78; --ocre-claro:#33301f; --alerta:#e39a8c;
+  --fita:#6b654a99; --prancha:#1f2723; --sombra:0 12px 40px #00000033;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--papel); color:var(--tinta);
+  font-family:var(--sans); font-size:0.97rem; line-height:1.55; -webkit-font-smoothing:antialiased;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.03' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--papel)}
+h1,h2,h3{font-family:var(--serif); font-weight:400; line-height:1.15; text-wrap:balance; margin:0}
+p{margin:0}
+button{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--orquidea); outline-offset:3px}
+.envelope{max-width:33rem; margin:0 auto; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); padding-block:0 4rem}
+.eyebrow{font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; color:var(--musgo)}
+.typed{font-family:var(--mono); color:var(--musgo); letter-spacing:.02em; font-variant-numeric:tabular-nums}
+.taxon{font-style:italic}
+.cartao{background:var(--folha); border:1px solid var(--linha); border-radius:10px}
+.selo{display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 9px; font-size:.7rem; line-height:1.3; white-space:nowrap; background:var(--salvia-clara); color:var(--folhagem)}
+.selo::before{content:""; width:5px; height:5px; border-radius:50%; background:currentColor}
+.selo-flor{background:var(--lilas); color:var(--orquidea)}
+.selo-ocre{background:var(--ocre-claro); color:var(--ocre)}
+.fixada{position:relative}
+.fixada::before{content:""; position:absolute; top:9px; left:calc(50% - 26px); width:52px; height:14px; background:var(--fita); transform:rotate(-6deg); z-index:1; pointer-events:none}
+.leader{flex:1; border-bottom:1.5px dotted var(--contorno); transform:translateY(-5px); min-width:1rem}
+.chave{appearance:none; -webkit-appearance:none; position:relative; flex-shrink:0; width:42px; height:25px; border-radius:999px; background:var(--contorno); cursor:pointer; transition:background .2s; margin:0}
+.chave::before{content:""; position:absolute; top:3px; left:3px; width:19px; height:19px; border-radius:50%; background:var(--folha); transition:transform .2s}
+.chave:checked{background:var(--tinta)}
+.chave:checked::before{transform:translateX(17px)}
+@media (prefers-reduced-motion:reduce){.chave,.chave::before{transition:none}}
+
+/* barra do protótipo */
+.barra{position:sticky; top:env(safe-area-inset-top,0px); z-index:9; margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px))); padding:.55rem max(16px,env(safe-area-inset-left,0px)); background:color-mix(in srgb,var(--papel) 92%,transparent); backdrop-filter:blur(6px); border-bottom:1px solid var(--linha); display:flex; align-items:center; justify-content:space-between; gap:.6rem; flex-wrap:wrap}
+.abas{display:flex; gap:.3rem}
+.aba{appearance:none; border:1px solid var(--contorno); background:transparent; color:var(--musgo); border-radius:999px; padding:.25rem .75rem; font-family:var(--mono); font-size:.74rem; min-height:32px; cursor:pointer}
+.aba:hover{background:var(--salvia-clara)}
+.aba[aria-selected="true"]{background:var(--tinta); border-color:var(--tinta); color:var(--folha)}
+
+.topo{padding-block:1.4rem 1rem; display:flex; flex-direction:column; gap:.35rem}
+.topo h1{font-size:2rem; letter-spacing:-.02em}
+.voltar{display:flex; align-items:center; justify-content:space-between; padding-top:.8rem}
+.link{appearance:none; background:none; border:0; padding:0; color:var(--orquidea); font-size:.9rem; cursor:pointer; min-height:44px; display:inline-flex; align-items:center; gap:.35rem}
+.link.pequeno{min-height:32px; font-size:.82rem}
+.link.musgo{color:var(--musgo)}
+
+/* formulário */
+form{display:flex; flex-direction:column; gap:1.25rem}
+.campo{display:flex; flex-direction:column; gap:.3rem}
+.campo > .rot{font-weight:500}
+.dica{font-size:.86rem; color:var(--musgo)}
+.entrada{width:100%; min-height:46px; border:1px solid var(--contorno); background:var(--folha); color:var(--tinta); border-radius:8px; padding:.55rem .75rem; font:inherit}
+.entrada::placeholder{color:var(--musgo); opacity:.75}
+.entrada.taxon{font-family:var(--serif)}
+.duas{display:grid; grid-template-columns:1fr 1fr; gap:.75rem}
+.duas > *{min-width:0}
+.botao{appearance:none; border:0; background:var(--tinta); color:var(--folha); border-radius:10px; min-height:50px; padding:.6rem 1rem; font-weight:500; cursor:pointer; width:100%}
+.botao:hover{background:var(--tinta-viva)}
+.botao.calmo{background:transparent; color:var(--tinta); border:1px solid var(--contorno)}
+.botao.calmo:hover{background:var(--salvia-clara)}
+.botao.pequeno{min-height:40px; width:auto; font-size:.88rem; padding:.4rem .85rem}
+
+.campo-cabeca{display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap}
+.campo-cabeca .rot{font-weight:500}
+.cruza-chave{display:inline-flex; align-items:center; gap:.55rem; min-height:44px; font-size:.86rem; color:var(--musgo); cursor:pointer}
+.cruza-chave .chave{transform:scale(.86); transform-origin:right center}
+
+.picker{position:relative}
+.resultados{list-style:none; margin:.3rem 0 0; padding:.25rem; position:absolute; left:0; right:0; z-index:5; background:var(--folha); border:1px solid var(--contorno); border-radius:10px; box-shadow:var(--sombra); max-height:17rem; overflow-y:auto}
+.resultados:empty{display:none}
+.resultados li button{appearance:none; width:100%; text-align:left; background:none; border:0; padding:.5rem .6rem; border-radius:7px; cursor:pointer; display:flex; flex-direction:column; gap:.05rem}
+.resultados li button:hover,.resultados li button:focus-visible{background:var(--salvia-clara)}
+.resultados .nome{font-family:var(--serif); font-size:1.02rem}
+.resultados .meta{font-family:var(--mono); font-size:.66rem; color:var(--musgo)}
+.resultados .vazio{padding:.5rem .6rem; font-size:.85rem; color:var(--musgo)}
+.escolhido{display:flex; align-items:center; justify-content:space-between; gap:.6rem; padding:.55rem .75rem; min-height:46px}
+.escolhido .nome{font-family:var(--serif); font-size:1.08rem; min-width:0; overflow-wrap:anywhere}
+.escolhido .meta{display:block; font-family:var(--mono); font-size:.66rem; color:var(--musgo)}
+.escolhido .marca{display:block; margin-top:.35rem}
+.escolhido.ficha{border-color:var(--orquidea); box-shadow:inset 0 0 0 1px var(--orquidea)}
+.escolhivel{position:relative; cursor:pointer}
+.escolhivel:hover{background:var(--salvia-clara)}
+.escolhivel:has(.sr:focus-visible){outline:2px solid var(--orquidea); outline-offset:3px}
+.sr{position:absolute; opacity:0; width:1px; height:1px; margin:0; pointer-events:none}
+.usar{font-family:var(--mono); font-size:.66rem; color:var(--orquidea)}
+
+.parentais{padding:.9rem 1rem 1rem; display:flex; flex-direction:column; gap:.4rem}
+.lado{display:flex; flex-direction:column; gap:.35rem}
+.lado-cabeca{display:flex; align-items:baseline; justify-content:space-between; gap:.5rem}
+.lado-cabeca .rot{font-weight:500}
+.lado-cabeca .rot .sexo{font-family:var(--serif); color:var(--orquidea); margin-right:.2rem}
+.saidas{display:flex; gap:.9rem; flex-wrap:wrap}
+.desconhecido{display:flex; align-items:center; gap:.7rem; padding:.45rem .75rem; min-height:46px; border:1px dashed var(--contorno); border-radius:8px}
+.desconhecido .q{font-family:var(--serif); font-size:1.4rem; color:var(--musgo); width:1.2rem; text-align:center}
+.desconhecido .t{flex:1; font-size:.9rem; color:var(--musgo)}
+.inverter{align-self:center; appearance:none; border:1px solid var(--contorno); background:var(--folha); color:var(--tinta); border-radius:999px; min-height:36px; padding:.2rem .8rem; font-family:var(--mono); font-size:.72rem; cursor:pointer; display:inline-flex; align-items:center; gap:.4rem}
+.inverter:hover{background:var(--salvia-clara)}
+.vez{display:flex; align-items:center; gap:.6rem; color:var(--musgo)}
+.vez::before,.vez::after{content:""; flex:1; border-top:1px dotted var(--contorno)}
+
+.sugestao{display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; padding:.6rem .8rem; border-radius:8px; background:var(--salvia-clara); font-size:.88rem}
+.sugestao.ocre{background:var(--ocre-claro); color:var(--tinta)}
+.aviso{display:grid; grid-template-columns:1.2rem minmax(0,1fr); gap:.5rem; font-size:.86rem; color:var(--musgo); align-items:start}
+.aviso svg{margin-top:.2rem; color:var(--ocre)}
+.previa{padding:.85rem 1rem; display:flex; flex-direction:column; gap:.25rem; background:var(--prancha)}
+.previa .titulo{font-family:var(--serif); font-size:1.45rem; line-height:1.12; overflow-wrap:anywhere}
+.previa .formula{font-family:var(--serif); font-size:1rem; color:var(--folhagem); overflow-wrap:anywhere}
+.confirma{padding:.8rem 1rem; display:flex; flex-direction:column; gap:.6rem; background:var(--ocre-claro); border-color:transparent}
+.confirma .acoes{display:flex; gap:.5rem; flex-wrap:wrap}
+.lugar{padding:.75rem 1rem}
+.lugar dl{margin:.4rem 0 0; display:flex; flex-direction:column; gap:.3rem; font-size:.9rem}
+.lugar dl div{display:flex; justify-content:space-between; gap:.75rem}
+.lugar dd{margin:0}
+
+/* bandeira simplificada e ícone de cruzamento */
+.origem{display:inline-flex; align-items:baseline; gap:.2em; white-space:nowrap; vertical-align:baseline}
+.bandeira{display:inline-block; font-family:var(--mono); font-style:normal; font-size:.5em; line-height:1; padding:.18em .3em; border:1px solid var(--contorno); border-radius:2px; color:var(--musgo); background:var(--folha); transform:translateY(-.15em)}
+.mais{font-family:var(--mono); font-style:normal; font-size:.5em; color:var(--musgo)}
+.cruz{height:.95em; width:.95em; color:var(--folhagem); vertical-align:baseline; transform:translateY(.12em)}
+.desc{color:var(--musgo)}
+
+/* ficha */
+.cabecalho{padding-block:.6rem 1.2rem}
+.cabecalho h1{font-size:2.35rem; line-height:1.08; letter-spacing:-.03em; margin-top:.35rem; overflow-wrap:anywhere}
+.cabecalho .formula{font-family:var(--serif); font-size:1.2rem; line-height:1.25; margin-top:.35rem; color:var(--folhagem); overflow-wrap:anywhere}
+.cabecalho .apelido{font-family:var(--serif); font-style:italic; font-size:1.1rem; color:var(--folhagem); margin-top:.35rem}
+.cabecalho .formula + .apelido{color:var(--musgo)}
+.exsicata{overflow:hidden; border-radius:12px; border:1px solid var(--linha); background:var(--folha); box-shadow:var(--sombra)}
+.exsicata .prancha{height:13rem; display:grid; place-items:center; background:color-mix(in srgb,var(--salvia-clara) 60%,transparent)}
+.etiqueta{border-top:1px solid var(--linha); padding:1.2rem 1.25rem 1.25rem}
+.etiqueta .faixa{display:flex; justify-content:space-between; gap:.5rem; padding-bottom:.6rem; margin-bottom:.75rem; border-bottom:1px solid var(--contorno); font-family:var(--mono); font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; color:var(--musgo)}
+.etiqueta .classe{font-family:var(--mono); font-size:.7rem; color:var(--musgo)}
+.etiqueta .nome{font-family:var(--serif); font-size:1.5rem; line-height:1.15; margin-top:.2rem; overflow-wrap:anywhere}
+.cruzamento{margin:.9rem 0 0; display:flex; flex-direction:column; gap:.35rem}
+.cruzamento .linha{display:flex; align-items:baseline; gap:.5rem; font-size:.95rem}
+.cruzamento dt{font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--musgo); white-space:nowrap}
+.cruzamento dd{margin:0; font-family:var(--serif); text-align:right; min-width:0; overflow-wrap:anywhere}
+.dados{list-style:none; margin:1rem 0 0; padding:0; display:flex; flex-direction:column; gap:.5rem; font-size:.88rem}
+.dados li{display:grid; grid-template-columns:1.2rem minmax(0,1fr); gap:.55rem}
+.dados svg{color:var(--folhagem); margin-top:.2rem}
+.nota-ficha{margin-top:.4rem; padding-top:.7rem; border-top:1px dotted var(--contorno)}
+
+.bloco{margin-top:1.6rem}
+.bloco-cabeca{display:flex; align-items:baseline; justify-content:space-between; gap:.6rem; flex-wrap:wrap}
+.bloco-cabeca h2{font-size:1.35rem}
+.quadro{padding:.85rem .9rem .9rem; margin-top:.6rem}
+.quadro .faixa-nota{font-size:.8rem; color:var(--musgo); margin-top:.45rem}
+.grafico{display:block; width:100%; height:auto}
+.semficha{padding:1rem; display:flex; flex-direction:column; gap:.5rem; margin-top:.6rem}
+
+/* coleção */
+.grade{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem}
+.card{appearance:none; text-align:left; padding:0; border:1px solid var(--linha); background:var(--folha); border-radius:12px; overflow:hidden; cursor:pointer; display:flex; flex-direction:column; box-shadow:var(--sombra)}
+.card:hover{border-color:var(--contorno)}
+.card .capa{height:8.5rem; display:grid; place-items:center; background:color-mix(in srgb,var(--salvia-clara) 60%,transparent)}
+.card .tombo{position:absolute; left:.55rem; bottom:.45rem; font-family:var(--mono); font-size:.62rem; color:var(--musgo)}
+.card .corpo{flex:1; display:flex; flex-direction:column; border-top:1px solid var(--linha); padding:.7rem .75rem .8rem}
+.card .nome{font-family:var(--serif); font-size:1.15rem; line-height:1.12; letter-spacing:-.01em; overflow-wrap:anywhere}
+.card .formula{font-family:var(--serif); font-size:.84rem; line-height:1.25; color:var(--folhagem); margin-top:.3rem; overflow-wrap:anywhere}
+.card .apelido{font-size:.8rem; color:var(--musgo); margin-top:.3rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.card .selos{display:flex; flex-wrap:wrap; gap:.3rem; margin-top:auto; padding-top:.6rem}
+.card.novo{border-color:var(--orquidea)}
+
+/* notas do estudo */
+.validar{margin-top:2rem; border-top:1.5px dotted var(--contorno); padding-top:1rem; font-size:.88rem; color:var(--musgo)}
+.validar summary{cursor:pointer; font-family:var(--mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; min-height:32px; display:flex; align-items:center}
+.validar ul{margin:.4rem 0 0; padding-left:1.1rem; display:flex; flex-direction:column; gap:.35rem}
+.validar b{font-weight:500; color:var(--tinta)}
+.rodape{margin-top:1.5rem; font-size:.76rem; color:var(--musgo)}
+@media (max-width:360px){.duas{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="envelope">
+  <div class="barra">
+    <span class="eyebrow">Protótipo · cruza</span>
+    <nav class="abas" role="tablist" aria-label="Telas">
+      <button class="aba" role="tab" data-tela="tombar" id="aba-tombar">Tombar</button>
+      <button class="aba" role="tab" data-tela="ficha" id="aba-ficha">Ficha</button>
+      <button class="aba" role="tab" data-tela="colecao" id="aba-colecao">Coleção</button>
+    </nav>
+  </div>
+  <main id="tela"></main>
+  <p class="rodape">Catálogo de ensaio: poucos táxons, e as bandeiras aparecem como o código do país. <i>Renantanda</i> é o táxon que entra no <code>catalog.ts</code>.</p>
+</div>
+
+<script>
+// ─── Catálogo de ensaio ──────────────────────────────────────────────────────
+const COUNTRIES = { PH:"Filipinas", JP:"Japão", CN:"China", KR:"Coreia do Sul", IN:"Índia", MM:"Mianmar", TH:"Tailândia",
+  ID:"Indonésia", MY:"Malásia", BR:"Brasil", PY:"Paraguai", AR:"Argentina", UY:"Uruguai", LA:"Laos", VN:"Vietnã" };
+const CARE = {
+  vandeae: { day:[22,35], night:[16,24], hum:[60,85] },
+  cattleya: { day:[18,32], night:[12,20], hum:[50,80] },
+  walkeriana: { day:[20,32], night:[10,20], hum:[50,80] },
+  phalaenopsis: { day:[20,30], night:[16,22], hum:[50,80] },
+};
+const RANK_LABEL = { tribe:"tribo", subtribe:"subtribo", genus:"gênero", nothogenus:"gênero híbrido", species:"espécie", hybrid:"híbrido", cultivar:"cultivar", form:"forma" };
+const T = {};
+function tx(id, rank, name, parent, extra = {}) { T[id] = { id, rank, name, parent, common: [], ...extra }; }
+tx("vandeae", "tribe", "Vandeae", null);
+tx("aerid", "subtribe", "Aeridinae", "vandeae");
+tx("vanda", "genus", "Vanda", "aerid", { care: CARE.vandeae, common: ["ascocenda", "neofinetia"] });
+tx("v-falc", "species", "falcata", "vanda", { origin: ["JP", "CN", "KR"], common: ["neofinetia falcata", "fukiran"] });
+tx("v-coer", "species", "coerulea", "vanda", { origin: ["IN", "MM", "TH", "CN"], common: ["vanda azul"] });
+tx("v-sand", "species", "sanderiana", "vanda", { origin: ["PH"], common: ["waling-waling"] });
+tx("v-sansai", "hybrid", "Sansai Blue", "vanda");
+tx("v-gordon", "hybrid", "Gordon Dillon", "vanda");
+// grex do catálogo com parentais (taxa.cross_id): depois da entrega mínima, mas o modelo já aceita
+tx("v-roth", "hybrid", "Rothschildiana", "vanda", { cross: { seed: { taxonId: "v-coer" }, pollen: { taxonId: "v-sand" }, careFrom: "seed" } });
+tx("ren", "genus", "Renanthera", "aerid", { care: CARE.vandeae });
+tx("r-mon", "species", "monachica", "ren", { origin: ["PH"] });
+tx("r-coc", "species", "coccinea", "ren", { origin: ["TH", "CN", "LA", "MM", "VN"] });
+tx("rntda", "nothogenus", "Renantanda", "aerid", { care: CARE.vandeae, novo: true });
+tx("aranda", "nothogenus", "Aranda", "aerid", { care: CARE.vandeae });
+tx("phal", "genus", "Phalaenopsis", "aerid", { care: CARE.phalaenopsis, common: ["orquídea-borboleta"] });
+tx("p-amab", "species", "amabilis", "phal", { origin: ["ID", "PH", "MY"] });
+tx("epid", "tribe", "Epidendreae", null);
+tx("laeli", "subtribe", "Laeliinae", "epid");
+tx("catt", "genus", "Cattleya", "laeli", { care: CARE.cattleya, common: ["catleia"] });
+tx("c-walk", "species", "walkeriana", "catt", { origin: ["BR"], care: CARE.walkeriana });
+tx("c-lodd", "species", "loddigesii", "catt", { origin: ["BR", "PY", "AR"] });
+tx("c-inter", "species", "intermedia", "catt", { origin: ["BR", "UY", "AR"] });
+tx("rlc", "nothogenus", "Rhyncholaeliocattleya", "laeli", { care: CARE.cattleya, common: ["rlc", "blc"] });
+
+const lineage = (id) => { const out = []; for (let t = T[id]; t; t = t.parent ? T[t.parent] : null) out.unshift(t); return out; };
+
+/** taxonNameParts do shared: gênero e abaixo em itálico; grex e cultivar em redondo. */
+function nameParts(lin) {
+  const self = lin.at(-1); if (!self) return [];
+  const up = () => nameParts(lin.slice(0, -1));
+  let parts;
+  if (["tribe", "subtribe"].includes(self.rank)) parts = [{ text: self.name, italic: false }];
+  else if (["genus", "nothogenus"].includes(self.rank)) parts = [{ text: self.name, italic: true }];
+  else if (self.rank === "species") parts = [...up(), { text: " " + self.name, italic: true }];
+  else if (self.rank === "hybrid") parts = [...up(), { text: " " + self.name, italic: false }];
+  else parts = [...up(), { text: ` '${self.name}'`, italic: false }];
+  return merge(parts);
+}
+function merge(parts) {
+  return parts.reduce((out, p) => { const last = out.at(-1); if (last && last.italic === p.italic) last.text += p.text; else out.push({ ...p }); return out; }, []);
+}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const html = (parts) => parts.map((p) => (p.italic ? `<span class="taxon">${esc(p.text)}</span>` : esc(p.text))).join("");
+const fullName = (id) => nameParts(lineage(id)).map((p) => p.text).join("");
+const norm = (s) => s.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+for (const t of Object.values(T)) t.search = norm([fullName(t.id), ...t.common].join(" "));
+
+function originOf(id) {
+  for (const t of lineage(id).reverse()) {
+    if (t.origin) return { kind: "country", countries: t.origin };
+    if (t.rank === "hybrid" || t.rank === "nothogenus") return { kind: "cross" };
+  }
+  return { kind: "unknown" };
+}
+const CROSS_SVG = `<svg class="cruz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3c0 7 7 6 7 12"/><path d="M19 3c0 7-7 6-7 12"/><path d="M12 15v6"/><path d="M9.5 18.5L12 21l2.5-2.5"/></svg>`;
+function flag(origin) {
+  if (origin.kind === "country") {
+    const names = origin.countries.map((c) => COUNTRIES[c]);
+    const label = "Origem: " + (names.length > 1 ? names.slice(0, -1).join(", ") + " e " + names.at(-1) : names[0]);
+    const more = origin.countries.length - 1;
+    return `<span class="origem" role="img" aria-label="${label}" title="${label}"><span class="bandeira">${origin.countries[0]}</span>${more ? `<span class="mais">+${more}</span>` : ""}</span>`;
+  }
+  if (origin.kind === "cross") return `<span class="origem" role="img" aria-label="Cruzamento, sem origem definida" title="Cruzamento, sem origem definida">${CROSS_SVG}</span>`;
+  return `<span class="origem desc" role="img" aria-label="Origem desconhecida" title="Origem desconhecida" style="font-family:var(--mono);font-size:.6em">?</span>`;
+}
+
+// ─── Regras da cruza (o que vai para o shared) ───────────────────────────────
+/** Um lado: { taxonId } | { text } | null (desconhecido) */
+function sideParts(side) {
+  if (side?.taxonId) return nameParts(lineage(side.taxonId));
+  if (side?.text) return [{ text: side.text, italic: true }];
+  return [{ text: "?", italic: false }];
+}
+const unknownBoth = (cross) => !cross.seed && !cross.pollen;
+/** crossNameParts: "semente × pólen", ou "parentais desconhecidos" */
+function crossParts(cross) {
+  if (unknownBoth(cross)) return [{ text: "parentais desconhecidos", italic: false }];
+  return merge([...sideParts(cross.seed), { text: " × ", italic: false }, ...sideParts(cross.pollen)]);
+}
+/** O grex na linhagem do táxon que tem parentais no catálogo (taxa.cross_id), se houver. */
+const grexWithCross = (taxonId) => (taxonId ? lineage(taxonId).find((t) => t.rank === "hybrid" && t.cross) ?? null : null);
+/** A cruza que vale para a planta: a dela (plants.cross_id) ou a do grex (source "taxon"). */
+const plantCross = (p) => p.cross ?? grexWithCross(p.taxonId)?.cross ?? null;
+/** Título da planta: táxon → fórmula da cruza → etiqueta. Grex com parentais leva a fórmula embaixo. */
+function plantTitle(p) {
+  if (p.cross) {
+    if (unknownBoth(p.cross)) return { title: [{ text: "Cruza sem nome", italic: false }], formula: [{ text: "parentais desconhecidos", italic: false }] };
+    return { title: crossParts(p.cross), formula: null };
+  }
+  if (p.taxonId) {
+    const grex = grexWithCross(p.taxonId);
+    return { title: nameParts(lineage(p.taxonId)), formula: grex ? crossParts(grex.cross) : null };
+  }
+  return { title: [{ text: p.receivedName || "Espécie não determinada", italic: true }], formula: null };
+}
+/** Texto corrido (Telegram, prancha): "Renantanda (Renanthera monachica × Vanda falcata)" */
+function plantText(p) {
+  const { title, formula } = plantTitle(p);
+  const t = (ps) => ps.map((x) => x.text).join("");
+  return formula ? `${t(title)} (${t(formula)})` : t(title);
+}
+const plantOrigin = (p) => (p.cross ? { kind: "cross" } : p.taxonId ? originOf(p.taxonId) : { kind: "unknown" });
+/** Ficha efetiva da linhagem (inheritCare simplificado) e de quem ela veio. */
+function careOf(taxonId) {
+  for (const t of lineage(taxonId).reverse()) if (t.care) return { care: t.care, from: t };
+  return null;
+}
+const SIDE_LABEL = { seed: "a semente", pollen: "o pólen" };
+/** O parental de onde vem a ficha de uma cruza: o marcado, ou o do catálogo que houver (a semente primeiro). */
+function parentCare(cross) {
+  const inCatalog = ["seed", "pollen"].filter((k) => cross[k]?.taxonId);
+  const side = inCatalog.includes(cross.careFrom) ? cross.careFrom : inCatalog[0];
+  if (!side) return null;
+  const c = careOf(cross[side].taxonId);
+  return c ? { side, taxonId: cross[side].taxonId, choosable: inCatalog.length === 2, ...c } : null;
+}
+/**
+ * careSource: de onde vem a ficha de cultivo da planta. A mesma regra para a cruza da planta e a do grex.
+ * Com táxon: ficha própria até o grex → parental marcado da cruza do grex → resto da linhagem.
+ * Com cruza: parental marcado → o do catálogo que houver → sem ficha.
+ */
+function careSource(p) {
+  if (p.cross) {
+    const pc = parentCare(p.cross);
+    return pc ? { kind: "parent", ...pc } : { kind: "none" };
+  }
+  if (!p.taxonId) return { kind: "none" };
+  for (const t of [...lineage(p.taxonId)].reverse()) {
+    if (t.rank !== "hybrid" && t.rank !== "cultivar") break;
+    if (t.care) return { kind: "taxon", taxonId: p.taxonId, care: t.care, from: t };
+  }
+  const grex = grexWithCross(p.taxonId);
+  const pc = grex && parentCare(grex.cross);
+  if (pc) return { kind: "parent", grex, ...pc };
+  const c = careOf(p.taxonId);
+  return c ? { kind: "taxon", taxonId: p.taxonId, ...c } : { kind: "none" };
+}
+/**
+ * receivedNameMatch: o nome da etiqueta bate com um táxon do catálogo mais específico que o Nome
+ * (ou a planta ainda não tem Nome)? Então vale sugerir a troca. Nunca troca sozinho.
+ */
+function receivedNameMatch(receivedName, taxonId) {
+  const n = norm(receivedName || "");
+  if (!n) return null;
+  const hit = Object.values(T).find((t) => norm(fullName(t.id)) === n);
+  if (!hit || hit.id === taxonId) return null;
+  if (taxonId && !lineage(hit.id).some((t) => t.id === taxonId)) return null;
+  return hit;
+}
+
+// ─── Coleção de ensaio ───────────────────────────────────────────────────────
+let plants = [
+  { id: "p1", accession: 38, nickname: "Mini vanda laranja", taxonId: null, cross: { seed: { taxonId: "r-mon" }, pollen: { taxonId: "v-falc" }, careFrom: "seed" }, since: "02.IX.2026", inBloom: true },
+  { id: "p2", accession: 31, nickname: "Walker × Lodd do Seu Zé", taxonId: null, cross: { seed: { taxonId: "c-walk" }, pollen: { taxonId: "c-lodd" }, careFrom: "seed" }, since: "14.VI.2026" },
+  { id: "p3", accession: 40, nickname: "Fukiran cruzada", taxonId: null, cross: { seed: { taxonId: "v-falc" }, pollen: null }, since: "20.IX.2026" },
+  { id: "p4", accession: 27, nickname: "Vanda azul do mercado", taxonId: null, cross: { seed: { taxonId: "vanda" }, pollen: { taxonId: "vanda" }, careFrom: "seed" }, since: "03.V.2026", comfort: "noites frias" },
+  { id: "p5", accession: 41, nickname: "Semente da troca", taxonId: null, cross: { seed: { taxonId: "r-coc" }, pollen: { text: "Vanda 'Gordon Dillon'" } }, since: "11.X.2026" },
+  { id: "p6", accession: 12, nickname: "Walkeriana da vó", taxonId: "c-walk", cross: null, since: "08.III.2025", inBloom: true },
+  { id: "p7", accession: 19, nickname: "Rothschildiana do aniversário", taxonId: "v-roth", cross: null, since: "22.I.2026" },
+  { id: "p8", accession: 42, nickname: "Laranjinha da exposição", taxonId: "rntda", cross: null, receivedName: "Rntda. Sunshine", since: "18.X.2026" },
+  { id: "p10", accession: 33, nickname: "Mercado de domingo", taxonId: null, cross: { seed: null, pollen: null }, since: "07.VII.2026" },
+  { id: "p9", accession: 9, nickname: "Vanda azul grande", taxonId: "vanda", cross: null, receivedName: "Vanda Sansai Blue", since: "15.XI.2024" },
+];
+let viewing = "p1";
+let fresh = null; // id da planta recém-tombada, destacada na Coleção
+let screen = "tombar";
+
+// ─── Formulário ──────────────────────────────────────────────────────────────
+const emptySide = () => ({ mode: "taxon", taxonId: null, text: "" });
+const sideFrom = (s) => (s?.taxonId ? { mode: "taxon", taxonId: s.taxonId, text: "" } : s?.text ? { mode: "text", taxonId: null, text: s.text } : s === null ? { mode: "unknown", taxonId: null, text: "" } : emptySide());
+const sideTo = (s) => (s.mode === "taxon" && s.taxonId ? { taxonId: s.taxonId } : s.mode === "text" && s.text.trim() ? { text: s.text.trim() } : null);
+
+let form;
+function newForm() {
+  // começa no caso que motivou o item, sem nome registrado
+  form = { editingId: null, hadCross: false, confirmOff: false, nickname: "Renanthera da feira", taxonId: null, receivedName: "Ren. monachica x Neof. falcata", isCross: true,
+    seed: { mode: "taxon", taxonId: "r-mon", text: "" }, pollen: { mode: "taxon", taxonId: "v-falc", text: "" }, careFrom: null, q: {} };
+}
+function editForm(p) {
+  form = { editingId: p.id, hadCross: !!p.cross, confirmOff: false, nickname: p.nickname, taxonId: p.taxonId, receivedName: p.receivedName ?? "", isCross: !!p.cross,
+    seed: p.cross ? sideFrom(p.cross.seed) : emptySide(), pollen: p.cross ? sideFrom(p.cross.pollen) : emptySide(), careFrom: p.cross?.careFrom ?? null, q: {} };
+}
+newForm();
+// táxon ou cruza, nunca os dois (plants_determination_ck)
+const formPlant = () => ({ taxonId: form.isCross ? null : form.taxonId, receivedName: form.receivedName.trim() || null, cross: form.isCross ? { seed: sideTo(form.seed), pollen: sideTo(form.pollen), careFrom: form.careFrom } : null });
+
+function search(q) {
+  const words = norm(q).split(" ").filter(Boolean);
+  if (!words.length) return [];
+  return Object.values(T).filter((t) => words.every((w) => t.search.includes(w)) && t.rank !== "tribe" && t.rank !== "subtribe").slice(0, 8);
+}
+const ancestors = (id) => lineage(id).slice(0, -1).slice(-3).map((t) => fullName(t.id)).join(" › ");
+function resultsHtml(key) {
+  const q = form.q[key] ?? "";
+  if (!q.trim()) return "";
+  const hits = search(q);
+  if (!hits.length) return `<li class="vazio">Nada no catálogo com “${esc(q)}”.</li>`;
+  return hits.map((t) => `<li><button type="button" data-pick="${key}" data-id="${t.id}"><span class="nome">${html(nameParts(lineage(t.id)))} ${flag(originOf(t.id))}</span><span class="meta">${RANK_LABEL[t.rank]}${ancestors(t.id) ? " · " + esc(ancestors(t.id)) : ""}${t.novo ? " · novo no catálogo" : ""}</span></button></li>`).join("");
+}
+function chosenHtml(key, id) {
+  return `<div class="cartao escolhido"><span class="nome">${html(nameParts(lineage(id)))} ${flag(originOf(id))}<span class="meta">${RANK_LABEL[T[id].rank]}${ancestors(id) ? " · " + esc(ancestors(id)) : ""}</span></span><button type="button" class="link pequeno" data-clear="${key}">Trocar</button></div>`;
+}
+/** Card do parental escolhido. Com os dois no catálogo, tocar no card escolhe de qual vem a ficha. */
+function chosenParentHtml(key, id, src) {
+  const on = src.kind === "parent" && src.side === key;
+  const choosable = src.kind === "parent" && src.choosable;
+  const tag = on ? `<span class="selo selo-flor">ficha de cultivo</span>` : choosable ? `<span class="usar">usar a ficha deste</span>` : "";
+  const inner = `<span class="nome">${html(nameParts(lineage(id)))} ${flag(originOf(id))}<span class="meta">${RANK_LABEL[T[id].rank]}${ancestors(id) ? " · " + esc(ancestors(id)) : ""}</span>${tag ? `<span class="marca">${tag}</span>` : ""}</span><button type="button" class="link pequeno" data-clear="${key}">Trocar</button>`;
+  if (!choosable) return `<div class="cartao escolhido${on ? " ficha" : ""}">${inner}</div>`;
+  return `<label class="cartao escolhido escolhivel${on ? " ficha" : ""}" for="ficha-${key}"><input type="radio" class="sr" name="ficha" id="ficha-${key}" data-care="${key}" ${on ? "checked" : ""}>${inner}</label>`;
+}
+function pickerHtml(key, id, placeholder) {
+  if (id) return chosenHtml(key, id);
+  return `<div class="picker"><input class="entrada" id="busca-${key}" data-search="${key}" autocomplete="off" placeholder="${placeholder}" value="${esc(form.q[key] ?? "")}"><ul class="resultados" id="res-${key}">${resultsHtml(key)}</ul></div>`;
+}
+function sideHtml(key) {
+  const s = form[key];
+  const label = key === "seed" ? `<span class="sexo">♀</span>Semente` : `<span class="sexo">♂</span>Pólen`;
+  const sub = key === "seed" ? "a mãe, que deu o fruto" : "o pai";
+  let body, exits;
+  if (s.mode === "unknown") {
+    body = `<div class="desconhecido"><span class="q">?</span><span class="t">Não sei ${key === "seed" ? "a semente" : "o pólen"}</span><button type="button" class="link pequeno" data-mode="${key}:taxon">Informar</button></div>`;
+    exits = "";
+  } else if (s.mode === "text") {
+    body = `<input class="entrada taxon" id="livre-${key}" data-text="${key}" maxlength="160" placeholder="como veio na etiqueta" value="${esc(s.text)}"><div id="lado-dica-${key}">${sideTextHint(key)}</div>`;
+    exits = `<button type="button" class="link pequeno" data-mode="${key}:taxon">Buscar no catálogo</button><button type="button" class="link pequeno musgo" data-mode="${key}:unknown">Não sei</button>`;
+  } else {
+    body = s.taxonId ? chosenParentHtml(key, s.taxonId, careSource(formPlant())) : pickerHtml(key, null, "gênero, espécie, híbrido…");
+    exits = s.taxonId ? "" : `<button type="button" class="link pequeno" data-mode="${key}:text">Não está no catálogo</button><button type="button" class="link pequeno musgo" data-mode="${key}:unknown">Não sei</button>`;
+  }
+  return `<div class="lado"><div class="lado-cabeca"><span class="rot">${label}</span><span class="typed" style="font-size:.7rem">${sub}</span></div>${body}${exits ? `<div class="saidas">${exits}</div>` : ""}</div>`;
+}
+/** Lado em nome livre que bate com o catálogo: oferece trocar o texto pelo táxon (receivedNameMatch). */
+function sideTextHint(key) {
+  const hit = receivedNameMatch(form[key].text, null);
+  if (!hit) return "";
+  return `<div class="sugestao" style="margin-top:.35rem"><span>${html(nameParts(lineage(hit.id)))} está no catálogo.</span><button type="button" class="botao calmo pequeno" data-side-relink="${key}:${hit.id}">Usar o do catálogo</button></div>`;
+}
+/** Linha curta abaixo dos parentais dizendo de onde vem a ficha. */
+function careLine() {
+  const src = careSource(formPlant());
+  if (src.kind === "parent" && src.choosable) return `<p class="dica">Toque no parental de onde vem a ficha de cultivo.</p>`;
+  if (src.kind === "none") return `<p class="aviso">${WARN_SVG}<span>Nenhum parental no catálogo: a planta fica sem ficha de cultivo, sem faixa no gráfico e sem alertas de frio e calor.</span></p>`;
+  return "";
+}
+const WARN_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.3v.1"/></svg>`;
+const LEAF_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 14-14 0 8-6 14-14 14z"/><path d="M5 19l8-8"/></svg>`;
+function previewHtml() {
+  const p = formPlant();
+  const { title, formula } = plantTitle(p);
+  const warn = "";
+  const received = p.receivedName && (p.taxonId || p.cross) ? `<p class="typed" style="font-size:.74rem">etiqueta: “${esc(p.receivedName)}”</p>` : "";
+  return `<div class="cartao previa"><span class="eyebrow">Na ficha vai ficar</span><p class="titulo">${html(title)} ${flag(plantOrigin(p))}</p>${formula ? `<p class="formula">${html(formula)}</p>` : ""}${received}</div>${warn}`;
+}
+
+function renderForm() {
+  const editing = form.editingId ? plants.find((p) => p.id === form.editingId) : null;
+  // grex registrado se escolhe aqui, com o interruptor desligado
+  const nameField = pickerHtml("name", form.taxonId, "espécie, grex, gênero ou nome popular");
+  const receivedField = `<div class="campo"><label class="rot" for="etiqueta">Como veio na etiqueta <span class="typed" style="font-size:.72rem;font-weight:400">opcional</span></label><input class="entrada" id="etiqueta" data-received="1" maxlength="160" value="${esc(form.receivedName)}" placeholder="ex.: Rntda. Sunshine"><span class="dica">O nome da plaquinha ou do vendedor, do jeito que veio, mesmo que esteja errado. Não muda a ficha de cultivo.</span><div id="etiqueta-dica">${receivedHint()}</div></div>`;
+  const confirm = form.confirmOff
+    ? `<div class="cartao confirma" role="alert"><p>Desligar apaga os parentais desta planta quando você salvar.</p><div class="acoes"><button type="button" class="botao pequeno" data-off="sim">Desligar a cruza</button><button type="button" class="botao calmo pequeno" data-off="nao">Manter</button></div></div>`
+    : "";
+  const parents = form.isCross
+    ? `<fieldset class="cartao parentais" style="margin:0" aria-label="Parentais">${sideHtml("seed")}<div class="vez"><button type="button" class="inverter" data-swap="1" title="Trocar semente e pólen">⇅ inverter</button></div>${sideHtml("pollen")}${careLine()}</fieldset>`
+    : "";
+  document.getElementById("tela").innerHTML = `
+    ${editing ? `<div class="voltar"><button class="link" data-goto="ficha">← Voltar à ficha</button></div>` : ""}
+    <header class="topo"><p class="eyebrow">${editing ? "Tombo nº " + String(editing.accession).padStart(4, "0") : "Nova entrada no livro de tombo"}</p><h1>${editing ? "Editar planta" : "Tombar planta"}</h1></header>
+    <form id="form" novalidate>
+      <label class="campo"><span class="rot">Apelido</span><input class="entrada" id="apelido" data-nick="1" maxlength="80" value="${esc(form.nickname)}"><span class="dica">Como você chama esta planta. Ex.: Walkeriana da vó</span></label>
+      <div class="campo">
+        <div class="campo-cabeca"><span class="rot">${form.isCross ? `Parentais <span class="typed" style="font-size:.72rem;font-weight:400">semente × pólen</span>` : "Espécie"}</span><label class="cruza-chave" for="cruza">É uma cruza<input type="checkbox" class="chave" id="cruza" data-cross="1" ${form.isCross || form.confirmOff ? "checked" : ""}></label></div>
+        ${confirm}
+        ${form.isCross ? parents : nameField}
+      </div>
+      ${receivedField}
+      <div id="previa" style="display:flex;flex-direction:column;gap:.6rem">${previewHtml()}</div>
+      ${editing ? "" : `<div class="duas"><label class="campo"><span class="rot">Origem</span><select class="entrada" id="origem"><option>Compra</option><option>Troca</option><option>Presente</option><option>Semente</option></select></label><label class="campo"><span class="rot">Chegou em</span><input class="entrada" id="chegou" type="date" value="2026-10-23"></label></div>
+      <div class="cartao lugar"><p class="eyebrow">Vem do lugar · Varanda dos fundos</p><dl><div><dt>Ambiente</dt><dd class="selo">ao ar livre</dd></div><div><dt>Localização</dt><dd class="typed" style="font-size:.8rem">−19,9191, −43,9386</dd></div></dl></div>`}
+      <button type="submit" class="botao">${editing ? "Salvar" : "Tombar planta"}</button>
+    </form>
+    <details class="validar"><summary>O que validar nesta tela</summary><ul>
+      <li><b>“É uma cruza” fica no cabeçalho do campo Espécie</b>, sem card próprio. Ligado, o campo vira Parentais e a Espécie é limpa: a planta tem táxon <i>ou</i> cruza.</li>
+      <li><b>Grex registrado vai na Espécie</b>, com o interruptor desligado. Desligue e busque “Rothschildiana”: a prévia mostra os parentais que vêm do catálogo.</li>
+      <li><b>Ficha de cultivo nos parentais:</b> a semente vem marcada; toque no card do pólen para trocar. Com um parental só no catálogo, a ficha vem dele, sem escolha.</li>
+      <li><b>Cada lado</b> busca no catálogo, aceita nome livre (“Não está no catálogo”) ou fica como “Não sei”. Com os dois fora do catálogo, aparece o aviso de que a planta fica sem ficha.</li>
+      <li><b>Nome livre que existe no catálogo:</b> num lado, escreva “Vanda Gordon Dillon” e veja a sugestão “Usar o do catálogo”.</li>
+      <li><b>⇅ inverter</b> troca semente e pólen; a marca da ficha acompanha o parental.</li>
+      <li><b>Como veio na etiqueta</b> convive com a Espécie ou a cruza: guarda o texto literal e não mexe na ficha. Escreva “Vanda Sansai Blue” para ver a sugestão de usar o táxon do catálogo (numa cruza, aceitar troca a cruza pelo táxon).</li>
+      <li><b>Edição:</b> abra uma cruza na Ficha, toque em Editar e desligue o interruptor para ver a confirmação.</li>
+    </ul></details>`;
+}
+function updatePreview() {
+  const el = document.getElementById("previa"); if (el) el.innerHTML = previewHtml();
+  const hint = document.getElementById("etiqueta-dica"); if (hint) hint.innerHTML = receivedHint();
+  for (const key of ["seed", "pollen"]) { const el = document.getElementById("lado-dica-" + key); if (el) el.innerHTML = sideTextHint(key); }
+}
+/** A etiqueta bate com o catálogo: oferece usar como Nome (ou Espécie). */
+function receivedHint() {
+  const hit = receivedNameMatch(form.receivedName, form.taxonId);
+  if (!hit) return "";
+  return `<div class="sugestao" style="margin-top:.35rem"><span>${html(nameParts(lineage(hit.id)))} está no catálogo.${form.isCross ? " Usar troca a cruza pelo táxon, e os parentais anotados saem." : ""}</span><button type="button" class="botao calmo pequeno" data-suggest="${hit.id}">Usar como espécie</button></div>`;
+}
+
+function save() {
+  const base = formPlant();
+  if (form.editingId) {
+    plants = plants.map((p) => (p.id === form.editingId ? { ...p, nickname: form.nickname.trim() || p.nickname, ...base } : p));
+    viewing = form.editingId;
+  } else {
+    const accession = Math.max(...plants.map((p) => p.accession)) + 1;
+    const id = "n" + accession;
+    plants = [{ id, accession, nickname: form.nickname.trim() || "Sem apelido", since: "23.X.2026", ...base }, ...plants];
+    viewing = id; fresh = id;
+    newForm();
+  }
+  go("ficha");
+}
+
+// ─── Ficha ───────────────────────────────────────────────────────────────────
+const PIN_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>`;
+const SPROUT_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 10c0-3 2.5-5 6-5 0 3.5-2.5 5-6 5z"/></svg>`;
+function orchid(size = 1) {
+  return `<svg width="${70 * size}" height="${120 * size}" viewBox="0 0 70 120" fill="none" stroke-linecap="round" aria-hidden="true">
+    <path d="M35 118V60" stroke="var(--folhagem)" stroke-width="1.6"/>
+    <path d="M35 100c-14-2-24-10-28-22 12 2 22 9 28 22zM35 92c14-3 23-12 26-24-12 3-21 11-26 24z" stroke="var(--folhagem)" stroke-width="1.4"/>
+    <path d="M35 60c-2-10-12-14-20-10 2 8 11 12 20 10zM35 60c2-10 12-14 20-10-2 8-11 12-20 10zM35 60c-6-6-6-18 0-26 6 8 6 20 0 26z" stroke="var(--orquidea)" stroke-width="1.4"/>
+    <circle cx="35" cy="61" r="3" stroke="var(--ocre)" stroke-width="1.3"/></svg>`;
+}
+function parentRow(label, side, isCare) {
+  let v;
+  if (side?.taxonId) v = `${html(nameParts(lineage(side.taxonId)))} ${flag(originOf(side.taxonId))}${isCare ? ` <span class="selo selo-flor" style="font-family:var(--sans);vertical-align:middle">ficha</span>` : ""}`;
+  else if (side?.text) v = `<span class="taxon">${esc(side.text)}</span> <span class="selo" style="font-family:var(--sans);vertical-align:middle">fora do catálogo</span>`;
+  else v = `<span class="desc">? desconhecido</span>`;
+  return `<div class="linha"><dt>${label}</dt><span class="leader"></span><dd>${v}</dd></div>`;
+}
+/** 30 dias de clima de ensaio, sempre os mesmos */
+function days() {
+  const out = [];
+  for (let i = 0; i < 30; i++) {
+    const min = 15.5 + 2.4 * Math.sin(i / 3.1) + ((i * 7) % 5) * 0.35 - (i > 18 && i < 23 ? 3 : 0);
+    const max = 28 + 3 * Math.sin(i / 4.3 + 1) + ((i * 3) % 4) * 0.5;
+    out.push([min, max]);
+  }
+  return out;
+}
+function chart(care) {
+  const W = 320, H = 110, L = 34, R = 6, top = 8, bottom = 10;
+  const lo = 5, hi = 40;
+  const y = (v) => top + (H - top - bottom) * (1 - (v - lo) / (hi - lo));
+  const bandLo = care.night[0], bandHi = care.day[1];
+  const step = (W - L - R) / 30;
+  const bars = days().map(([a, b], i) => {
+    const out = a < care.night[0] || b > care.day[1];
+    return `<rect x="${(L + i * step + 1.2).toFixed(1)}" y="${y(b).toFixed(1)}" width="${(step - 2.4).toFixed(1)}" height="${(y(a) - y(b)).toFixed(1)}" rx="1.5" fill="${out ? "var(--ocre)" : "var(--folhagem)"}"/>`;
+  }).join("");
+  return `<svg class="grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mínimas e máximas dos últimos 30 dias sobre a faixa de ${bandLo} a ${bandHi}°C">
+    <rect x="${L}" y="${y(bandHi)}" width="${W - L - R}" height="${y(bandLo) - y(bandHi)}" fill="var(--salvia)"/>
+    <text x="${L - 5}" y="${y(bandHi) + 3}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="var(--musgo)">${bandHi}°C</text>
+    <text x="${L - 5}" y="${y(bandLo) + 3}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="var(--musgo)">${bandLo}°C</text>
+    ${bars}</svg>`;
+}
+function renderFicha() {
+  const p = plants.find((x) => x.id === viewing) ?? plants[0];
+  const { title, formula } = plantTitle(p);
+  const src = careSource(p);
+  const care = src.kind === "none" ? null : src;
+  const lin = p.taxonId ? lineage(p.taxonId) : [];
+  const tombo = "Tombo nº " + String(p.accession).padStart(4, "0");
+  // a cruza que vale: a da planta, ou a do grex do catálogo (só leitura)
+  const shown = plantCross(p);
+  const fromGrex = !p.cross && shown;
+  let cross = "";
+  if (shown) {
+    cross = unknownBoth(shown)
+      ? `<dl class="cruzamento"><div class="linha"><dt>Parentais</dt><span class="leader"></span><dd class="desc">desconhecidos</dd></div></dl>`
+      : `<dl class="cruzamento">${parentRow("♀ semente", shown.seed, src.kind === "parent" && src.side === "seed")}${parentRow("♂ pólen", shown.pollen, src.kind === "parent" && src.side === "pollen")}</dl>${fromGrex ? `<p class="typed" style="font-size:.68rem;margin-top:.3rem">parentais do grex, pelo catálogo</p>` : ""}`;
+  }
+  const PITCH = "Cada parental pode pedir cuidados um pouco diferentes: observe como ela responde.";
+  const noteText = src.kind === "parent"
+    ? `<p class="aviso nota-ficha">${LEAF_SVG}<span>Ficha de ${html(nameParts(lineage(src.taxonId)))} (${SIDE_LABEL[src.side]}${src.grex ? ` do grex` : ""}), porque esta planta é uma cruza. ${PITCH}</span></p>`
+    : p.cross && src.kind === "none"
+      ? `<p class="aviso nota-ficha">${WARN_SVG}<span>Sem ficha de cultivo: nenhum parental está no catálogo. <button class="link pequeno" data-edit="1" style="display:inline;min-height:0">Editar</button></span></p>`
+      : "";
+  // nome como recebido: só aparece à parte quando não é ele o título
+  const showReceived = p.receivedName && (p.taxonId || p.cross);
+  const match = receivedNameMatch(p.receivedName, p.taxonId);
+  const received = showReceived
+    ? `<dl class="cruzamento"><div class="linha"><dt>etiqueta</dt><span class="leader"></span><dd class="typed" style="font-size:.82rem">“${esc(p.receivedName)}”</dd></div></dl>${match ? `<div class="sugestao" style="margin-top:.6rem"><span>A etiqueta diz ${html(nameParts(lineage(match.id)))}, que está no catálogo.${p.cross ? " Usar troca a cruza pelo táxon, e os parentais anotados saem." : ""}</span><button class="botao calmo pequeno" data-relink="${match.id}">Usar como espécie</button></div>` : ""}`
+    : "";
+  const sourceNote = !care ? ""
+    : care.kind === "parent" ? `faixa de ${html(nameParts(lineage(care.taxonId)))}, ${SIDE_LABEL[care.side]}${care.grex ? " do grex" : ""} · é uma cruza`
+    : care.from.id !== care.taxonId ? `faixa do ${RANK_LABEL[care.from.rank]} <span class="taxon">${esc(care.from.name)}</span>`
+    : "faixa da ficha";
+  const clima = care
+    ? `<div class="cartao quadro"><div class="bloco-cabeca"><span class="typed" style="font-size:.72rem">Últimos 30 dias · 24.IX–23.X</span><span class="typed" style="font-size:.72rem">noites ${care.care.night[0]}–${care.care.night[1]}°C · dias ${care.care.day[0]}–${care.care.day[1]}°C</span></div>${chart(care.care)}<p class="faixa-nota">${sourceNote}</p><div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.55rem">${p.comfort ? `<span class="selo selo-ocre">${p.comfort} · 3 de 7 dias</span>` : `<span class="selo">Tudo dentro da faixa na última semana</span>`}</div></div>`
+    : `<div class="cartao semficha"><p class="dica">Sem faixa para comparar: a planta ainda não tem ficha de cultivo. O clima do lugar continua sendo registrado.</p></div>`;
+  document.getElementById("tela").innerHTML = `
+    <div class="voltar"><button class="link" data-goto="colecao">← Voltar à coleção</button><button class="link" data-edit="1">Editar</button></div>
+    <header class="cabecalho"><p class="eyebrow">${tombo}</p><h1>${html(title)} ${flag(plantOrigin(p))}</h1>${formula ? `<p class="formula">${html(formula)}</p>` : ""}<p class="apelido">${esc(p.nickname)}</p></header>
+    <section class="exsicata" aria-label="Exsicata">
+      <div class="prancha fixada">${orchid(1.2)}</div>
+      <div class="etiqueta">
+        <div class="faixa"><span>Herbário Orchidiary</span><span>${tombo}</span></div>
+        ${lin.length > 1 ? `<p class="classe">${esc(ancestors(p.taxonId))}</p>` : ""}
+        <p class="nome">${html(title)}</p>
+        ${cross}
+        ${received}
+        <ul class="dados"><li>${PIN_SVG}<span>Varanda dos fundos, ao ar livre<span class="typed" style="display:block;font-size:.75rem">Belo Horizonte, MG, Brasil</span></span></li><li>${SPROUT_SVG}<span>Na coleção desde <span class="typed">${p.since}</span></span></li></ul>
+        ${care ? `<button class="link" style="margin-top:.4rem">Ver ficha de cultivo →</button>` : ""}
+        ${noteText}
+      </div>
+    </section>
+    <section class="bloco"><div class="bloco-cabeca"><h2>Clima e ocorrências</h2></div>${clima}</section>
+    <details class="validar"><summary>O que validar nesta tela</summary><ul>
+      <li><b>Título e fórmula:</b> numa cruza, a fórmula é o título; num grex com parentais no catálogo, o grex é o título e a fórmula vem logo abaixo, menor. Em texto corrido (Telegram, prancha) fica <i>${esc(plantText(p))}</i>.</li>
+      <li><b>Parentais na etiqueta</b>, cada um com a sua origem; o selo “ficha” marca o parental de onde vem a ficha de cultivo. Na nº 0019 (grex <i>Vanda</i> Rothschildiana), os parentais vêm do catálogo, só para leitura, e a ficha segue a mesma regra.</li>
+      <li><b>Aviso da ficha</b> na etiqueta e a nota “faixa de … · é uma cruza” no gráfico, sempre que a ficha vem de um parental.</li>
+      <li><b>Etiqueta</b>: o texto literal aparece na etiqueta da exsicata. Veja a nº 0042 (grex fora do catálogo: Espécie <i>Renantanda</i>, etiqueta “Rntda. Sunshine”) e a nº 0009 (a etiqueta bate com um grex do catálogo e o app sugere a troca).</li>
+      <li>Veja as outras plantas na Coleção: híbrido de mercado (<i>Vanda</i> × <i>Vanda</i>), pólen desconhecido, parental fora do catálogo e cruza sem nome (sem ficha).</li>
+    </ul></details>`;
+}
+
+// ─── Coleção ─────────────────────────────────────────────────────────────────
+function renderColecao() {
+  const cards = plants.map((p) => {
+    const { title, formula } = plantTitle(p);
+    return `<button class="card${p.id === fresh ? " novo" : ""}" data-open="${p.id}">
+      <div class="capa fixada">${orchid(.8)}<span class="tombo">nº ${String(p.accession).padStart(4, "0")}</span></div>
+      <div class="corpo"><p class="nome">${html(title)} ${flag(plantOrigin(p))}</p>${formula ? `<p class="formula">${html(formula)}</p>` : ""}<p class="apelido">${esc(p.nickname)}</p>
+      <div class="selos">${p.id === fresh ? `<span class="selo selo-flor">recém-tombada</span>` : ""}${p.inBloom ? `<span class="selo selo-flor">em flor</span>` : ""}${p.comfort ? `<span class="selo selo-ocre">${p.comfort}</span>` : ""}</div></div></button>`;
+  }).join("");
+  document.getElementById("tela").innerHTML = `
+    <header class="topo"><p class="eyebrow">${plants.length} espécimes tombados</p><h1>Coleção</h1></header>
+    <div class="grade">${cards}</div>
+    <details class="validar"><summary>O que validar nesta tela</summary><ul>
+      <li><b>O card cresce com a fórmula.</b> Numa cruza, ela é o título e pode ocupar três linhas; num grex com parentais, vai numa linha menor.</li>
+      <li><b>Sem abreviar gêneros</b> (<i>Ren.</i>, <i>V.</i>): veja se a altura dos cards incomoda.</li>
+      <li>A busca da Coleção é outro item do roadmap; aqui não há campo de busca.</li>
+    </ul></details>`;
+}
+
+// ─── Navegação e eventos ─────────────────────────────────────────────────────
+function go(name) {
+  screen = name;
+  for (const b of document.querySelectorAll(".aba")) b.setAttribute("aria-selected", String(b.dataset.tela === name));
+  if (name === "tombar") renderForm(); else if (name === "ficha") renderFicha(); else renderColecao();
+  try { history.replaceState(null, "", "#" + name); } catch {}
+  window.scrollTo({ top: 0 });
+}
+const tela = document.getElementById("tela");
+document.querySelector(".abas").addEventListener("click", (e) => {
+  const b = e.target.closest(".aba"); if (!b) return;
+  if (b.dataset.tela === "tombar" && form.editingId) newForm();
+  go(b.dataset.tela);
+});
+tela.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.dataset.search) { form.q[t.dataset.search] = t.value; document.getElementById("res-" + t.dataset.search).innerHTML = resultsHtml(t.dataset.search); }
+  else if (t.dataset.text) { form[t.dataset.text].text = t.value; updatePreview(); }
+  else if (t.dataset.nick) form.nickname = t.value;
+  else if (t.dataset.received) { form.receivedName = t.value; updatePreview(); }
+});
+tela.addEventListener("keydown", (e) => {
+  const t = e.target;
+  if (e.key === "Enter" && t.dataset.search) {
+    e.preventDefault();
+    const first = document.querySelector(`#res-${t.dataset.search} [data-pick]`);
+    if (first) first.click();
+  }
+});
+tela.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset.care) { form.careFrom = t.dataset.care; renderForm(); document.getElementById("ficha-" + t.dataset.care)?.focus(); return; }
+  if (!t.dataset.cross) return;
+  if (!t.checked && form.editingId && form.hadCross && form.isCross) { form.confirmOff = true; renderForm(); return; }
+  // táxon ou cruza: ligar limpa a Espécie
+  form.isCross = t.checked; form.confirmOff = false;
+  if (t.checked) form.taxonId = null;
+  renderForm();
+});
+tela.addEventListener("submit", (e) => { e.preventDefault(); save(); });
+tela.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const d = b.dataset;
+  const refocus = (key) => requestAnimationFrame(() => document.getElementById("busca-" + key)?.focus());
+  if (d.pick) {
+    if (d.pick === "name") form.taxonId = d.id; else form[d.pick] = { mode: "taxon", taxonId: d.id, text: "" };
+    form.q[d.pick] = ""; renderForm();
+  } else if (d.clear) {
+    if (d.clear === "name") form.taxonId = null; else form[d.clear].taxonId = null;
+    renderForm(); refocus(d.clear);
+  } else if (d.mode) {
+    const [key, mode] = d.mode.split(":");
+    form[key] = { ...form[key], mode }; renderForm();
+    if (mode === "taxon") refocus(key); else if (mode === "text") requestAnimationFrame(() => document.getElementById("livre-" + key)?.focus());
+  } else if (d.swap) {
+    // a marca da ficha acompanha o parental, não o lado
+    [form.seed, form.pollen] = [form.pollen, form.seed];
+    form.careFrom = form.careFrom === "seed" ? "pollen" : form.careFrom === "pollen" ? "seed" : form.careFrom;
+    renderForm();
+  } else if (d.suggest) {
+    // a etiqueta bate com o catálogo: a planta passa a ter esse táxon (e deixa de ser cruza)
+    form.taxonId = d.suggest; form.isCross = false; form.confirmOff = false; renderForm();
+  } else if (d.sideRelink) {
+    const [key, id] = d.sideRelink.split(":");
+    form[key] = { mode: "taxon", taxonId: id, text: "" }; renderForm();
+  } else if (d.relink) {
+    // trocar a determinação troca a genealogia junto, sem histórico
+    plants = plants.map((p) => (p.id === viewing ? { ...p, taxonId: d.relink, cross: null } : p)); renderFicha();
+  } else if (d.off) {
+    form.confirmOff = false; if (d.off === "sim") form.isCross = false; renderForm();
+  } else if (d.goto) {
+    go(d.goto);
+  } else if (d.edit) {
+    editForm(plants.find((p) => p.id === viewing)); go("tombar");
+  } else if (d.open) {
+    viewing = d.open; go("ficha");
+  }
+});
+const start = (location.hash || "").slice(1);
+go(["tombar", "ficha", "colecao"].includes(start) ? start : "tombar");
+</script>
+</body>
+</html>
