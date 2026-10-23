@@ -151,6 +151,28 @@ export function splitItemHead(text: string, hasChildren: boolean): ItemHead {
   return { title, priority };
 }
 
+/** Item com algo além do título: sub-itens ou explicação longa no próprio texto. */
+export function hasItemDetail(item: RoadmapItem): boolean {
+  return item.children.length > 0 || !!splitItemHead(item.text, false).rest;
+}
+
+/** Título + detalhe do item em markdown, pronto para colar (num chat, numa issue). */
+export function itemToText(item: RoadmapItem): string {
+  const head = splitItemHead(item.text, item.children.length > 0);
+  const lines = [head.priority ? `${head.title} (${head.priority})` : head.title];
+  if (head.rest) lines.push("", head.rest);
+  if (item.children.length > 0) lines.push("");
+  const walk = (items: RoadmapItem[], depth: number) => {
+    for (const c of items) {
+      const box = c.done === null ? "" : c.done ? "[x] " : "[ ] ";
+      lines.push(`${"  ".repeat(depth)}- ${box}${c.text}`);
+      walk(c.children, depth + 1);
+    }
+  };
+  walk(item.children, 0);
+  return lines.join("\n");
+}
+
 export type Inline =
   | { kind: "text"; text: string }
   | { kind: "code"; text: string }

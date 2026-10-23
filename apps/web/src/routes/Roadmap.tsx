@@ -1,6 +1,8 @@
 import { useState } from "react";
 import {
+  hasItemDetail,
   type Inline,
+  itemToText,
   nextItem,
   parseInline,
   parseRoadmap,
@@ -57,6 +59,7 @@ export function Roadmap() {
                 </p>
               )}
               <Detail item={next.item} />
+              {hasItemDetail(next.item) && <CopyButton item={next.item} />}
             </>
           ) : (
             <>
@@ -197,6 +200,7 @@ function Row({ item }: { item: RoadmapItem }) {
               </p>
             )}
             <Detail item={item} />
+            <CopyButton item={item} />
           </div>
         </details>
       ) : (
@@ -218,6 +222,34 @@ function Box({ done, small = false }: { done: boolean; small?: boolean }) {
     >
       {done && <Icon name="check" className="size-3" />}
     </span>
+  );
+}
+
+/** Copia título + detalhe do item (markdown) para a área de transferência. */
+function CopyButton({ item }: { item: RoadmapItem }) {
+  const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(itemToText(item));
+      setFailed(false);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setFailed(true);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="mt-2.5 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-contorno px-3 text-[0.8rem] text-tinta transition-colors active:bg-salvia-clara"
+    >
+      <Icon name={copied ? "check" : "copy"} className="size-4" />
+      <span role="status">{failed ? "Não foi possível copiar" : copied ? "Copiado" : "Copiar título e detalhes"}</span>
+    </button>
   );
 }
 

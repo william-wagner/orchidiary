@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  hasItemDetail,
+  itemToText,
   nextItem,
   parseInline,
   parseRoadmap,
@@ -83,6 +85,21 @@ test("roadmap: título, prioridade e detalhe do item", () => {
   assert.equal(longo.title, "Faixa própria");
   assert.match(longo.rest ?? "", /^o usuário ajusta/);
   assert.equal(splitItemHead("Título: " + "x".repeat(60), true).rest, undefined);
+});
+
+test("roadmap: texto copiável do item (título + detalhe)", () => {
+  const r = parseRoadmap(MD);
+  assert.equal(
+    itemToText(r.queue!.items[1]!),
+    "Segundo pendente\n\n- Decidido:\n  - [x] 1. tarefa\n  - [ ] 2. outra",
+  );
+  assert.equal(
+    itemToText(r.phases[0]!.items[1]!),
+    "B\n\numa explicação bem longa que passa de cinquenta caracteres no total continua aqui",
+  );
+  assert.equal(itemToText(r.backlog[1]!.items[0]!), "Algo (média)\n\n- contexto");
+  assert.equal(hasItemDetail(r.queue!.items[2]!), false);
+  assert.equal(hasItemDetail(r.queue!.items[1]!), true);
 });
 
 test("roadmap: markdown inline", () => {
