@@ -24,16 +24,16 @@ import { placeOf } from "../services/places.ts";
 import { requestCoverIllustration } from "../services/illustration.ts";
 import { savePhoto } from "../services/photos.ts";
 import { weatherOfSegments } from "../services/weather/collect.ts";
-import { summariesOf } from "../services/taxonomy.ts";
+import { assertCrossTaxa, dropOrphanCross, identitiesOf, saveCross } from "../services/crosses.ts";
 import { collectionComfort, plantComfort, setComfortSilence } from "../services/comfort.ts";
 import { plantOccurrences } from "../services/occurrences.ts";
 
 const { plants, plantLocations, places, photos, events, manualReadings, weatherDaily, taxa } = schema;
 
-/** Planta com o táxon resolvido (nome completo e caminho na árvore). */
-async function withTaxon<P extends typeof plants.$inferSelect>(plant: P) {
-  const taxon = plant.taxonId ? ((await summariesOf([plant.taxonId])).get(plant.taxonId) ?? null) : null;
-  return { ...plant, taxon };
+/** Planta com táxon, cruza e fonte da ficha resolvidos (nome completo, caminho na árvore, parentais). */
+async function withIdentity<P extends typeof plants.$inferSelect>(plant: P) {
+  const { name: _name, ...identity } = (await identitiesOf([plant])).get(plant.id)!;
+  return { ...plant, ...identity };
 }
 
 async function assertTaxon(id: string | null | undefined) {
@@ -94,18 +94,18 @@ export const plantRoutes = new Hono<AppEnv>()
           .where(and(inArray(photos.id, coverIds), eq(photos.illustrationStatus, "ready")))
       : [];
     const illustratedAt = new Map(illustrated.map((p) => [p.id, p.updatedAt]));
-    const [taxonBy, comfortBy] = await Promise.all([
-      summariesOf(rows.map((r) => r.plant.taxonId)),
-      collectionComfort(
-        rows.map((r) => ({ plantId: r.plant.id, status: r.plant.status, taxonId: r.plant.taxonId, location: r.location })),
-      ),
-    ]);
+    const identityBy = await identitiesOf(rows.map((r) => r.plant));
+    const comfortBy = await collectionComfort(
+      // o índice usa a ficha resolvida: a do táxon ou, numa cruza, a do parental
+      rows.map((r) => ({ plantId: r.plant.id, status: r.plant.status, taxonId: identityBy.get(r.plant.id)?.care?.taxonId ?? null, location: r.location })),
+    );
     return c.json(
       rows.map((r) => {
         const cover = coverOf(r.plant);
+        const { name: _name, ...identity } = identityBy.get(r.plant.id)!;
         return {
           ...r.plant,
-          taxon: (r.plant.taxonId && taxonBy.get(r.plant.taxonId)) || null,
+          ...identity,
           currentLocation: r.location && { ...r.location, placeName: r.placeName },
           lastPhotoId: cover,
           /** Quando a prancha botânica da capa ficou pronta (versiona a URL da imagem) */
@@ -119,9 +119,10 @@ export const plantRoutes = new Hono<AppEnv>()
   })
 
   .post("/", zValidator("json", plantCreateSchema), async (c) => {
-    const { location, ...data } = c.req.valid("json");
+    const { location, cross, ...data } = c.req.valid("json");
     const userId = c.get("user").id;
     await assertTaxon(data.taxonId);
+    await assertCrossTaxa(cross);
     await placeOf(userId, location.placeId); // confere que o lugar é do usuário
     // sem lugar, a planta guarda a localização dela; com lugar, nenhuma das duas colunas
     const locality = location.placeId ? null : await reverseGeocode(location.lat!, location.lng!);
@@ -131,9 +132,11 @@ export const plantRoutes = new Hono<AppEnv>()
         .select({ next: sql<number>`coalesce(max(${plants.accessionNumber}), 0) + 1` })
         .from(plants)
         .where(eq(plants.userId, userId));
+      // táxon ou cruza: a cruza nova é da pessoa
+      const crossId = cross ? await saveCross(tx, userId, null, cross) : null;
       const [plant] = await tx
         .insert(plants)
-        .values({ ...data, userId, accessionNumber: Number(next) })
+        .values({ ...data, crossId, userId, accessionNumber: Number(next) })
         .returning();
       await tx.insert(plantLocations).values({
         plantId: plant!.id,
@@ -153,14 +156,15 @@ export const plantRoutes = new Hono<AppEnv>()
   .get("/:id", async (c) => {
     const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
     const locations = await listLocations(plant.id);
-    return c.json({ ...(await withTaxon(plant)), locations, currentLocation: locations.find((l) => l.validTo === null) ?? null });
+    return c.json({ ...(await withIdentity(plant)), locations, currentLocation: locations.find((l) => l.validTo === null) ?? null });
   })
 
   .patch("/:id", zValidator("json", plantUpdateSchema), async (c) => {
     const userId = c.get("user").id;
     const plant = await ownedPlant(c.req.param("id"), userId);
-    const input = c.req.valid("json");
+    const { cross, ...input } = c.req.valid("json");
     await assertTaxon(input.taxonId);
+    await assertCrossTaxa(cross);
     if (input.coverPhotoId) {
       const [photo] = await db
         .select({ id: photos.id })
@@ -170,11 +174,17 @@ export const plantRoutes = new Hono<AppEnv>()
       if (!photo) return c.json({ error: "A foto de capa precisa ser desta planta." }, 400);
     }
     const updated = await db.transaction(async (tx) => {
+      // táxon ou cruza, nunca os dois: escolher um solta o outro. Trocar a determinação troca a
+      // genealogia junto, sem histórico; a cruza que ficou sem planta nenhuma sai.
+      let crossId = plant.crossId;
+      if (cross) crossId = await saveCross(tx, userId, plant.crossId, cross);
+      else if (cross === null || input.taxonId) crossId = null;
       const [row] = await tx
         .update(plants)
-        .set({ ...input, updatedAt: new Date() })
+        .set({ ...input, ...(cross && { taxonId: null }), crossId, updatedAt: new Date() })
         .where(eq(plants.id, plant.id))
         .returning();
+      if (crossId !== plant.crossId) await dropOrphanCross(tx, plant.crossId);
       return row!;
     });
     if (input.coverPhotoId !== undefined) requestCoverIllustration(plant.id);
@@ -187,7 +197,8 @@ export const plantRoutes = new Hono<AppEnv>()
     const plant = await ownedPlant(c.req.param("id"), c.get("user").id);
     const window = parseChartWindow(c.req.query("days"));
     if (window === null) return c.json({ error: "Janela inválida: use 7, 30, 90, 180, 360 ou all." }, 400);
-    return c.json(await plantComfort(plant, window));
+    const care = (await identitiesOf([plant])).get(plant.id)?.care ?? null;
+    return c.json(await plantComfort({ id: plant.id, care }, window));
   })
 
   // Fita de ocorrências e feed da folha expandida (?from&to em dias locais, AAAA-MM-DD)
@@ -328,7 +339,7 @@ export const plantRoutes = new Hono<AppEnv>()
     );
 
     return c.json({
-      plant: await withTaxon(plant),
+      plant: await withIdentity(plant),
       locations,
       photos: photoRows,
       events: eventRows.map((e) => ({ ...e, batchSize: e.batchId ? (sizeOf.get(e.batchId) ?? 1) : null })),

@@ -1,4 +1,4 @@
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import sharp from "sharp";
 import { illustrationPrompt, needsIllustration } from "@orchidiary/shared";
 import { db, schema } from "../db/client.ts";
@@ -7,8 +7,9 @@ import { currentContext, type CallContext, runWithContext } from "../http/contex
 import { sourceLogger } from "../logger.ts";
 import { loadIntegration, type OpenaiConfig } from "./integrations.ts";
 import { storage } from "./storage.ts";
+import { identitiesOf } from "./crosses.ts";
 
-const { plants, photos, taxa } = schema;
+const { plants, photos } = schema;
 const log = sourceLogger("ilustracao");
 
 /** Paisagem 3:2: casa com a capa da ficha; no app a prancha é exibida inteira (object-contain) sobre papel da mesma cor. */
@@ -36,16 +37,20 @@ export async function illustrateCovers(plantIds?: string[]): Promise<void> {
   const ai = await loadIntegration("openai");
   if (!ai?.enabled || !ai.secrets.apiKey) return;
 
-  const plantRows = await db
+  const rows = await db
     .select({
       id: plants.id,
       coverPhotoId: plants.coverPhotoId,
-      taxon: sql<string | null>`coalesce(${taxa.fullName}, ${plants.taxonText})`,
+      taxonId: plants.taxonId,
+      crossId: plants.crossId,
+      receivedName: plants.receivedName,
     })
     .from(plants)
-    .leftJoin(taxa, eq(taxa.id, plants.taxonId))
     .where(plantIds ? inArray(plants.id, plantIds) : undefined);
-  if (!plantRows.length) return;
+  if (!rows.length) return;
+  // o nome que vai no prompt: o táxon, a fórmula da cruza ou o que veio na etiqueta
+  const identities = await identitiesOf(rows);
+  const plantRows = rows.map((p) => ({ ...p, taxon: identities.get(p.id)?.name ?? p.receivedName }));
   const ids = plantRows.map((p) => p.id);
 
   const first = await db

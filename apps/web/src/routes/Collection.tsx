@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { OriginFlag } from "../components/OriginFlag.tsx";
 import { PlaceBatchSheet } from "../components/PlaceBatchSheet.tsx";
-import { PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
+import { PlantFormula, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
 import { Icon, PageHeader, PressedOrchid } from "../components/ui.tsx";
 import { api, type CollectionPlant, illustrationUrl, photoUrl } from "../lib/api.ts";
 import { accession, environmentLabel } from "../lib/format.ts";
@@ -186,6 +186,7 @@ export function Collection() {
                 <p className="font-serif text-[1.2rem] leading-[1.12] tracking-[-0.01em] [overflow-wrap:anywhere]">
                   <PlantTaxon plant={p} /> <OriginFlag origin={plantOrigin(p)} />
                 </p>
+                <PlantFormula plant={p} className="mt-1 block font-serif text-[0.84rem] leading-tight text-folhagem [overflow-wrap:anywhere]" />
                 <p className="mt-1 truncate text-[0.8rem] text-musgo">{p.nickname}</p>
                 <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3">
                   {p.inBloom && <span className="selo selo-flor">em flor</span>}

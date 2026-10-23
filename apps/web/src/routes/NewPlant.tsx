@@ -5,16 +5,24 @@ import { useNavigate } from "react-router";
 import { EnvironmentPicker } from "../components/EnvironmentPicker.tsx";
 import { type PickedPhoto, PhotoPicker, uploadPhoto } from "../components/PhotoCapture.tsx";
 import { PlacePicker, type PlaceRef } from "../components/PlacePicker.tsx";
-import { TaxonPicker } from "../components/TaxonPicker.tsx";
+import {
+  type DeterminationDraft,
+  determinationBody,
+  DeterminationField,
+  DeterminationPreview,
+  emptyDetermination,
+  ReceivedNameField,
+} from "../components/Determination.tsx";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "../components/ui.tsx";
-import { api, type Plant, type TaxonSummary } from "../lib/api.ts";
+import { api, type Plant } from "../lib/api.ts";
 import { coords, environmentLabel } from "../lib/format.ts";
 import { getPosition, type Position } from "../lib/geo.ts";
 
 export function NewPlant() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [taxon, setTaxon] = useState<TaxonSummary | null>(null);
+  const [determination, setDetermination] = useState<DeterminationDraft>(emptyDetermination);
+  const [receivedName, setReceivedName] = useState("");
   const [environment, setEnvironment] = useState<Environment>("outdoor");
   const [place, setPlace] = useState<PlaceRef | null>(null);
   const [position, setPosition] = useState<Position | null>(null);
@@ -70,8 +78,8 @@ export function NewPlant() {
     const f = new FormData(e.currentTarget);
     create.mutate({
       nickname: f.get("nickname"),
-      taxonId: taxon?.id ?? null,
-      taxonText: taxon ? null : String(f.get("taxonText") ?? "").trim() || null,
+      ...determinationBody(determination),
+      receivedName: receivedName.trim() || null,
       origin: f.get("origin") || null,
       acquiredAt: f.get("acquiredAt") || null,
       // Num lugar, a localização e o ambiente são os dele; sem lugar, são os da planta.
@@ -91,12 +99,14 @@ export function NewPlant() {
           <PhotoPicker value={cover} onChange={setCover} />
           <span className="mt-1 block text-[0.95rem] text-musgo">Opcional. Dá para trocar depois.</span>
         </div>
-        <TaxonPicker value={taxon} onChange={setTaxon} />
-        {!taxon && (
-          <Field label="Ou o nome livre" hint="Se não achou no catálogo: o que estiver escrito na etiqueta">
-            <Input name="taxonText" maxLength={160} />
-          </Field>
-        )}
+        <DeterminationField value={determination} onChange={setDetermination} />
+        <ReceivedNameField
+          value={receivedName}
+          onChange={setReceivedName}
+          determination={determination}
+          onUse={(taxon) => setDetermination({ ...determination, isCross: false, taxon })}
+        />
+        <DeterminationPreview determination={determination} receivedName={receivedName} />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Origem">
             <Select name="origin" defaultValue="">

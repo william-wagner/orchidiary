@@ -10,6 +10,7 @@ import {
   TAXON_RANKS,
 } from "./enums.ts";
 import { BATCH_EVENT_TYPES } from "./batch.ts";
+import { crossInputSchema } from "./cross.ts";
 import { originError } from "./origin.ts";
 
 export const latLngSchema = z.object({
@@ -54,11 +55,14 @@ export const locationInputSchema = z
     message: "Escolha um lugar ou informe a localização e o ambiente da planta.",
   });
 
-export const plantCreateSchema = z.object({
+const plantFields = z.object({
   nickname: z.string().trim().min(1).max(80),
+  /** Determinação por táxon do catálogo (espécie, grex, gênero…); nunca junto com `cross` */
   taxonId: z.string().uuid().nullish(),
-  /** Nome livre quando o táxon não está no catálogo (ex.: o que veio escrito na etiqueta) */
-  taxonText: z.string().trim().max(160).nullish(),
+  /** Determinação por cruza (semente × pólen); `null` solta a cruza da planta */
+  cross: crossInputSchema.nullish(),
+  /** O nome como veio na etiqueta ou do vendedor, guardado do jeito que veio; não muda a ficha */
+  receivedName: z.string().trim().max(160).nullish(),
   origin: z.enum(PLANT_ORIGINS).nullish(),
   acquiredAt: z.coerce.date().nullish(),
   parentPlantId: z.string().uuid().nullish(),
@@ -68,14 +72,20 @@ export const plantCreateSchema = z.object({
   location: locationInputSchema,
 });
 
-export const plantUpdateSchema = plantCreateSchema
+const oneDetermination = (p: { taxonId?: string | null; cross?: unknown }) => !(p.taxonId && p.cross);
+const oneDeterminationError = { message: "A planta tem um táxon ou uma cruza, não os dois.", path: ["cross"] };
+
+export const plantCreateSchema = plantFields.refine(oneDetermination, oneDeterminationError);
+
+export const plantUpdateSchema = plantFields
   .omit({ location: true })
   .partial()
   .extend({
     status: z.enum(PLANT_STATUSES).optional(),
     /** Foto de capa escolhida; null volta para a mais recente */
     coverPhotoId: z.string().uuid().nullish(),
-  });
+  })
+  .refine(oneDetermination, oneDeterminationError);
 
 /** Leitura manual de termo-higrômetro (opcional, complementa o clima externo). */
 export const manualReadingSchema = z
