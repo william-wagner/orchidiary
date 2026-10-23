@@ -30,6 +30,14 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
     - Um evento por planta, como hoje, com a coluna `batch_id` em `events`: desfaz o lote, mostra "com outras N do local" no livro da planta e permite listar os lotes do local.
     - Exclusões lembradas numa tabela pequena por local + ação (as plantas que ficaram de fora no último lote).
     - Medição em lote é do local, não da planta: `manual_readings` ganha `place_id`, `plant_id` passa a aceitar nulo e a restrição exige exatamente um dos dois. O livro da planta mostra as leituras do lugar feitas enquanto o período dela ali estava aberto (nada retroativo). Com "Medição" escolhida, a lista de plantas sai da folha.
+- [ ] Registrar a cruza (parentais) no tombamento da planta
+  - Necessidade: uma planta *Renanthera monachica* × *Vanda falcata*. As duas espécies estão no catálogo, mas hoje a planta guarda um táxon só (`plants.taxon_id`, ou `taxon_text` em nome livre), então não há como dizer que é cruzamento delas. O nothogênero que daria nome ao híbrido (*Renantanda*) também não está em `catalog.ts`.
+  - A decidir (estudo antes de codar, em `docs/estudos/`): como modelar a cruza. Pontas a resolver:
+    - Parentais: semente e pólen (ordem importa na convenção, `semente × pólen`) como dois táxons de qualquer nível, ou nome livre quando um deles não está no catálogo. Parental desconhecido (`× ?`) tem que ser possível.
+    - Ligação com o catálogo: planta que aponta para o híbrido registrado (grex) já herda os parentais dele; planta de cruza própria, sem grex registrado, guarda os parentais na própria planta. Avaliar se o cruzamento sem nome vira um táxon `hybrid` sob o nothogênero ou fica só como atributo da planta.
+    - Ficha de cultivo: sem ficha própria, herdar do gênero (ou combinar a dos dois parentais). Regra pura em `packages/shared/src/taxonomy.ts`, com teste.
+    - Exibição: nome em fórmula (*Renanthera monachica* × *Vanda falcata*, cada espécie com a classe `taxon`) no cadastro, na ficha e na Coleção; busca da Coleção e do `TaxonPicker` achando a planta por qualquer um dos parentais; `OriginFlag` já trata cruzamento.
+  - Entrega mínima: no cadastro e na edição da planta, marcar "É uma cruza" e escolher os dois parentais; a ficha mostra a fórmula. A genealogia completa (keikis, divisões, árvore de ancestrais; Fase 3) fica de fora, mas o modelo não pode fechar a porta para ela.
 
 ## Fase 1 — Fundação (este commit)
 
