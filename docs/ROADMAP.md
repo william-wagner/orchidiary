@@ -114,6 +114,8 @@ Ajustes em algo que já existe (usabilidade, desempenho, visual, textos).
 
 - [ ] Busca na Coleção (média)
   - Hoje a Coleção só filtra por lugar, "Fora da faixa" e "Ao ar livre". Campo de busca local (a lista já vem inteira), com `normalizeSearch`, por apelido, nº de tombo, nome do táxon, nome da etiqueta e os dois parentais de uma cruza: buscar "falcata" acha a *Renanthera monachica* × *Vanda falcata*. Ver `docs/estudos/cruza-no-tombamento.md`, §7.
+- [ ] Trocar o ambiente (indoor/outdoor) na edição da planta
+  - Hoje o ambiente da planta só é escolhido no tombamento (`EnvironmentPicker` em `NewPlant.tsx`); `EditPlant.tsx` não tem o seletor e, sem trocar de lugar, mantém o `environment` do período atual. Na planta sem lugar, a troca fecha o período atual e abre outro com o ambiente novo (nada retroativo, como a mudança de lugar). Na planta com lugar, o ambiente é do lugar: a edição mostra o do lugar e leva à troca na tela do lugar ("Pôr ao ar livre" / "Pôr dentro de casa"), que vale para todas as plantas dele.
 
 ## Ideias
 
