@@ -1,4 +1,4 @@
-import { joinsBatch } from "@orchidiary/shared";
+import { joinsBatch, matchesSearch, plantSearchText } from "@orchidiary/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -30,6 +30,10 @@ export function Collection() {
   // O lugar escolhido fica na URL: voltar de uma planta mantém o filtro
   const [params, setParams] = useSearchParams();
   const [batchOpen, setBatchOpen] = useState(false);
+  // a busca também fica na URL (e sobrevive à troca de filtro); o campo tem estado próprio para o cursor não pular
+  const [query, setQuery] = useState(() => params.get("busca") ?? "");
+  const searching = query.trim() !== "";
+  const indexed = useMemo(() => new Map((plants.data ?? []).map((p) => [p.id, plantSearchText(p)])), [plants.data]);
   const places = useMemo(() => placesOf(plants.data ?? []), [plants.data]);
   const place = places.find((p) => p.id === params.get("local")) ?? null;
   // índice de conforto: o chip só aparece se alguma planta tem índice (com faixa na ficha)
@@ -47,10 +51,25 @@ export function Collection() {
       : outdoorFilter
         ? outdoor
         : plants.data;
+  const found = searching ? shown?.filter((p) => matchesSearch(indexed.get(p.id) ?? "", query)) : shown;
+  // o registro em lote vale para o lugar inteiro, com ou sem busca
   const batchable = shown?.filter((p) => joinsBatch(p.status)).length ?? 0;
-  const choose = (id: string | null) => setParams(id ? { local: id } : {}, { replace: true });
-  const chooseOutOfRange = () => setParams({ conforto: "fora" }, { replace: true });
-  const chooseOutdoor = () => setParams({ ambiente: "ar-livre" }, { replace: true });
+  const filterTo = (next: Record<string, string>) => setParams(searching ? { ...next, busca: query } : next, { replace: true });
+  const choose = (id: string | null) => filterTo(id ? { local: id } : {});
+  const chooseOutOfRange = () => filterTo({ conforto: "fora" });
+  const chooseOutdoor = () => filterTo({ ambiente: "ar-livre" });
+  const search = (text: string) => {
+    setQuery(text);
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (text.trim()) next.set("busca", text);
+        else next.delete("busca");
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   return (
     <main className="pb-8">
@@ -74,6 +93,40 @@ export function Collection() {
           <PressedOrchid className="mx-auto mb-4 h-16 w-10" />
           <p className="font-serif text-[1.45rem]">O herbário está vazio.</p>
           <p className="mt-1.5 text-musgo">Tombe a primeira orquídea para abrir o livro de registro dela.</p>
+        </div>
+      )}
+
+      {count > 0 && (
+        <div className="mb-3.5 px-5">
+          <div className="relative">
+            <Icon name="search" className="pointer-events-none absolute top-1/2 left-3.5 size-[1.15rem] -translate-y-1/2 text-musgo" />
+            <input
+              type="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              aria-label="Buscar na coleção"
+              placeholder="Nome, espécie, gênero, tombo, lugar"
+              value={query}
+              onChange={(e) => search(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && search("")}
+              className="min-h-12 w-full rounded-full border border-contorno bg-folha pr-11 pl-10 text-[0.95rem] text-tinta placeholder:text-musgo/70 focus:border-tinta focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => search("")}
+                aria-label="Limpar busca"
+                className="absolute top-1/2 right-1 grid size-10 -translate-y-1/2 place-items-center rounded-full text-musgo active:bg-salvia-clara"
+              >
+                <Icon name="close" className="size-4" />
+              </button>
+            )}
+          </div>
+          {searching && found && shown && found.length > 0 && (
+            <p className="typed mt-2 pl-4 text-[0.72rem]" aria-live="polite">
+              {found.length} de {shown.length} {shown.length === 1 ? "planta" : "plantas"}
+            </p>
+          )}
         </div>
       )}
 
@@ -155,8 +208,17 @@ export function Collection() {
         <p className="mx-5 rounded-lg border border-dashed border-contorno px-5 py-8 text-center text-musgo">Nenhuma planta fora da faixa nesta semana.</p>
       )}
 
+      {searching && !!shown?.length && found?.length === 0 && (
+        <div className="mx-5 rounded-lg border border-dashed border-contorno px-5 py-8 text-center text-musgo" aria-live="polite">
+          <p>Nenhuma planta encontrada para “{query.trim()}”{place ? ` em ${place.name}` : comfortFilter || outdoorFilter ? " neste filtro" : ""}.</p>
+          <button type="button" onClick={() => search("")} className="mt-2 text-orquidea underline underline-offset-2">
+            Limpar busca
+          </button>
+        </div>
+      )}
+
       <ul className="grid grid-cols-2 gap-x-3 gap-y-4 px-5 sm:grid-cols-3">
-        {shown?.map((p) => (
+        {found?.map((p) => (
           <li key={p.id} className="min-w-0">
             <Link
               to={`/plantas/${p.id}`}
