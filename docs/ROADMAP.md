@@ -114,6 +114,8 @@ Ajustes em algo que já existe (usabilidade, desempenho, visual, textos).
 
 - [x] Busca na Coleção (média)
   - Feito: campo de busca no topo da Coleção, local (a lista já vem inteira), que soma com os filtros de lugar, "Fora da faixa" e "Ao ar livre" e fica na URL (`?busca=`). Acha por apelido, nº de tombo (`7` ou `0007`), nome da etiqueta, táxon e todos os níveis acima dele (buscar "Vanda" acha as *Vanda* e as cruzas com *Vanda*), nomes populares, os dois parentais de uma cruza (da planta ou do grex) e o lugar onde ela está agora. Cada palavra digitada precisa ser o começo de alguma palavra (`normalizeSearch`, sem acento nem caixa): "ren falc" acha a *Renanthera monachica* × *Vanda falcata*. Regra em `packages/shared/src/plantSearch.ts`.
+- [ ] Trocar o ambiente (indoor/outdoor) na edição da planta
+  - Hoje o ambiente da planta só é escolhido no tombamento (`EnvironmentPicker` em `NewPlant.tsx`); `EditPlant.tsx` não tem o seletor e, sem trocar de lugar, mantém o `environment` do período atual. Na planta sem lugar, a troca fecha o período atual e abre outro com o ambiente novo (nada retroativo, como a mudança de lugar). Na planta com lugar, o ambiente é do lugar: a edição mostra o do lugar e leva à troca na tela do lugar ("Pôr ao ar livre" / "Pôr dentro de casa"), que vale para todas as plantas dele.
 
 ## Ideias
 
