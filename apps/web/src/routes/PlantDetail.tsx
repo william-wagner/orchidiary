@@ -9,7 +9,8 @@ import { PhotoCapture } from "../components/PhotoCapture.tsx";
 import { PhotoViewer } from "../components/PhotoViewer.tsx";
 import { OriginFlag } from "../components/OriginFlag.tsx";
 import { type BatchAction, PlaceBatchSheet } from "../components/PlaceBatchSheet.tsx";
-import { ancestorsLabel, PlantFormula, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
+import type { SharePhoto, SharePlant } from "../components/ShareSheet.tsx";
+import { ancestorsLabel, PlantFormula, plantNameParts, PlantTaxon, plantOrigin } from "../components/Taxon.tsx";
 import { CareLink, ParentsList, ReceivedName } from "../components/PlantIdentity.tsx";
 import { useToast } from "../components/Toast.tsx";
 import { BackLink, Button, ErrorText, Field, Icon, type IconName, Input, PressedOrchid } from "../components/ui.tsx";
@@ -23,6 +24,7 @@ import {
   type PlantLocation,
   type Timeline,
 } from "../lib/api.ts";
+import { useMe } from "../lib/auth.tsx";
 import { coverOf } from "../lib/cover.ts";
 import { EVENT_ICON, EVENT_LABEL, STAMPED, stampTone } from "../lib/events.ts";
 import { accession, coords, environmentLabel, monthHeading, typedDate } from "../lib/format.ts";
@@ -80,6 +82,7 @@ export function PlantDetail() {
   // a coleção (já em cache) diz quem mais está no mesmo lugar, para o atalho do lote
   const collection = useQuery({ queryKey: ["plants"], queryFn: () => api.get<CollectionPlant[]>("/plants") });
   const toast = useToast();
+  const me = useMe();
   const [pendingMove, setPendingMove] = useState<{ check: LocationCheck; takenAt: string } | null>(null);
   const [showReading, setShowReading] = useState(false);
   const [changingCover, setChangingCover] = useState(false);
@@ -92,6 +95,7 @@ export function PlantDetail() {
     fullSrc: string;
     alt: string;
     fit: "contain" | "cover";
+    share?: SharePhoto;
   } | null>(null);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["timeline", id] });
@@ -164,6 +168,14 @@ export function PlantDetail() {
   const first = locations[0];
   const cover = coverPhoto(timeline.data);
   const plate = cover?.illustrationStatus === "ready" && cover.illustrationUpdatedAt ? cover.illustrationUpdatedAt : null;
+  /** O que vai escrito na foto compartilhada; a data e a legenda são de cada foto */
+  const sharePlant: SharePlant = {
+    nickname: plant.nickname,
+    name: plantNameParts(plant),
+    accession: accession(plant.accessionNumber),
+    grower: me.data?.name ?? null,
+  };
+  const shareOf = (p: Pick<Photo, "takenAt" | "caption">): SharePhoto => ({ ...sharePlant, date: typedDate(p.takenAt), caption: p.caption });
 
   return (
     <main className="px-5 pt-3 pb-8">
@@ -196,7 +208,7 @@ export function PlantDetail() {
               onClick={(e) => {
                 const img = e.currentTarget.querySelector("img");
                 const src = plate ? illustrationUrl(cover.id, plate) : photoUrl(cover.id);
-                if (img) setViewing({ id: "capa", source: img, thumbSrc: src, fullSrc: src, alt: img.alt, fit: plate ? "contain" : "cover" });
+                if (img) setViewing({ id: "capa", source: img, thumbSrc: src, fullSrc: src, alt: img.alt, fit: plate ? "contain" : "cover", share: shareOf(cover) });
               }}
             >
               {plate ? (
@@ -258,7 +270,7 @@ export function PlantDetail() {
         </div>
       </section>
 
-      <ClimatePanel plantId={plant.id} plantName={plant.nickname} locations={locations} weather={weather} />
+      <ClimatePanel plantId={plant.id} plantName={plant.nickname} sharePlant={sharePlant} locations={locations} weather={weather} />
 
       <section className="mt-6 space-y-3" aria-label="Registrar">
         {photoError && !cover && (
@@ -338,6 +350,7 @@ export function PlantDetail() {
                                   fullSrc: photoUrl(photoId),
                                   alt: `Fotografia de ${plant.nickname}${caption ? `: ${caption}` : ""}, ${typedDate(takenAt)}`,
                                   fit: "contain",
+                                  share: shareOf(it.photo),
                                 });
                             }}
                           >
@@ -419,6 +432,7 @@ export function PlantDetail() {
           fullSrc={viewing.fullSrc}
           alt={viewing.alt}
           fit={viewing.fit}
+          share={viewing.share}
           onClose={() => setViewing(null)}
         />
       )}

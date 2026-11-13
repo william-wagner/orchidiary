@@ -244,6 +244,8 @@ const ICONS = {
     </>
   ),
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  /** Compartilhar: a seta sai da caixa */
+  share: <path d="M12 14.5V3.5M7.5 8 12 3.5 16.5 8M8.5 11H6.5a1 1 0 0 0-1 1v7.5a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V12a1 1 0 0 0-1-1h-2" />,
   /** Folha: a foto já tem prancha botânica pronta */
   leaf: (
     <>

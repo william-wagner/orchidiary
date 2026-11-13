@@ -14,6 +14,7 @@ import { type Occurrence, type PlantComfort, type PlantLocation, photoUrl } from
 import { EVENT_ICON, EVENT_LABEL, STAMPED, stampTone } from "../lib/events.ts";
 import { LOCAL_TZ, typedDate } from "../lib/format.ts";
 import { PhotoViewer } from "./PhotoViewer.tsx";
+import type { SharePlant } from "./ShareSheet.tsx";
 import { Icon, type IconName } from "./ui.tsx";
 
 type Report = Extract<PlantComfort, { status: "ok" }>;
@@ -107,6 +108,7 @@ interface Viewing {
  */
 export function OccurrenceSheet({
   plantName,
+  sharePlant,
   report,
   locations,
   clusters,
@@ -116,6 +118,8 @@ export function OccurrenceSheet({
   onClose,
 }: {
   plantName: string;
+  /** Dados da planta para compartilhar as fotos do feed */
+  sharePlant?: SharePlant;
   report: Report;
   locations: PlantLocation[];
   clusters: OccurrenceCluster<Occurrence>[];
@@ -326,6 +330,7 @@ export function OccurrenceSheet({
           thumbSrc={photoUrl(viewing.id, "thumb")}
           fullSrc={photoUrl(viewing.id)}
           alt={`Fotografia de ${plantName}${viewing.caption ? `: ${viewing.caption}` : ""}, ${typedDate(viewing.at)}`}
+          share={sharePlant && { ...sharePlant, date: typedDate(viewing.at), caption: viewing.caption }}
           onClose={() => setViewing(null)}
         />
       )}

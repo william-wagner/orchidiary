@@ -105,6 +105,7 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
   - Link público por planta, com slug não adivinhável (`/p/aurora-k7f2`), criado só quando o dono compartilha pela primeira vez e revogável.
   - Privacidade: a página pública nunca mostra coordenadas nem endereço. A decidir: mostrar o nome do lugar, só a cidade ou nada.
   - A decidir: regras de nível e XP. Proposta: Muda → Jovem → Adulta → Florida → Veterana; XP por tempo de cultivo, florações, fotos e registros no diário.
+  - Primeiro passo feito em 13.XI.2026: compartilhar a **foto** da planta como arquivo (ver "Compartilhar fotos do feed da planta" em Ideias). A carta pode reaproveitar o desenho em canvas (`lib/shareImage.ts`) e o `shareFile` (`lib/share.ts`).
   - Tarefas, nessa ordem (uma por commit):
     - [ ] 1. Regras de nível e XP em `packages/shared`, com teste
     - [ ] 2. Link público: slug, data de criação e revogação; rotas para criar e revogar e `GET` público só com os campos da carta
@@ -138,8 +139,9 @@ Ajustes em algo que já existe (usabilidade, desempenho, visual, textos).
 
 Funcionalidades novas ainda sem fase definida.
 
-- [ ] Compartilhar fotos do feed da planta
-  - Do feed de ocorrências (folha expandida de "Clima e ocorrências") e do `PhotoViewer`: botão de compartilhar que manda a foto para outros apps pela folha de compartilhamento do celular (Web Share API com arquivo; no desktop, copiar ou baixar). Decidir se vai junto uma legenda com o nome da planta e a data da foto.
+- [x] Compartilhar fotos do feed da planta
+  - Feito (13.XI.2026): botão de compartilhar na foto ampliada (`PhotoViewer`), na capa, no livro e no feed de "Clima e ocorrências". Abre a folha `ShareSheet` com quatro apresentações para testar: **só a foto**, **etiqueta** (etiqueta de herbário embaixo da foto), **fixada** (presa com fita na página, 4:5) e **story** (9:16). A escolha fica lembrada no aparelho. A imagem é desenhada no canvas (`lib/shareImage.ts`) e sai em JPEG, porque WebP vira figurinha no WhatsApp; ela já está pronta quando a pessoa toca em "Compartilhar", que abre a folha do celular (Web Share API; sem suporte, baixa). Na imagem: apelido, nome (táxon ou fórmula), tombo, data da foto, "cultivada por <nome>", o Relógio, orchidiary.com e "Cultive o seu melhor.". Um texto opcional vai junto (`shareCaption` no shared, com teste); o Instagram o ignora. A letra manuscrita completa fica em `public/fonts/la-belle-aurore.woff2`.
+  - Depois: escolher a apresentação definitiva (ou manter as que funcionarem) depois de testar no WhatsApp, Instagram e Telegram.
 - [ ] Baixar fotos do feed da planta
   - Baixar a foto original (resolução cheia) a partir do feed e do `PhotoViewer`. Estudar também baixar várias de uma vez (um período ou a planta inteira, em .zip) e se o EXIF original segue no arquivo baixado.
 - [x] Registro das chamadas a APIs externas no banco (média)

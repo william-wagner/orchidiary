@@ -42,6 +42,16 @@ export function PlantTaxon({ plant, className = "" }: { plant: Pick<Plant, "taxo
   return <span className={`taxon ${className}`}>{plant.receivedName ?? "Espécie não determinada"}</span>;
 }
 
+/** O mesmo nome do `PlantTaxon`, em partes (para desenhar fora do DOM); vazio quando não determinada. */
+export function plantNameParts(plant: Pick<Plant, "taxon" | "cross" | "receivedName">): NamePart[] {
+  if (plant.taxon) return taxonNameParts(plant.taxon.lineage);
+  if (plant.cross) {
+    if (unknownBoth(plant.cross)) return [{ text: UNNAMED_CROSS, italic: false }];
+    return crossNameParts(sideName(plant.cross.seed), sideName(plant.cross.pollen));
+  }
+  return plant.receivedName ? [{ text: plant.receivedName, italic: true }] : [];
+}
+
 /**
  * A linha de baixo do nome, quando há: a fórmula de um grex com parentais no catálogo,
  * ou "parentais desconhecidos" de uma cruza sem nome.

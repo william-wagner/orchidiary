@@ -35,6 +35,7 @@ import { useWidth } from "../lib/useWidth.ts";
 import { ClimateSummary } from "./ClimateSummary.tsx";
 import { TemperatureRegister } from "./TemperatureRegister.tsx";
 import { OccurrenceSheet } from "./OccurrenceSheet.tsx";
+import type { SharePlant } from "./ShareSheet.tsx";
 import { Icon } from "./ui.tsx";
 
 type Report = Extract<PlantComfort, { status: "ok" }>;
@@ -114,11 +115,13 @@ const occurrenceLabel = (o: Occurrence) => (o.kind === "photo" ? "Fotografia" : 
 export function ClimatePanel({
   plantId,
   plantName,
+  sharePlant,
   locations,
   weather,
 }: {
   plantId: string;
   plantName: string;
+  sharePlant?: SharePlant;
   locations: PlantLocation[];
   weather: WeatherDay[];
 }) {
@@ -229,6 +232,7 @@ export function ClimatePanel({
           <div className={`mt-3 transition-opacity ${comfort.isPlaceholderData ? "opacity-60" : ""}`}>
             <Pauta
               plantName={plantName}
+              sharePlant={sharePlant}
               report={c}
               locations={locations}
               items={items}
@@ -405,6 +409,7 @@ function clusterLabel(c: OccurrenceCluster<Occurrence>) {
 
 function Pauta({
   plantName,
+  sharePlant,
   report,
   locations,
   items,
@@ -413,6 +418,7 @@ function Pauta({
   onSelect,
 }: {
   plantName: string;
+  sharePlant?: SharePlant;
   report: Report;
   locations: PlantLocation[];
   items: Occurrence[];
@@ -614,6 +620,7 @@ function Pauta({
       {selected && selectedIndex >= 0 && (
         <OccurrenceSheet
           plantName={plantName}
+          sharePlant={sharePlant}
           report={report}
           locations={locations}
           clusters={clusters}

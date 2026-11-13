@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ShareSheet, type SharePhoto } from "./ShareSheet.tsx";
 import { Icon } from "./ui.tsx";
 
 const MAX_SCALE = 5;
@@ -63,6 +64,7 @@ export function PhotoViewer({
   fullSrc,
   alt,
   fit = "contain",
+  share,
   onClose,
 }: {
   /** A miniatura clicada: ponto de partida e de volta da animação */
@@ -72,12 +74,15 @@ export function PhotoViewer({
   alt: string;
   /** Como a origem mostra a foto (o object-fit dela) */
   fit?: "contain" | "cover";
+  /** Com os dados da foto, aparece o botão de compartilhar */
+  share?: SharePhoto;
   onClose: () => void;
 }) {
   const ratio = source.naturalWidth && source.naturalHeight ? source.naturalWidth / source.naturalHeight : source.offsetWidth / source.offsetHeight || 1;
   const [box, setBox] = useState(() => fitBox(ratio));
   const [fullLoaded, setFullLoaded] = useState(false);
   const [zoomed, setZoomed] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const backdrop = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null); // animação de abrir/fechar
@@ -323,6 +328,17 @@ export function PhotoViewer({
       >
         <Icon name="close" className="size-5" />
       </button>
+      {share && !zoomed && (
+        <button
+          type="button"
+          onClick={() => setSharing(true)}
+          aria-label="Compartilhar foto"
+          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-3 inline-flex size-11 items-center justify-center rounded-full bg-[#15201a]/60 text-[#f7f5ec] active:bg-[#15201a]/80"
+        >
+          <Icon name="share" className="size-5" />
+        </button>
+      )}
+      {share && sharing && <ShareSheet src={fullSrc} photo={share} onClose={() => setSharing(false)} />}
       {!zoomed && (
         <p className="typed pointer-events-none absolute inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] text-center text-[0.68rem] text-[#f7f5ec]/70">
           pince ou toque duas vezes para aproximar
