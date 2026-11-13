@@ -96,6 +96,23 @@ Fila em ordem: o primeiro item sem `[x]` é o próximo a ser feito.
 - [ ] App nas lojas com Capacitor
 - [ ] Identificação de espécie e diagnóstico por foto com IA
 
+## Comunidade
+
+- [ ] Compartilhar a planta: carta de colecionador
+  - **Escolhida** em 13.XI.2026 entre três propostas: carta de colecionador, caderneta de carimbos e story da jornada. Protótipo das três: https://claude.ai/artifact/Ws1kKBjkPsqVeeeLTX2ryz
+  - A planta vira uma carta de jogo na identidade do caderno botânico: nº de tombo, apelido, nome (táxon ou fórmula da cruza, sempre resolvido pela API), foto de capa, selo de nível ("Nível 4 · Florida"), linha de campo (hábito, origem, "desde 02.IX.2025"), quatro atributos (dias, florações, fotos, cuidados), barra de XP até o próximo nível, "Cultivada por <nome>" em letra manuscrita, o Relógio e orchidiary.com. A cor da moldura pode variar.
+  - Compartilha como **link**: o botão Compartilhar na ficha abre a folha de compartilhamento do celular (Web Share API; no desktop, copiar o link). No WhatsApp a carta aparece como prévia do link (og:image 1200×630, versão horizontal da carta), com título "Apelido — nome" e descrição "Nível · florações · dias". Tocar abre a página pública da planta, sem login: carta grande, linha do tempo das fotos e o convite "Crie o seu diário". A carta também pode ser baixada como PNG.
+  - Link público por planta, com slug não adivinhável (`/p/aurora-k7f2`), criado só quando o dono compartilha pela primeira vez e revogável.
+  - Privacidade: a página pública nunca mostra coordenadas nem endereço. A decidir: mostrar o nome do lugar, só a cidade ou nada.
+  - A decidir: regras de nível e XP. Proposta: Muda → Jovem → Adulta → Florida → Veterana; XP por tempo de cultivo, florações, fotos e registros no diário.
+  - Tarefas, nessa ordem (uma por commit):
+    - [ ] 1. Regras de nível e XP em `packages/shared`, com teste
+    - [ ] 2. Link público: slug, data de criação e revogação; rotas para criar e revogar e `GET` público só com os campos da carta
+    - [ ] 3. Imagem da carta gerada na API (og:image 1200×630 e versão vertical para baixar)
+    - [ ] 4. Página pública `/p/:slug` com as meta tags Open Graph vindas do servidor (o WhatsApp não executa JavaScript ao montar a prévia)
+    - [ ] 5. Botão Compartilhar na ficha da planta
+  - Depois: a caderneta de carimbos (conquistas carimbadas, com compartilhamento no momento em que a planta ganha um carimbo) e o story da jornada (antes/depois em 9:16 para o Status) reaproveitam o link público e a geração de imagem.
+
 ---
 
 # Backlog
