@@ -11,3 +11,10 @@ data/
 
 # Anotações locais (comandos úteis etc.), nunca no git
 .local/
+
+# Configurações locais do Claude Code
+.claude/settings.local.json
+
+# Config do VS Code com caminho local (conta do Claude Code)
+.vscode/
+.claude/settings.json
