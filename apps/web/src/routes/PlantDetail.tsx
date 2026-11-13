@@ -274,17 +274,17 @@ export function PlantDetail() {
 
       <section className="mt-6 space-y-3" aria-label="Registrar">
         {photoError && !cover && (
-          <p className="text-[0.9rem] text-alerta">A planta foi tombada, mas a foto de capa não foi enviada ({photoError}). Tente de novo abaixo.</p>
+          <p className="text-[0.9rem] text-alerta">A planta foi tombada, mas a foto de capa não foi enviada ({photoError}). Tente de novo pelo botão da câmera.</p>
         )}
+        <PhotoCapture
+          plantId={plant.id}
+          floating
+          onSaved={({ photo, locationCheck }) => {
+            refresh();
+            if (locationCheck?.mismatch) setPendingMove({ check: locationCheck, takenAt: photo.takenAt });
+          }}
+        />
         <div className="flex flex-wrap gap-2">
-          <PhotoCapture
-            plantId={plant.id}
-            className="min-h-11 rounded-lg bg-tinta px-3 text-[0.85rem] text-folha active:bg-tinta-viva"
-            onSaved={({ photo, locationCheck }) => {
-              refresh();
-              if (locationCheck?.mismatch) setPendingMove({ check: locationCheck, takenAt: photo.takenAt });
-            }}
-          />
           {QUICK_EVENTS.map((t) => (
             <button key={t} onClick={() => addEvent.mutate(t)} disabled={addEvent.isPending} className={chip}>
               <Icon name={EVENT_ICON[t] ?? "note"} className="size-4" />
@@ -307,7 +307,7 @@ export function PlantDetail() {
         )}
       </section>
 
-      <section className="mt-9" aria-label="Livro de registro">
+      <section className="mt-9 pb-16" aria-label="Livro de registro">
         <h2 className="border-b border-linha pb-3 text-[1.75rem] tracking-[-0.02em]">Livro de registro</h2>
         {items.length === 0 && (
           <p className="mt-4 rounded-lg bg-salvia-clara/70 px-4 py-4 text-[0.9rem] text-musgo">

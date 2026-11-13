@@ -35,6 +35,8 @@ interface Props {
   onSaved: (result: { photo: Photo; locationCheck: LocationCheck | null }) => void;
   /** Aparência do botão, para ele entrar no grupo de ações de quem o usa. */
   className?: string;
+  /** Botão redondo fixo no canto, acima da barra de navegação, que acompanha o scroll. */
+  floating?: boolean;
 }
 
 /**
@@ -43,7 +45,7 @@ interface Props {
  * e, quando há, avisos em linha própria) para caber num grupo `flex-wrap`.
  * A API lê data e GPS do EXIF da foto, se houver.
  */
-export function PhotoCapture({ plantId, onSaved, className = "" }: Props) {
+export function PhotoCapture({ plantId, onSaved, className = "", floating = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +63,31 @@ export function PhotoCapture({ plantId, onSaved, className = "" }: Props) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (floating) {
+    return (
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.9rem+env(safe-area-inset-bottom))] z-10 px-4">
+        <div className="mx-auto flex max-w-2xl flex-col items-end gap-2">
+          {error && (
+            <p role="alert" className="pointer-events-auto max-w-xs rounded-lg border border-linha bg-folha px-3 py-2 text-[0.85rem] text-alerta shadow-caderno">
+              {error}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            aria-label={busy ? "Enviando foto…" : "Fotografar"}
+            title="Fotografar"
+            className="pointer-events-auto inline-flex size-14 items-center justify-center rounded-full bg-tinta text-folha shadow-caderno active:bg-tinta-viva disabled:opacity-60"
+          >
+            <Icon name="camera" className={`size-6 ${busy ? "animate-pulse" : ""}`} />
+          </button>
+          <input ref={inputRef} type="file" accept="image/*" hidden onChange={(e) => void send(e)} />
+        </div>
+      </div>
+    );
   }
 
   return (
